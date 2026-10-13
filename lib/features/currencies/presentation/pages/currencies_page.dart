@@ -11,6 +11,7 @@ import 'package:saydaliati/features/currencies/presentation/providers/currencies
 import 'package:saydaliati/shared/utils/formatters.dart';
 import 'package:saydaliati/shared/widgets/async_list_view.dart';
 import 'package:saydaliati/shared/widgets/buttons/app_button.dart';
+import 'package:saydaliati/shared/widgets/dialogs/adaptive_modal.dart';
 import 'package:saydaliati/shared/widgets/dialogs/app_dialogs.dart';
 import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
@@ -100,10 +101,8 @@ class CurrenciesPage extends ConsumerWidget {
   /// Shows the rate-change history (rate + date) for a currency.
   Future<void> _showHistory(BuildContext context, WidgetRef ref, Currency c) async {
     final baseCode = ref.read(baseCurrencyProvider)?.code ?? '';
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
+    await showAdaptiveModal<void>(
+      context,
       builder: (_) => _RateHistorySheet(currency: c, baseCode: baseCode),
     );
   }

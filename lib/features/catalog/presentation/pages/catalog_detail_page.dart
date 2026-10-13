@@ -7,6 +7,7 @@ import 'package:saydaliati/features/catalog/domain/catalog_item.dart';
 import 'package:saydaliati/features/catalog/presentation/medicine_share.dart';
 import 'package:saydaliati/features/catalog/presentation/pages/add_catalog_to_stock_page.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
+import 'package:saydaliati/shared/widgets/dialogs/adaptive_modal.dart';
 import 'package:saydaliati/shared/widgets/states/app_states.dart';
 
 
@@ -28,9 +29,8 @@ class _CatalogDetailPageState extends ConsumerState<CatalogDetailPage> {
   CatalogItem get item => widget.item;
 
   Future<void> _share() async {
-    final choice = await showModalBottomSheet<String>(
-      context: context,
-      showDragHandle: true,
+    final choice = await showAdaptiveModal<String>(
+      context,
       builder: (ctx) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,

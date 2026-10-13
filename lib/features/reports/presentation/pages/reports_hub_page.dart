@@ -1,102 +1,122 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:saydaliati/app/router/app_routes.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
+import 'package:saydaliati/core/theme/app_breakpoints.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
-import 'package:saydaliati/features/reports/domain/report_period.dart';
-import 'package:saydaliati/features/reports/presentation/pages/expiry_report_page.dart';
-import 'package:saydaliati/features/reports/presentation/pages/inventory_report_page.dart';
-import 'package:saydaliati/features/reports/presentation/pages/prescriptions_report_page.dart';
-import 'package:saydaliati/features/reports/presentation/pages/profit_report_page.dart';
-import 'package:saydaliati/features/reports/presentation/pages/purchases_report_page.dart';
-import 'package:saydaliati/features/reports/presentation/pages/sales_report_page.dart';
-import 'package:saydaliati/features/reports/presentation/pages/stocktake_report_page.dart';
 
-/// Reports landing screen: a clear card per report. Each report opens with a
-/// sensible default period and lets the user change it from its own side sheet.
+/// Reports landing screen: a responsive grid of report cards (2–4 columns by
+/// width). Each report is a nested shell route (`context.go`) so the sidebar
+/// stays visible and highlighted while the report is open.
 class ReportsHubPage extends StatelessWidget {
   const ReportsHubPage({super.key});
 
-  void _open(BuildContext context, Widget page) {
-    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page));
-  }
+  static const List<(IconData, String, String, String)> _reports = [
+    (
+      Icons.point_of_sale_outlined,
+      AppStrings.salesReport,
+      AppStrings.salesReportHint,
+      AppRoutes.salesReport,
+    ),
+    (
+      Icons.trending_up_outlined,
+      AppStrings.profitReportTitle,
+      AppStrings.profitReportHint,
+      AppRoutes.profitReport,
+    ),
+    (
+      Icons.shopping_cart_outlined,
+      AppStrings.purchasesReport,
+      AppStrings.purchasesReportHint,
+      AppRoutes.purchasesReport,
+    ),
+    (
+      Icons.inventory_2_outlined,
+      AppStrings.inventoryReport,
+      AppStrings.inventoryReportHint,
+      AppRoutes.inventoryReport,
+    ),
+    (
+      Icons.event_busy_outlined,
+      AppStrings.expiryReport,
+      AppStrings.expiryReportHint,
+      AppRoutes.expiryReport,
+    ),
+    (
+      Icons.fact_check_outlined,
+      AppStrings.stocktakeReport,
+      AppStrings.stocktakeReportHint,
+      AppRoutes.stocktakeReport,
+    ),
+    (
+      Icons.medical_services_outlined,
+      AppStrings.prescriptionsReport,
+      AppStrings.prescriptionsReportHint,
+      AppRoutes.prescriptionsReport,
+    ),
+  ];
 
   @override
   Widget build(BuildContext context) {
-    // Reports that take a period open on "this month" by default.
-    final defaultPeriod = ReportPeriod.month();
     return Scaffold(
       appBar: AppBar(title: const Text(AppStrings.reports)),
-      body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        children: [
-          _reportCard(
-            context,
-            icon: Icons.point_of_sale_outlined,
-            title: AppStrings.salesReport,
-            subtitle: AppStrings.salesReportHint,
-            onTap: () =>
-                _open(context, SalesReportPage(initialPeriod: defaultPeriod)),
-          ),
-          _reportCard(
-            context,
-            icon: Icons.trending_up_outlined,
-            title: AppStrings.profitReportTitle,
-            subtitle: AppStrings.profitReportHint,
-            onTap: () =>
-                _open(context, ProfitReportPage(initialPeriod: defaultPeriod)),
-          ),
-          _reportCard(
-            context,
-            icon: Icons.shopping_cart_outlined,
-            title: AppStrings.purchasesReport,
-            subtitle: AppStrings.purchasesReportHint,
-            onTap: () => _open(
-                context, PurchasesReportPage(initialPeriod: defaultPeriod)),
-          ),
-          _reportCard(
-            context,
-            icon: Icons.inventory_2_outlined,
-            title: AppStrings.inventoryReport,
-            subtitle: AppStrings.inventoryReportHint,
-            onTap: () => _open(context, const InventoryReportPage()),
-          ),
-          _reportCard(
-            context,
-            icon: Icons.event_busy_outlined,
-            title: AppStrings.expiryReport,
-            subtitle: AppStrings.expiryReportHint,
-            onTap: () => _open(context, const ExpiryReportPage()),
-          ),
-          _reportCard(
-            context,
-            icon: Icons.fact_check_outlined,
-            title: AppStrings.stocktakeReport,
-            subtitle: AppStrings.stocktakeReportHint,
-            onTap: () => _open(context, const StocktakeReportPage()),
-          ),
-          _reportCard(
-            context,
-            icon: Icons.medical_services_outlined,
-            title: AppStrings.prescriptionsReport,
-            subtitle: AppStrings.prescriptionsReportHint,
-            onTap: () => _open(context, const PrescriptionsReportPage()),
-          ),
-        ],
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final w = constraints.maxWidth;
+          final columns = w >= AppBreakpoints.expanded
+              ? 4
+              : w >= AppBreakpoints.medium
+                  ? 3
+                  : w >= 560
+                      ? 2
+                      : 1;
+          return ConstrainedContent(
+            maxWidth: 1280,
+            child: GridView.builder(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: columns,
+                mainAxisSpacing: AppSpacing.md,
+                crossAxisSpacing: AppSpacing.md,
+                mainAxisExtent: 112,
+              ),
+              itemCount: _reports.length,
+              itemBuilder: (context, i) {
+                final (icon, title, subtitle, route) = _reports[i];
+                return _ReportCard(
+                  icon: icon,
+                  title: title,
+                  subtitle: subtitle,
+                  onTap: () => context.go(route),
+                );
+              },
+            ),
+          );
+        },
       ),
     );
   }
+}
 
-  Widget _reportCard(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
+class _ReportCard extends StatelessWidget {
+  const _ReportCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Card(
-      margin: const EdgeInsets.only(bottom: AppSpacing.md),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
-        borderRadius: AppRadius.brMd,
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.lg),
@@ -108,22 +128,30 @@ class ReportsHubPage extends StatelessWidget {
                   color: theme.colorScheme.primary.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: theme.colorScheme.primary, size: AppSizes.iconLg),
+                child: Icon(icon,
+                    color: theme.colorScheme.primary, size: AppSizes.iconLg),
               ),
               const SizedBox(width: AppSpacing.lg),
               Expanded(
                 child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: theme.textTheme.titleMedium),
+                    Text(title,
+                        style: theme.textTheme.titleMedium,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
                     const SizedBox(height: AppSpacing.xs),
-                    Text(subtitle,
-                        style: theme.textTheme.bodySmall
-                            ?.copyWith(color: theme.hintColor)),
+                    Text(
+                      subtitle,
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: theme.hintColor),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_left),
             ],
           ),
         ),

@@ -37,6 +37,16 @@ abstract final class AppRoutes {
   static const String units = '/more/units';
   static const String currencies = '/more/currencies';
   static const String reports = '/more/reports';
+
+  // Reports → individual reports (nested under the reports branch so they
+  // render INSIDE the desktop shell and keep the sidebar highlight in sync).
+  static const String salesReport = '/more/reports/sales';
+  static const String profitReport = '/more/reports/profit';
+  static const String purchasesReport = '/more/reports/purchases';
+  static const String inventoryReport = '/more/reports/inventory';
+  static const String expiryReport = '/more/reports/expiry';
+  static const String stocktakeReport = '/more/reports/stocktake';
+  static const String prescriptionsReport = '/more/reports/prescriptions';
   static const String settings = '/more/settings';
   static const String profile = '/more/profile';
   static const String tutorials = '/more/tutorials';

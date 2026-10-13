@@ -15,6 +15,7 @@ class AppSearchField extends StatefulWidget {
     this.hint,
     this.initialValue,
     this.debounce,
+    this.autofocus = false,
     super.key,
   });
 
@@ -22,6 +23,7 @@ class AppSearchField extends StatefulWidget {
   final String? hint;
   final String? initialValue;
   final Duration? debounce;
+  final bool autofocus;
 
   @override
   State<AppSearchField> createState() => _AppSearchFieldState();
@@ -54,6 +56,7 @@ class _AppSearchFieldState extends State<AppSearchField> {
   Widget build(BuildContext context) {
     return TextField(
       controller: _controller,
+      autofocus: widget.autofocus,
       onChanged: (v) {
         _emit(v);
         setState(() {}); // toggle the clear button (immediate)

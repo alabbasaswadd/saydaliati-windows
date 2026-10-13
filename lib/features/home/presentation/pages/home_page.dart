@@ -6,14 +6,6 @@ import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/core/offline/sync/sync_service.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/features/notifications/presentation/widgets/notification_bell.dart';
-import 'package:saydaliati/features/reports/domain/report_period.dart';
-import 'package:saydaliati/features/reports/presentation/pages/expiry_report_page.dart';
-import 'package:saydaliati/features/reports/presentation/pages/inventory_report_page.dart';
-import 'package:saydaliati/features/reports/presentation/pages/prescriptions_report_page.dart';
-import 'package:saydaliati/features/reports/presentation/pages/profit_report_page.dart';
-import 'package:saydaliati/features/reports/presentation/pages/purchases_report_page.dart';
-import 'package:saydaliati/features/reports/presentation/pages/sales_report_page.dart';
-import 'package:saydaliati/features/reports/presentation/pages/stocktake_report_page.dart';
 import 'package:saydaliati/shared/widgets/animations/fade_slide_in.dart';
 import 'package:saydaliati/shared/widgets/cards/app_cards.dart';
 
@@ -28,35 +20,34 @@ class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
   List<_QuickAction> _actions() {
-    final month = ReportPeriod.month();
-    return <_QuickAction>[
+    return const <_QuickAction>[
       // Operational sections
-      const _QuickAction(AppStrings.sales, Icons.point_of_sale_outlined,
+      _QuickAction(AppStrings.sales, Icons.point_of_sale_outlined,
           route: AppRoutes.sales),
-      const _QuickAction(AppStrings.products, Icons.medication_outlined,
+      _QuickAction(AppStrings.products, Icons.medication_outlined,
           route: AppRoutes.products),
-      const _QuickAction(AppStrings.purchases, Icons.local_shipping_outlined,
+      _QuickAction(AppStrings.purchases, Icons.local_shipping_outlined,
           route: AppRoutes.purchases),
-      const _QuickAction(AppStrings.inventory, Icons.inventory_2_outlined,
+      _QuickAction(AppStrings.inventory, Icons.inventory_2_outlined,
           route: AppRoutes.inventory),
-      const _QuickAction(AppStrings.stockMovements, Icons.swap_vert_outlined,
+      _QuickAction(AppStrings.stockMovements, Icons.swap_vert_outlined,
           route: AppRoutes.stockMovements),
-      // Quick-access reports
+      // Quick-access reports — shell routes (sidebar stays in sync).
       _QuickAction(AppStrings.salesReport, Icons.point_of_sale_outlined,
-          open: (_) => SalesReportPage(initialPeriod: month)),
+          route: AppRoutes.salesReport),
       _QuickAction(AppStrings.profitReportTitle, Icons.trending_up_outlined,
-          open: (_) => ProfitReportPage(initialPeriod: month)),
+          route: AppRoutes.profitReport),
       _QuickAction(AppStrings.purchasesReport, Icons.shopping_cart_outlined,
-          open: (_) => PurchasesReportPage(initialPeriod: month)),
+          route: AppRoutes.purchasesReport),
       _QuickAction(AppStrings.inventoryReport, Icons.inventory_2_outlined,
-          open: (_) => const InventoryReportPage()),
+          route: AppRoutes.inventoryReport),
       _QuickAction(AppStrings.expiryReport, Icons.event_busy_outlined,
-          open: (_) => const ExpiryReportPage()),
+          route: AppRoutes.expiryReport),
       _QuickAction(AppStrings.stocktakeReport, Icons.fact_check_outlined,
-          open: (_) => const StocktakeReportPage()),
+          route: AppRoutes.stocktakeReport),
       _QuickAction(
           AppStrings.prescriptionsReport, Icons.medical_services_outlined,
-          open: (_) => const PrescriptionsReportPage()),
+          route: AppRoutes.prescriptionsReport),
     ];
   }
 
@@ -127,15 +118,8 @@ class _ActionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return AppCard(
-      onTap: () {
-        if (action.route != null) {
-          // go() switches the sidebar active item; push() would stack a route.
-          context.go(action.route!);
-        } else if (action.open != null) {
-          Navigator.of(context)
-              .push(MaterialPageRoute<void>(builder: action.open!));
-        }
-      },
+      // go() switches the sidebar active item; push() would stack a route.
+      onTap: () => context.go(action.route),
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -162,10 +146,9 @@ class _ActionTile extends StatelessWidget {
 }
 
 class _QuickAction {
-  const _QuickAction(this.label, this.icon, {this.route, this.open});
+  const _QuickAction(this.label, this.icon, {required this.route});
 
   final String label;
   final IconData icon;
-  final String? route;
-  final WidgetBuilder? open;
+  final String route;
 }

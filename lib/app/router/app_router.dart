@@ -21,7 +21,15 @@ import 'package:saydaliati/features/medicine_units/presentation/pages/units_page
 import 'package:saydaliati/features/medicines/presentation/pages/medicines_page.dart';
 import 'package:saydaliati/features/notifications/presentation/pages/notifications_page.dart';
 import 'package:saydaliati/features/purchases/presentation/pages/purchases_page.dart';
+import 'package:saydaliati/features/reports/domain/report_period.dart';
+import 'package:saydaliati/features/reports/presentation/pages/expiry_report_page.dart';
+import 'package:saydaliati/features/reports/presentation/pages/inventory_report_page.dart';
+import 'package:saydaliati/features/reports/presentation/pages/prescriptions_report_page.dart';
+import 'package:saydaliati/features/reports/presentation/pages/profit_report_page.dart';
+import 'package:saydaliati/features/reports/presentation/pages/purchases_report_page.dart';
 import 'package:saydaliati/features/reports/presentation/pages/reports_hub_page.dart';
+import 'package:saydaliati/features/reports/presentation/pages/sales_report_page.dart';
+import 'package:saydaliati/features/reports/presentation/pages/stocktake_report_page.dart';
 import 'package:saydaliati/features/sales/presentation/pages/sales_page.dart';
 import 'package:saydaliati/features/settings/presentation/pages/settings_page.dart';
 import 'package:saydaliati/features/splash/splash_page.dart';
@@ -136,7 +144,49 @@ GoRouter goRouter(Ref ref) {
           branch(AppRoutes.currencies, const CurrenciesPage()),
 
           // ── Reports hub (index 13) ─────────────────────────────────────
-          branch(AppRoutes.reports, const ReportsHubPage()),
+          // Individual reports are NESTED routes so they render inside the
+          // shell (sidebar stays visible + highlighted on "reports").
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.reports,
+                builder: (c, s) => const ReportsHubPage(),
+                routes: [
+                  GoRoute(
+                    path: 'sales',
+                    builder: (c, s) =>
+                        SalesReportPage(initialPeriod: ReportPeriod.month()),
+                  ),
+                  GoRoute(
+                    path: 'profit',
+                    builder: (c, s) =>
+                        ProfitReportPage(initialPeriod: ReportPeriod.month()),
+                  ),
+                  GoRoute(
+                    path: 'purchases',
+                    builder: (c, s) => PurchasesReportPage(
+                        initialPeriod: ReportPeriod.month()),
+                  ),
+                  GoRoute(
+                    path: 'inventory',
+                    builder: (c, s) => const InventoryReportPage(),
+                  ),
+                  GoRoute(
+                    path: 'expiry',
+                    builder: (c, s) => const ExpiryReportPage(),
+                  ),
+                  GoRoute(
+                    path: 'stocktake',
+                    builder: (c, s) => const StocktakeReportPage(),
+                  ),
+                  GoRoute(
+                    path: 'prescriptions',
+                    builder: (c, s) => const PrescriptionsReportPage(),
+                  ),
+                ],
+              ),
+            ],
+          ),
 
           // ── System (indices 14-17) ─────────────────────────────────────
           branch(AppRoutes.notifications, const NotificationsPage()),

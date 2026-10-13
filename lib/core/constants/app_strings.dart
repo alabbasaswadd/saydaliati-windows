@@ -205,7 +205,7 @@ abstract final class AppStrings {
 
   // Auth
   static const String login = 'تسجيل الدخول';
-  static const String loginWelcome = 'مرحباً بعودتك';
+  static const String loginWelcome = 'مرحباً حكيم';
   static const String signIn = 'دخول';
   static const String email = 'البريد الإلكتروني';
   static const String password = 'كلمة المرور';

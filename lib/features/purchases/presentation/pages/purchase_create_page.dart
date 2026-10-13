@@ -25,12 +25,9 @@ import 'package:saydaliati/shared/widgets/buttons/app_button.dart';
 import 'package:saydaliati/shared/widgets/cards/app_cards.dart';
 import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
-import 'package:saydaliati/shared/widgets/inputs/app_date_picker.dart';
+import 'package:saydaliati/shared/widgets/grids/app_editable_grid.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_dropdown.dart';
 import 'package:saydaliati/services/barcode_scanner.dart';
-import 'package:saydaliati/shared/widgets/inputs/app_number_field.dart';
-import 'package:saydaliati/shared/widgets/inputs/app_text_field.dart';
-import 'package:saydaliati/shared/widgets/states/app_states.dart';
 
 /// Plain, parse-safe number string (no thousands separators) — the price/qty
 /// fields are read back with `double.tryParse`, which rejects grouped values.
@@ -135,7 +132,17 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
 
   double get _total => _lines.fold(0, (s, l) => s + l.lineTotal);
 
-  void _add(Medicine m) {
+  void _add(Medicine m, {bool mergeWithLast = true}) {
+    // نفس المادة مباشرة بعد بعضها (آخر سطر هو نفسها) → زيادة الكمية بدل سطر
+    // جديد. أما إن دخلت مادة أخرى بينهما فتُضاف كسطر مستقل (خصم مستقل مثلاً).
+    if (mergeWithLast &&
+        _lines.isNotEmpty &&
+        _lines.last.medicine.id == m.id) {
+      final last = _lines.last;
+      final q = double.tryParse(last.qty.text.trim()) ?? 0;
+      setState(() => last.qty.text = _plainNum(q + 1));
+      return;
+    }
     if (m.units.isEmpty) {
       AppSnackbar.error(context, AppStrings.noPricedUnitForProduct);
       return;
@@ -324,27 +331,16 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
                     ),
                   );
                 }),
-                const SizedBox(height: AppSpacing.md),
-                MedicinePickerField(
-                  medicines: catalog,
-                  hint: AppStrings.selectMedicine,
-                  onSelected: _add,
-                ),
               ],
             ),
           ),
           const Divider(height: 1),
+          // الجدول دائم الظهور: آخر صف فيه هو "صف جديد" تُختار المادة من خليته.
           Expanded(
-            child: _lines.isEmpty
-                ? const EmptyState(
-                    icon: Icons.local_shipping_outlined,
-                    message: AppStrings.purchaseEmptyHint,
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(AppSpacing.lg),
-                    itemCount: _lines.length,
-                    itemBuilder: (context, i) => _lineCard(_lines[i], code),
-                  ),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: _linesGrid(catalog),
+            ),
           ),
           _summaryBar(code, warehouseId, base),
         ],
@@ -353,82 +349,129 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
     );
   }
 
-  Widget _lineCard(_PurLine line, String code) {
-    final theme = Theme.of(context);
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        borderRadius: AppRadius.brMd,
-        border: Border.all(color: context.semantic.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(line.medicine.displayName,
-                    style: theme.textTheme.titleSmall,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
-              ),
-              IconButton(
-                icon: const Icon(Icons.close, size: 18),
-                visualDensity: VisualDensity.compact,
-                onPressed: () => setState(() {
-                  _lines.remove(line);
-                  line.dispose();
-                }),
-              ),
-            ],
+  /// Picks a medicine from the grid cell (wakeed-style in-cell selection).
+  /// [line] == null → the trailing "new row": appends a line. Otherwise the
+  /// existing row's medicine is replaced (fresh unit/cost defaults).
+  Future<void> _pickMedicineForLine(
+      List<Medicine> catalog, _PurLine? line) async {
+    final picked = await showMedicinePicker(context, catalog);
+    if (picked == null || !mounted) return;
+    if (line == null) {
+      _add(picked);
+      return;
+    }
+    // استبدال مادة صف موجود: دائماً سطر جديد في نفس الموضع، بلا دمج.
+    final index = _lines.indexOf(line);
+    if (index < 0) return;
+    final before = _lines.length;
+    _add(picked, mergeWithLast: false);
+    if (_lines.length > before) {
+      setState(() {
+        final fresh = _lines.removeLast();
+        _lines[index] = fresh;
+        line.dispose();
+      });
+    }
+  }
+
+  /// Invoice lines as the project-wide editable grid (same style as the
+  /// expiry grid). Columns edit in place: unit, cost, qty, expiry, barcode.
+  /// A `null` row is the always-present trailing "new row" — the medicine is
+  /// picked INSIDE its cell (wakeed-style).
+  Widget _linesGrid(List<Medicine> catalog) {
+    // عمود الباركود يظهر فقط إذا كان في الفاتورة دواء بلا باركود.
+    final needsBarcode = _lines.any((l) => l.medicine.barcode.isEmpty);
+    final rows = <_PurLine?>[..._lines, null];
+    return AppEditableGrid<_PurLine?>(
+      rows: rows,
+      minWidth: needsBarcode ? 860 : 720,
+      canDeleteRow: (l) => l != null,
+      onDeleteRow: (line, _) {
+        if (line == null) return;
+        setState(() {
+          _lines.remove(line);
+          line.dispose();
+        });
+      },
+      columns: [
+        AppGridColumn(
+          label: AppStrings.medicineName,
+          flex: 3,
+          cellBuilder: (_, l, _) => AppGridPickerCell(
+            text: l?.medicine.displayName,
+            hint: l == null ? 'اختر مادة…' : null,
+            emphasizedHint: l == null,
+            onPick: () => _pickMedicineForLine(catalog, l),
           ),
-          AppDropdown<String>(
-            label: AppStrings.unitLabel,
-            value: line.unitId,
-            items: [
-              for (final u in line.medicine.units)
-                AppDropdownItem(value: u.unitId, label: u.unitName),
-            ],
-            onChanged: (v) => setState(() => line.unitId = v ?? line.unitId),
+        ),
+        AppGridColumn(
+          label: AppStrings.unitLabel,
+          flex: 2,
+          cellBuilder: (_, l, _) => l == null
+              ? const SizedBox.shrink()
+              : AppGridDropdownCell<String>(
+                  value: l.unitId,
+                  items: [
+                    for (final u in l.medicine.units) (u.unitId, u.unitName),
+                  ],
+                  onChanged: (v) => setState(() => l.unitId = v ?? l.unitId),
+                ),
+        ),
+        AppGridColumn(
+          label: AppStrings.unitCost,
+          flex: 2,
+          cellBuilder: (_, l, _) => l == null
+              ? const SizedBox.shrink()
+              : AppGridNumberCell(
+                  controller: l.price,
+                  onChanged: (_) => setState(() {}),
+                ),
+        ),
+        AppGridColumn(
+          label: AppStrings.quantity,
+          flex: 2,
+          cellBuilder: (_, l, _) => l == null
+              ? const SizedBox.shrink()
+              : AppGridNumberCell(
+                  controller: l.qty,
+                  onChanged: (_) => setState(() {}),
+                ),
+        ),
+        AppGridColumn(
+          label: AppStrings.expiryDateLabel,
+          flex: 3,
+          cellBuilder: (_, l, _) => l == null
+              ? const SizedBox.shrink()
+              : AppGridDateCell(
+                  value: l.expiry,
+                  hint: AppStrings.expirationDate,
+                  onChanged: (d) => setState(() => l.expiry = d),
+                ),
+        ),
+        if (needsBarcode)
+          AppGridColumn(
+            label: 'الباركود',
+            flex: 2,
+            cellBuilder: (_, l, _) => l == null
+                ? const SizedBox.shrink()
+                : l.medicine.barcode.isEmpty
+                    ? AppGridTextCell(
+                        controller: l.barcodeCtrl,
+                        hint: 'امسح أو أدخِل',
+                        onChanged: (v) => l.scannedBarcode =
+                            v.trim().isEmpty ? null : v.trim(),
+                      )
+                    : const AppGridText('—', secondary: true),
           ),
-          Row(
-            children: [
-              Expanded(
-                child: AppNumberField(
-                    controller: line.price,
-                    label: AppStrings.unitCost,
-                    onChanged: (_) => setState(() {})),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: AppNumberField(
-                    controller: line.qty,
-                    label: AppStrings.quantity,
-                    onChanged: (_) => setState(() {})),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          AppDatePicker(
-            label: AppStrings.expirationDate,
-            value: line.expiry,
-            hint: AppStrings.expirationDate,
-            onChanged: (d) => setState(() => line.expiry = d),
-          ),
-          // باركود: يظهر فقط إذا كان الدواء بلا باركود — يُدخَل يدوياً أو بالماسح.
-          if (line.medicine.barcode.isEmpty) ...[
-            const SizedBox(height: AppSpacing.sm),
-            AppTextField(
-              controller: line.barcodeCtrl,
-              label: 'باركود الدواء (اختياري)',
-              hint: 'امسح بالماسح أو أدخله يدوياً',
-              prefixIcon: const Icon(Icons.qr_code_2),
-              onChanged: (v) => line.scannedBarcode = v.trim().isEmpty ? null : v.trim(),
-            ),
-          ],
-        ],
-      ),
+        AppGridColumn(
+          label: AppStrings.total,
+          flex: 2,
+          alignEnd: true,
+          cellBuilder: (_, l, _) => l == null
+              ? const SizedBox.shrink()
+              : AppGridText(Formatters.number(l.lineTotal), emphasized: true),
+        ),
+      ],
     );
   }
 

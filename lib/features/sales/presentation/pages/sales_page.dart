@@ -34,7 +34,8 @@ import 'package:saydaliati/shared/widgets/cards/app_cards.dart';
 import 'package:saydaliati/shared/widgets/dialogs/app_dialogs.dart';
 import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
-import 'package:saydaliati/shared/widgets/inputs/app_dropdown.dart';
+import 'package:saydaliati/shared/widgets/filters/filter_bar.dart';
+import 'package:saydaliati/shared/widgets/grids/app_editable_grid.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_date_picker.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_number_field.dart';
 import 'package:saydaliati/shared/widgets/states/app_states.dart';
@@ -124,17 +125,6 @@ class _SalesPageState extends ConsumerState<SalesPage> {
     ));
   }
 
-  Widget _dismissBackground(ThemeData theme, Alignment alignment) => Container(
-        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-        alignment: alignment,
-        decoration: BoxDecoration(
-          color: Colors.red.shade400,
-          borderRadius: AppRadius.brMd,
-        ),
-        child: const Icon(Icons.delete_outline, color: Colors.white),
-      );
-
   /// Re-prices every line from its base salePrice into the selected currency
   /// (called when the currency changes). Overwrites manual price edits.
   void _repriceLines(Currency? base, List<Currency> currencies) {
@@ -144,7 +134,16 @@ class _SalesPageState extends ConsumerState<SalesPage> {
     }
   }
 
-  Future<void> _addMedicine(Medicine medicine) async {
+  Future<void> _addMedicine(Medicine medicine,
+      {bool mergeWithLast = true}) async {
+    // نفس المادة مباشرة بعد بعضها (آخر سطر هو نفسها) → زيادة الكمية بدل سطر
+    // جديد. أما إن دخلت مادة أخرى بينهما فتُضاف كسطر مستقل (خصم مستقل مثلاً).
+    if (mergeWithLast &&
+        _lines.isNotEmpty &&
+        _lines.last.medicine.id == medicine.id) {
+      setState(() => _lines.last.quantity += 1);
+      return;
+    }
     if (medicine.units.isEmpty) {
       AppSnackbar.error(context, AppStrings.noPricedUnitForProduct);
       return;
@@ -695,97 +694,87 @@ class _SalesPageState extends ConsumerState<SalesPage> {
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: AppDropdown<String>(
-                      label: AppStrings.selectCurrency,
-                      value: _effectiveCurrencyId(base).isEmpty
-                          ? null
-                          : _effectiveCurrencyId(base),
-                      // عملات قابلة للاختيار فقط: الأساسية + أي عملة سعر صرفها موجب.
-                      // عملة بلا سعر صرف (0) تُخفى لأن التحويل يُرجِع المبلغ دون تحويل.
+              // شريط أدوات مدمج بدل القوائم الكبيرة: العملة، العميل، وصفة
+              // طبية، وطريقة الدفع — إضافة الدواء صارت من خلية الجدول نفسها.
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.sm,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    _toolbarMenu<String>(
+                      icon: Icons.payments_outlined,
+                      tooltip: AppStrings.selectCurrency,
+                      label: currencyCode.isEmpty
+                          ? AppStrings.selectCurrency
+                          : currencyCode,
+                      // عملات قابلة للاختيار فقط: الأساسية + أي عملة سعر صرفها
+                      // موجب (عملة بلا سعر صرف تُخفى لأن التحويل لا يعمل معها).
                       items: [
                         for (final c in currencies.where(
                             (c) => c.isBaseCurrency || c.exchangeRate > 0))
-                          AppDropdownItem(value: c.id, label: c.code),
+                          PopupMenuItem(value: c.id, child: Text(c.code)),
                       ],
-                      onChanged: (v) => setState(() {
+                      onSelected: (v) => setState(() {
                         _currencyId = v;
                         _repriceLines(base, currencies);
                       }),
                     ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: AppDropdown<String?>(
-                      label: AppStrings.customer,
-                      value: _customerId,
+                    _toolbarMenu<String>(
+                      icon: Icons.person_outline,
+                      tooltip: AppStrings.customer,
+                      label: (ref.watch(customersProvider).value ??
+                                  const <Customer>[])
+                              .where((c) => c.id == _customerId)
+                              .map((c) => c.fullName)
+                              .firstOrNull ??
+                          AppStrings.noCustomer,
+                      // PopupMenuButton لا يستدعي onSelected مع null —
+                      // نستخدم '' كقيمة "بدون عميل".
                       items: [
-                        const AppDropdownItem<String?>(
-                            value: null, label: AppStrings.noCustomer),
+                        const PopupMenuItem(
+                            value: '', child: Text(AppStrings.noCustomer)),
                         for (final c in ref.watch(customersProvider).value ??
                             const <Customer>[])
-                          AppDropdownItem<String?>(value: c.id, label: c.fullName),
+                          PopupMenuItem(value: c.id, child: Text(c.fullName)),
                       ],
-                      onChanged: (v) => setState(() => _customerId = v),
+                      onSelected: (v) =>
+                          setState(() => _customerId = v.isEmpty ? null : v),
                     ),
-                  ),
-                ],
-              ),
-              // وصفة طبية؟ عند التفعيل يصبح اختيار العميل إجبارياً.
-              CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
-                dense: true,
-                controlAffinity: ListTileControlAffinity.leading,
-                value: _isPrescription,
-                onChanged: (v) => setState(() => _isPrescription = v ?? false),
-                title: const Text(AppStrings.prescriptionLabel),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              // Add-medicine field + a compact, unobtrusive payment-method
-              // selector beside it.
-              Row(
-                children: [
-                  Expanded(
-                    child: MedicinePickerField(
-                      medicines: catalog,
-                      hint: AppStrings.addLine,
-                      onSelected: _addMedicine,
+                    _toolbarMenu<PaymentMethod>(
+                      icon: Icons.account_balance_wallet_outlined,
+                      tooltip: AppStrings.paymentMethod,
+                      label: _payMethod.label,
+                      items: [
+                        for (final m in PaymentMethod.values)
+                          PopupMenuItem(value: m, child: Text(m.label)),
+                      ],
+                      onSelected: (m) => setState(() => _payMethod = m),
                     ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  _paymentSelector(theme),
-                ],
+                    // وصفة طبية؟ عند التفعيل يصبح اختيار العميل إجبارياً.
+                    FilterChip(
+                      label: const Text(AppStrings.prescriptionLabel),
+                      avatar: _isPrescription
+                          ? null
+                          : Icon(Icons.description_outlined,
+                              size: AppSizes.iconSm, color: theme.hintColor),
+                      selected: _isPrescription,
+                      onSelected: (v) => setState(() => _isPrescription = v),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
         ),
         const Divider(height: 1),
+        // الجدول دائم الظهور: آخر صف فيه هو "صف جديد" تُختار المادة من خليته.
         Expanded(
-          child: _lines.isEmpty
-              ? const EmptyState(
-                  icon: Icons.qr_code_scanner,
-                  message: AppStrings.saleEmptyHint,
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(AppSpacing.lg),
-                  itemCount: _lines.length,
-                  itemBuilder: (context, i) {
-                    final line = _lines[i];
-                    return Dismissible(
-                      key: ObjectKey(line),
-                      direction: DismissDirection.horizontal,
-                      background:
-                          _dismissBackground(theme, Alignment.centerRight),
-                      secondaryBackground:
-                          _dismissBackground(theme, Alignment.centerLeft),
-                      onDismissed: (_) => _removeWithUndo(line),
-                      child: _lineTile(line, currencyCode, theme),
-                    );
-                  },
-                ),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: _linesGrid(catalog),
+          ),
         ),
         _summaryBar(currencyCode, warehouseId, base, theme),
       ],
@@ -793,178 +782,158 @@ class _SalesPageState extends ConsumerState<SalesPage> {
     );
   }
 
-  Widget _lineTile(_PosLine line, String code, ThemeData theme) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-      decoration: BoxDecoration(
-        color: _isNegativeProfit(line)
-            ? Colors.orange.withValues(alpha: 0.18)
-            : null,
-        borderRadius: AppRadius.brMd,
-        border: Border.all(color: context.semantic.border),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(line.medicine.displayName,
-                    style: theme.textTheme.titleSmall,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 2),
-                InkWell(
-                  onTap: () => _editLineSheet(line),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Flexible(
-                        child: Text(
-                          '${line.unit.unitName}  •  ${Formatters.money(line.unitPrice, code)}'
-                          '${line.selectedBatch?.expiryDate != null ? '  •  ${line.selectedBatch!.expiryLabel}' : ''}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodySmall
-                              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Icon(Icons.edit, size: 12, color: theme.colorScheme.onSurfaceVariant),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          _qtyStepper(line),
-          const SizedBox(width: AppSpacing.sm),
-          SizedBox(
-            width: 74,
-            child: Text(
-              Formatters.number(line.total),
-              textAlign: TextAlign.end,
-              style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold, color: theme.colorScheme.primary),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.close, size: 18),
-            visualDensity: VisualDensity.compact,
-            onPressed: () => _removeWithUndo(line),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _qtyStepper(_PosLine line) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _stepBtn(Icons.remove, () {
-            if (line.quantity > 1) {
-              setState(() => line.quantity -= 1);
-            } else {
-              // Decrementing below 1 removes the line — undoably, so a stray tap
-              // can't silently lose it (delete via ✕/swipe stays undoable too).
-              _removeWithUndo(line);
-            }
-          }),
-          InkWell(
-            onTap: () => _editQuantity(line),
-            child: SizedBox(
-              width: 44,
-              child: Text(Formatters.qty(line.quantity),
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleMedium),
-            ),
-          ),
-          _stepBtn(Icons.add, () => setState(() => line.quantity += 1)),
-        ],
-      );
-
-  Widget _stepBtn(IconData icon, VoidCallback onTap) => InkResponse(
-        onTap: onTap,
-        radius: 20,
-        child: Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
-      );
-
-  Future<void> _editQuantity(_PosLine line) async {
-    final v = await _promptNumber(AppStrings.quantity, line.quantity);
-    if (v == null) return;
-    if (v > 0) {
-      setState(() => line.quantity = v);
-    } else {
-      // Typing 0 means "remove" — do it undoably instead of a silent drop.
-      _removeWithUndo(line);
+  /// اختيار المادة من خلية الجدول مباشرة (أسلوب وكيد).
+  /// [line] == null → "الصف الجديد" في آخر الجدول: يضيف سطراً عبر [_addMedicine].
+  /// غير ذلك: تُستبدل مادة الصف الموجود بسطر جديد في نفس الموضع (مع نقل الكمية).
+  Future<void> _pickMedicineForLine(
+      List<Medicine> catalog, _PosLine? line) async {
+    final picked = await showMedicinePicker(context, catalog);
+    if (picked == null || !mounted) return;
+    if (line == null) {
+      // صف جديد: تسري قاعدة "نفس المادة بعد بعضها → زيادة كمية آخر سطر".
+      await _addMedicine(picked);
+      return;
+    }
+    // استبدال مادة صف موجود: دائماً سطر جديد في نفس الموضع، بلا دمج.
+    final index = _lines.indexOf(line);
+    if (index < 0) return;
+    final before = _lines.length;
+    await _addMedicine(picked, mergeWithLast: false);
+    if (!mounted) return;
+    // _addMedicine يضيف في النهاية عند النجاح — ننقل السطر الجديد إلى موضعه.
+    if (_lines.length > before) {
+      setState(() {
+        final fresh = _lines.removeLast()..quantity = line.quantity;
+        _lines[index] = fresh;
+      });
     }
   }
 
-  /// Redesigned line editor: a compact bottom sheet to change the unit, price
-  /// and expiry batch in one place. The sheet owns its text controller so
-  /// cancelling never races a disposed controller.
-  Future<void> _editLineSheet(_PosLine line) async {
+  /// Invoice lines as the project-wide editable grid (same style as the
+  /// expiry grid). Unit, price, quantity and expiry batch edit in place; a
+  /// `null` row is the always-present trailing "new row" whose medicine is
+  /// picked INSIDE its cell (wakeed-style).
+  Widget _linesGrid(List<Medicine> catalog) {
+    final warning = context.semantic.warning;
+    final rows = <_PosLine?>[..._lines, null];
+    return AppEditableGrid<_PosLine?>(
+      rows: rows,
+      minWidth: 760,
+      canDeleteRow: (l) => l != null,
+      onDeleteRow: (line, _) {
+        if (line != null) _removeWithUndo(line);
+      },
+      // بيع بخسارة → شريط وتظليل تحذيري (نفس دلالة اللون القديمة).
+      rowAccent: (l) => l != null && _isNegativeProfit(l) ? warning : null,
+      rowBackground: (l) => l != null && _isNegativeProfit(l)
+          ? warning.withValues(alpha: 0.10)
+          : null,
+      columns: [
+        AppGridColumn(
+          label: AppStrings.medicineName,
+          flex: 3,
+          cellBuilder: (_, l, _) => AppGridPickerCell(
+            text: l?.medicine.displayName,
+            hint: l == null ? 'اختر مادة…' : null,
+            emphasizedHint: l == null,
+            onPick: () => _pickMedicineForLine(catalog, l),
+          ),
+        ),
+        AppGridColumn(
+          label: AppStrings.unitLabel,
+          flex: 2,
+          cellBuilder: (_, l, _) => l == null
+              ? const SizedBox.shrink()
+              : AppGridDropdownCell<String>(
+                  value: l.unit.unitId,
+                  items: [
+                    for (final u in l.medicine.units) (u.unitId, u.unitName)
+                  ],
+                  onChanged: (v) => _changeUnit(l, v),
+                ),
+        ),
+        AppGridColumn(
+          label: AppStrings.price,
+          flex: 2,
+          cellBuilder: (_, l, _) => l == null
+              ? const SizedBox.shrink()
+              : AppGridNumberCell(
+                  value: l.unitPrice,
+                  onChanged: (v) => setState(() => l.unitPrice = v),
+                ),
+        ),
+        AppGridColumn(
+          label: AppStrings.quantity,
+          flex: 2,
+          cellBuilder: (_, l, _) => l == null
+              ? const SizedBox.shrink()
+              : AppGridNumberCell(
+                  value: l.quantity,
+                  onChanged: (v) {
+                    if (v > 0) setState(() => l.quantity = v);
+                  },
+                ),
+        ),
+        AppGridColumn(
+          label: AppStrings.expiryDateLabel,
+          flex: 3,
+          cellBuilder: (_, l, _) => l == null
+              ? const SizedBox.shrink()
+              : l.batches.isEmpty
+                  ? const AppGridText('—', secondary: true)
+                  : AppGridDropdownCell<String>(
+                      value: l.selectedBatch?.stockId,
+                      items: [
+                        for (final b in l.batches)
+                          (
+                            b.stockId,
+                            '${b.expiryLabel} (${Formatters.qty(b.quantityAvailable)})'
+                          ),
+                      ],
+                      onChanged: (v) => setState(() => l.selectedBatch =
+                          l.batches.where((b) => b.stockId == v).firstOrNull),
+                    ),
+        ),
+        AppGridColumn(
+          label: AppStrings.total,
+          flex: 2,
+          alignEnd: true,
+          cellBuilder: (_, l, _) => l == null
+              ? const SizedBox.shrink()
+              : AppGridText(Formatters.number(l.total), emphasized: true),
+        ),
+      ],
+    );
+  }
+
+  /// Switching the unit re-prices the line from that unit's base salePrice
+  /// into the selected currency (same behavior as the old editor sheet).
+  void _changeUnit(_PosLine line, String? unitId) {
+    final u = line.medicine.units.where((x) => x.unitId == unitId).firstOrNull;
+    if (u == null) return;
     final base = ref.read(baseCurrencyProvider);
     final currencies = ref.read(currenciesProvider).value ?? const <Currency>[];
-    final selectedCurrency = _selectedCurrency(base, currencies);
-
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (ctx) => _LineEditorSheet(
-        line: line,
-        base: base,
-        selectedCurrency: selectedCurrency,
-        onApply: (unit, price, batch) {
-          setState(() {
-            line.unit = unit;
-            if (price != null && price >= 0) line.unitPrice = price;
-            line.selectedBatch = batch;
-          });
-        },
-      ),
-    );
+    setState(() {
+      line.unit = u;
+      line.unitPrice =
+          convertFromBase(u.salePrice, base, _selectedCurrency(base, currencies));
+    });
   }
 
-  Future<double?> _promptNumber(String title, double initial) {
-    // Self-contained dialog owns its controller (disposed in its own dispose),
-    // so cancelling after typing can never touch a disposed controller.
-    return showDialog<double>(
-      context: context,
-      builder: (_) => _NumberPromptDialog(title: title, initial: initial),
-    );
-  }
-
-  /// Compact, unobtrusive payment-method selector (icon + short label) that
-  /// opens a menu — sits beside the add field instead of a prominent dropdown.
-  Widget _paymentSelector(ThemeData theme) {
-    return PopupMenuButton<PaymentMethod>(
-      tooltip: AppStrings.paymentMethod,
-      onSelected: (m) => setState(() => _payMethod = m),
-      itemBuilder: (_) => [
-        for (final m in PaymentMethod.values)
-          PopupMenuItem(value: m, child: Text(m.label)),
-      ],
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.sm, vertical: 14),
-        decoration: BoxDecoration(
-          border: Border.all(color: context.semantic.border),
-          borderRadius: AppRadius.brMd,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.payments_outlined, size: 18, color: theme.hintColor),
-            const SizedBox(width: 4),
-            Text(_payMethod.label, style: theme.textTheme.bodySmall),
-            Icon(Icons.arrow_drop_down, size: 18, color: theme.hintColor),
-          ],
-        ),
-      ),
+  /// عنصر شريط الأدوات — يفوّض للمكوّن المشترك [AppMenuChip].
+  Widget _toolbarMenu<T>({
+    required IconData icon,
+    required String label,
+    required List<PopupMenuEntry<T>> items,
+    required ValueChanged<T> onSelected,
+    String? tooltip,
+  }) {
+    return AppMenuChip<T>(
+      icon: icon,
+      label: label,
+      items: items,
+      onSelected: onSelected,
+      tooltip: tooltip,
     );
   }
 
@@ -1019,121 +988,6 @@ class _SalesPageState extends ConsumerState<SalesPage> {
   }
 }
 
-/// Bottom-sheet editor for a receipt line (unit, price, expiry batch). Owns its
-/// price controller and local selections; applies them via [onApply] on save.
-class _LineEditorSheet extends StatefulWidget {
-  const _LineEditorSheet({
-    required this.line,
-    required this.base,
-    required this.selectedCurrency,
-    required this.onApply,
-  });
-
-  final _PosLine line;
-  final Currency? base;
-  final Currency? selectedCurrency;
-  final void Function(MedicineUnit unit, double? price, MedicineBatch? batch)
-      onApply;
-
-  @override
-  State<_LineEditorSheet> createState() => _LineEditorSheetState();
-}
-
-class _LineEditorSheetState extends State<_LineEditorSheet> {
-  late MedicineUnit _unit = widget.line.unit;
-  late MedicineBatch? _batch = widget.line.selectedBatch;
-  late final TextEditingController _priceCtrl =
-      TextEditingController(text: Formatters.qty(widget.line.unitPrice));
-
-  @override
-  void dispose() {
-    _priceCtrl.dispose();
-    super.dispose();
-  }
-
-  void _save() {
-    widget.onApply(_unit, double.tryParse(_priceCtrl.text.trim()), _batch);
-    Navigator.of(context).pop();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final line = widget.line;
-    return Padding(
-      padding: EdgeInsets.only(
-        left: AppSpacing.lg,
-        right: AppSpacing.lg,
-        top: AppSpacing.sm,
-        bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.lg,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(line.medicine.displayName,
-              style: theme.textTheme.titleMedium, textAlign: TextAlign.center),
-          const SizedBox(height: AppSpacing.lg),
-          AppDropdown<String>(
-            label: AppStrings.unitLabel,
-            value: _unit.unitId,
-            items: [
-              for (final u in line.medicine.units)
-                AppDropdownItem(value: u.unitId, label: u.unitName),
-            ],
-            onChanged: (v) {
-              final u =
-                  line.medicine.units.where((x) => x.unitId == v).firstOrNull;
-              if (u == null) return;
-              setState(() {
-                _unit = u;
-                _priceCtrl.text = Formatters.qty(convertFromBase(
-                    u.salePrice, widget.base, widget.selectedCurrency));
-              });
-            },
-          ),
-          const SizedBox(height: AppSpacing.md),
-          AppNumberField(
-              controller: _priceCtrl,
-              label: AppStrings.price,
-              onChanged: (_) => setState(() {})),
-          if (line.batches.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.md),
-            AppDropdown<String>(
-              label: AppStrings.expiryDateLabel,
-              value: _batch?.stockId,
-              items: [
-                for (final b in line.batches)
-                  AppDropdownItem(
-                    value: b.stockId,
-                    label:
-                        '${b.expiryLabel}  (${Formatters.qty(b.quantityAvailable)})',
-                  ),
-              ],
-              onChanged: (v) => setState(() =>
-                  _batch = line.batches.where((b) => b.stockId == v).firstOrNull),
-            ),
-          ],
-          const SizedBox(height: AppSpacing.lg),
-          Row(
-            children: [
-              Expanded(
-                child: AppButton.text(
-                  label: AppStrings.cancel,
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: AppButton.primary(label: AppStrings.save, onPressed: _save),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 /// A small numeric prompt dialog that owns its controller — returns the parsed
 /// value on save, or null on cancel/dismiss (no mutation on cancel).
@@ -1239,51 +1093,6 @@ class _SetPriceDialogState extends State<_SetPriceDialog> {
   }
 }
 
-class _NumberPromptDialog extends StatefulWidget {
-  const _NumberPromptDialog({required this.title, required this.initial});
-
-  final String title;
-  final double initial;
-
-  @override
-  State<_NumberPromptDialog> createState() => _NumberPromptDialogState();
-}
-
-class _NumberPromptDialogState extends State<_NumberPromptDialog> {
-  late final TextEditingController _controller =
-      TextEditingController(text: Formatters.qty(widget.initial))
-        ..selection = TextSelection(
-            baseOffset: 0,
-            extentOffset: Formatters.qty(widget.initial).length);
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _save() => Navigator.of(context).pop(double.tryParse(_controller.text.trim()));
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(widget.title),
-      content: AppNumberField(controller: _controller),
-
-      actions: [
-        AppButton.text(
-          label: AppStrings.cancel,
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        AppButton.primary(
-          label: AppStrings.save,
-          fullWidth: false,
-          onPressed: _save,
-        ),
-      ],
-    );
-  }
-}
 
 /// Result of the quick add-stock popup.
 class _StockEntry {

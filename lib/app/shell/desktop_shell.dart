@@ -15,7 +15,7 @@ import 'package:saydaliati/shared/widgets/offline_banner.dart';
 
 /// The desktop shell: custom title bar + collapsible sidebar + content area.
 ///
-/// Replaces [MainShell] (bottom-navigation) for the Windows desktop target.
+/// Replaces the old mobile bottom-navigation shell for the Windows target.
 /// The [StatefulNavigationShell] is re-used as-is; only the surrounding chrome
 /// changes.  All 18 navigation branches are driven through the sidebar — the
 /// first 4 (Sales, Medicines, Catalog, Home) are the original tabs; branches

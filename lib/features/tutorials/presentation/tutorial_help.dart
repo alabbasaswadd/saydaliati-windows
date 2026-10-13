@@ -6,6 +6,7 @@ import 'package:saydaliati/core/providers/core_providers.dart';
 import 'package:saydaliati/core/theme/app_colors.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/features/tutorials/tutorials.dart';
+import 'package:saydaliati/shared/widgets/dialogs/adaptive_modal.dart';
 import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -28,10 +29,8 @@ Future<void> openTutorial(BuildContext context, Tutorial t) async {
 /// full tutorials screen.
 Future<void> showTutorialSheet(BuildContext context, TutorialTopic topic) {
   final t = tutorialFor(topic);
-  return showModalBottomSheet<void>(
-    context: context,
-    showDragHandle: true,
-    isScrollControlled: true,
+  return showAdaptiveModal<void>(
+    context,
     builder: (ctx) {
       final theme = Theme.of(ctx);
       return SafeArea(

@@ -75,6 +75,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Widget build(BuildContext context) {
     return AuthScaffold(
       title: AppStrings.loginWelcome,
+      subtitle: 'سجّل دخولك للمتابعة إلى صيدليتك',
       child: Form(
         key: _formKey,
         child: Column(

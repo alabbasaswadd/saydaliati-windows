@@ -80,6 +80,8 @@ abstract final class AppTheme {
       scaffoldBackgroundColor: scaffold,
       fontFamily: AppTypography.fontFamily,
       textTheme: textTheme,
+      // Desktop-first: tighter control spacing for mouse/keyboard use.
+      visualDensity: VisualDensity.comfortable,
       dividerColor: brightness == Brightness.light
           ? AppColors.divider
           : AppColors.dividerDark,
@@ -126,16 +128,19 @@ abstract final class AppTheme {
         focusedErrorBorder: inputBorder(scheme.error, width: 1.6),
         errorStyle: textTheme.bodySmall?.copyWith(color: scheme.error),
       ),
+      // Desktop: buttons size to their content (min 96×50). Full-width CTAs
+      // opt in explicitly (AppButton.fullWidth / SizedBox) — the old
+      // Size.fromHeight() forced width: infinity on EVERY button.
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size.fromHeight(AppSizes.buttonHeight),
+          minimumSize: const Size(96, AppSizes.buttonHeight),
           shape: const RoundedRectangleBorder(borderRadius: AppRadius.brMd),
           textStyle: textTheme.labelLarge,
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size.fromHeight(AppSizes.buttonHeight),
+          minimumSize: const Size(96, AppSizes.buttonHeight),
           side: BorderSide(color: borderColor),
           shape: const RoundedRectangleBorder(borderRadius: AppRadius.brMd),
           textStyle: textTheme.labelLarge,
@@ -178,6 +183,15 @@ abstract final class AppTheme {
       ),
       progressIndicatorTheme:
           ProgressIndicatorThemeData(color: scheme.primary),
+      // Desktop: an always-visible scrollbar on scrollable content.
+      scrollbarTheme: ScrollbarThemeData(
+        thumbVisibility: const WidgetStatePropertyAll(true),
+        thickness: const WidgetStatePropertyAll(8),
+        radius: const Radius.circular(AppRadius.sm),
+        thumbColor: WidgetStatePropertyAll(
+          scheme.onSurface.withValues(alpha: 0.25),
+        ),
+      ),
     );
   }
 }

@@ -47,33 +47,33 @@ class MedicinePickerField extends StatelessWidget {
   }
 }
 
-/// Opens a bottom-sheet picker; returns the chosen medicine or null.
+/// Opens a centered popup picker (search by name/barcode, autofocused);
+/// returns the chosen medicine or null.
 Future<Medicine?> showMedicinePicker(
   BuildContext context,
   List<Medicine> medicines,
 ) {
-  return showModalBottomSheet<Medicine>(
+  return showDialog<Medicine>(
     context: context,
-    isScrollControlled: true,
-    showDragHandle: true,
-    builder: (_) => _MedicinePickerSheet(medicines: medicines),
+    builder: (_) => _MedicinePickerDialog(medicines: medicines),
   );
 }
 
-class _MedicinePickerSheet extends StatefulWidget {
-  const _MedicinePickerSheet({required this.medicines});
+class _MedicinePickerDialog extends StatefulWidget {
+  const _MedicinePickerDialog({required this.medicines});
 
   final List<Medicine> medicines;
 
   @override
-  State<_MedicinePickerSheet> createState() => _MedicinePickerSheetState();
+  State<_MedicinePickerDialog> createState() => _MedicinePickerDialogState();
 }
 
-class _MedicinePickerSheetState extends State<_MedicinePickerSheet> {
+class _MedicinePickerDialogState extends State<_MedicinePickerDialog> {
   String _query = '';
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final q = _query.trim().toLowerCase();
     final items = q.isEmpty
         ? widget.medicines
@@ -85,45 +85,86 @@ class _MedicinePickerSheetState extends State<_MedicinePickerSheet> {
                 m.foreignName.toLowerCase().contains(q) ||
                 m.barcode.toLowerCase().contains(q))
             .toList();
+    final size = MediaQuery.sizeOf(context);
 
-    return Padding(
-      padding: EdgeInsets.only(
-        left: AppSpacing.lg,
-        right: AppSpacing.lg,
-        top: AppSpacing.sm,
-        bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.lg,
-      ),
-      child: SizedBox(
-        height: MediaQuery.of(context).size.height * 0.7,
-        child: Column(
-          children: [
-            AppSearchField(
-              hint: AppStrings.searchMedicineHint,
-              onChanged: (v) => setState(() => _query = v),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Expanded(
-              child: items.isEmpty
-                  ? const EmptyState(message: AppStrings.noMedicines)
-                  : ListView.separated(
-                      itemCount: items.length,
-                      separatorBuilder: (_, _) => const Divider(height: 1),
-                      itemBuilder: (context, i) {
-                        final m = items[i];
-                        final price = m.units.isNotEmpty
-                            ? Formatters.money(m.units.first.salePrice)
-                            : '—';
-                        return ListTile(
-                          title: Text(m.displayName,
-                              maxLines: 1, overflow: TextOverflow.ellipsis),
-                          subtitle: m.barcode.isEmpty ? null : Text(m.barcode),
-                          trailing: Text(price),
-                          onTap: () => Navigator.of(context).pop(m),
-                        );
-                      },
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 560,
+          maxHeight: size.height * 0.72,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.medication_outlined,
+                      color: theme.colorScheme.primary),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      AppStrings.selectMedicine,
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.bold),
                     ),
-            ),
-          ],
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 20),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              AppSearchField(
+                hint: AppStrings.searchMedicineHint,
+                autofocus: true,
+                onChanged: (v) => setState(() => _query = v),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Expanded(
+                child: items.isEmpty
+                    ? const EmptyState(message: AppStrings.noMedicines)
+                    : ListView.separated(
+                        itemCount: items.length,
+                        separatorBuilder: (_, _) => const Divider(height: 1),
+                        itemBuilder: (context, i) {
+                          final m = items[i];
+                          final price = m.units.isNotEmpty
+                              ? Formatters.money(m.units.first.salePrice)
+                              : '—';
+                          return ListTile(
+                            dense: true,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: AppRadius.brSm),
+                            leading: CircleAvatar(
+                              radius: 16,
+                              backgroundColor: theme.colorScheme.primary
+                                  .withValues(alpha: 0.10),
+                              child: Icon(Icons.medication_outlined,
+                                  size: 18, color: theme.colorScheme.primary),
+                            ),
+                            title: Text(m.displayName,
+                                maxLines: 1, overflow: TextOverflow.ellipsis),
+                            subtitle:
+                                m.barcode.isEmpty ? null : Text(m.barcode),
+                            trailing: Text(
+                              price,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: theme.colorScheme.primary,
+                              ),
+                            ),
+                            onTap: () => Navigator.of(context).pop(m),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
     );
