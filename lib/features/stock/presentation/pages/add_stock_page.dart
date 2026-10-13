@@ -19,14 +19,11 @@ import 'package:saydaliati/shared/widgets/inputs/app_number_field.dart';
 import 'package:saydaliati/services/barcode_scanner.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_text_field.dart';
 
-/// Receive stock (create) or edit an existing stock batch. On receive, if the
-/// chosen medicine has no barcode a plain barcode field is shown (type or scan)
-/// and the code is saved onto the medicine. On edit, the medicine is fixed and
-/// quantity / purchase price / expiry are updated.
+/// Receive stock (create a new batch). If the chosen medicine has no barcode
+/// a plain barcode field is shown (type or scan) and the code is saved onto
+/// the medicine. Editing an existing batch is a popup (see [StockPage]).
 class AddStockPage extends ConsumerStatefulWidget {
-  const AddStockPage({this.stockToEdit, super.key});
-
-  final Stock? stockToEdit;
+  const AddStockPage({super.key});
 
   @override
   ConsumerState<AddStockPage> createState() => _AddStockPageState();
@@ -39,22 +36,6 @@ class _AddStockPageState extends ConsumerState<AddStockPage> {
   final _barcode = TextEditingController();
   DateTime? _expiry;
   bool _saving = false;
-
-  bool get _isEdit => widget.stockToEdit != null;
-
-  @override
-  void initState() {
-    super.initState();
-    final s = widget.stockToEdit;
-    if (s != null) {
-      _qty.text = _plain(s.quantityAvailable);
-      _purchase.text = _plain(s.purchasePrice);
-      _expiry = s.expiryDate;
-    }
-  }
-
-  static String _plain(double v) =>
-      v == v.roundToDouble() ? v.toInt().toString() : v.toString();
 
   @override
   void dispose() {
@@ -80,35 +61,6 @@ class _AddStockPageState extends ConsumerState<AddStockPage> {
       AppSnackbar.error(context, AppStrings.quantity);
       return;
     }
-
-    // ===== Edit an existing batch =====
-    if (_isEdit) {
-      final s = widget.stockToEdit!;
-      setState(() => _saving = true);
-      final r = await ref.read(stockRepositoryProvider).update(
-            s.id,
-            UpdateStockInput(
-              medicineId: s.medicineId,
-              quantityAvailable: qty,
-              purchasePrice: double.tryParse(_purchase.text.trim()) ?? 0,
-              sellingPrice: s.sellingPrice,
-              expiryDate: _expiry,
-            ),
-          );
-      if (!mounted) return;
-      setState(() => _saving = false);
-      r.fold(
-        (_) {
-          ref.invalidate(stockListProvider);
-          AppSnackbar.success(context, AppStrings.stockSavedSuccess);
-          Navigator.of(context).pop();
-        },
-        (failure) => showFailureSnackbar(context, failure),
-      );
-      return;
-    }
-
-    // ===== Receive new stock =====
     if (_medicine == null) {
       AppSnackbar.error(context, AppStrings.selectMedicine);
       return;
@@ -166,7 +118,7 @@ class _AddStockPageState extends ConsumerState<AddStockPage> {
   Widget build(BuildContext context) {
     final catalog = ref.watch(medicineCatalogProvider).value ?? const [];
     final warehouseId = ref.watch(defaultWarehouseIdProvider).value;
-    final title = _isEdit ? 'تعديل المخزون' : AppStrings.receiveStock;
+    const title = AppStrings.receiveStock;
 
     return BarcodeScannerListener(
       onScan: (code) {
@@ -175,11 +127,11 @@ class _AddStockPageState extends ConsumerState<AddStockPage> {
         }
       },
       child: Scaffold(
-      appBar: AppBar(title: Text(title)),
+      appBar: AppBar(title: const Text(title)),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
-          if (!_isEdit && (warehouseId == null || warehouseId.isEmpty)) ...[
+          if (warehouseId == null || warehouseId.isEmpty) ...[
             InfoCard(
               icon: Icons.warehouse_outlined,
               color: Theme.of(context).colorScheme.error,
@@ -190,14 +142,7 @@ class _AddStockPageState extends ConsumerState<AddStockPage> {
           AppFormSection(
             title: title,
             children: [
-              if (_isEdit)
-                // Medicine is fixed when editing a batch.
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.medication_outlined),
-                  title: Text(widget.stockToEdit!.medicineName),
-                )
-              else if (_medicine != null)
+              if (_medicine != null)
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.medication_outlined),
@@ -215,7 +160,7 @@ class _AddStockPageState extends ConsumerState<AddStockPage> {
                 ),
 
               // باركود الدواء: حقل واضح يظهر فقط عند الاستلام إن لم يكن للدواء باركود.
-              if (!_isEdit && _medicineNeedsBarcode)
+              if (_medicineNeedsBarcode)
                 AppTextField(
                   controller: _barcode,
                   label: 'باركود الدواء (اختياري)',

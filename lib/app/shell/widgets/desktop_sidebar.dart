@@ -282,7 +282,7 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
                 // Header: collapse toggle + optional app name
                 _SidebarHeader(
                     showLabels: showLabels, onToggle: widget.onToggle),
-                const Divider(height: 1, thickness: 1),
+                Divider(height: 1, thickness: 2, color: theme.extension<AppSemanticColors>()!.border),
 
                 // Main navigation sections (scrollable) — حدّ رفيع بين كل كتلة
                 // والتي تليها.
@@ -296,7 +296,7 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         for (var i = 0; i < _mainSections.length; i++) ...[
-                          if (i > 0) _sectionDivider(),
+                          if (i > 0) _sectionDivider(context),
                           _buildSection(_mainSections[i], showLabels, unread),
                         ],
                       ],
@@ -306,7 +306,7 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
 
                 // عناصر النظام السفلية — قسمان بحدّ بينهما: البقية، ثم الإشعارات
                 // أخيراً وحدها في قسمها الخاص.
-                const Divider(height: 1, thickness: 1),
+                Divider(height: 1, thickness: 2, color: theme.extension<AppSemanticColors>()!.border),
                 Padding(
                   padding: const EdgeInsets.symmetric(
                     vertical: AppSpacing.sm,
@@ -325,7 +325,7 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
                     ],
                   ),
                 ),
-                _sectionDivider(),
+                _sectionDivider(context),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(
                     AppSpacing.sm, 0, AppSpacing.sm, AppSpacing.sm,
@@ -346,10 +346,15 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
     );
   }
 
-  /// حدّ رفيع بين كتلتين من كتل القائمة الجانبية.
-  Widget _sectionDivider() => Padding(
+  /// حدّ بين كتلتين من كتل القائمة الجانبية — أثخن من الحدود الافتراضية حتى
+  /// يكون الفصل بين الأقسام ظاهراً بوضوح.
+  Widget _sectionDivider(BuildContext context) => Padding(
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-        child: const Divider(height: 1, thickness: 1),
+        child: Divider(
+          height: 1,
+          thickness: 2,
+          color: Theme.of(context).extension<AppSemanticColors>()!.border,
+        ),
       );
 
   /// كتلة قابلة للطي: رأس بسهم دوّار يفتح/يغلق عناصرها. في الوضع المطوي
@@ -504,7 +509,7 @@ class _SectionHeader extends StatelessWidget {
               Expanded(
                 child: Text(
                   label,
-                  style: theme.textTheme.labelSmall?.copyWith(
+                  style: theme.textTheme.labelLarge?.copyWith(
                     color: color,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.4,
@@ -608,7 +613,7 @@ class _NavItemTileState extends State<_NavItemTile> {
                       widget.item.label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyMedium?.copyWith(
+                      style: theme.textTheme.bodyLarge?.copyWith(
                         color: widget.isSelected
                             ? primary
                             : theme.colorScheme.onSurface,
