@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
+import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/features/customers/customer_providers.dart';
 import 'package:saydaliati/features/customers/domain/entities/customer.dart';
-import 'package:saydaliati/shared/widgets/async_list_view.dart';
 import 'package:saydaliati/shared/widgets/dialogs/app_dialogs.dart';
 import 'package:saydaliati/shared/widgets/dialogs/entity_form_dialog.dart';
 import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
+import 'package:saydaliati/shared/widgets/grids/simple_entity_grid.dart';
+import 'package:saydaliati/shared/widgets/states/app_states.dart';
 
 /// Customers management — list + add/edit/delete.
 class CustomersPage extends ConsumerWidget {
@@ -18,6 +20,7 @@ class CustomersPage extends ConsumerWidget {
     final values = await showEntityFormDialog(
       context,
       title: existing == null ? AppStrings.addCustomer : AppStrings.editCustomer,
+      icon: Icons.person_add_alt_1_outlined,
       fields: [
         EntityField(
           key: 'firstName',
@@ -86,25 +89,39 @@ class CustomersPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(customersProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text(AppStrings.customers)),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _addOrEdit(context, ref),
-        child: const Icon(Icons.add),
-      ),
-      body: AsyncListView<Customer>(
-        value: async,
-        emptyMessage: AppStrings.noCustomers,
-        onRefresh: () => ref.refresh(customersProvider.future),
-        itemBuilder: (context, c) => ListTile(
-          leading: const Icon(Icons.person_outline),
-          title: Text(c.fullName),
-          subtitle: c.phone.isEmpty ? null : Text(c.phone),
-          onTap: () => _addOrEdit(context, ref, c),
-          trailing: IconButton(
-            icon: const Icon(Icons.delete_outline),
-            onPressed: () => _delete(context, ref, c),
+      appBar: AppBar(
+        title: const Text(AppStrings.customers),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+            child: FilledButton.icon(
+              onPressed: () => _addOrEdit(context, ref),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('إضافة زبون'),
+            ),
           ),
-        ),
+        ],
+      ),
+      body: async.when(
+        loading: () => const LoadingState(),
+        error: (e, _) => ErrorState.fromError(e,
+            onRetry: () => ref.invalidate(customersProvider)),
+        data: (items) => items.isEmpty
+            ? const EmptyState(message: AppStrings.noCustomers)
+            : SimpleEntityGrid<Customer>(
+                items: items,
+                idOf: (c) => c.id,
+                columns: [
+                  SimpleEntityColumn(AppStrings.name, (c) => c.fullName,
+                      width: 220),
+                  SimpleEntityColumn(AppStrings.phone, (c) => c.phone,
+                      width: 150),
+                  SimpleEntityColumn(AppStrings.address, (c) => c.address,
+                      width: 220),
+                ],
+                onEdit: (c) => _addOrEdit(context, ref, c),
+                onDelete: (c) => _delete(context, ref, c),
+              ),
       ),
     );
   }

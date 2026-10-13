@@ -1,3 +1,6 @@
+# Windows installer build output (built locally via scripts/build_windows_installer.ps1)
+/dist/
+
 # Miscellaneous
 *.class
 *.log

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/features/medicines/medicine_providers.dart';
 import 'package:saydaliati/features/medicines/presentation/providers/medicines_provider.dart';
 
@@ -54,9 +55,9 @@ Future<void> runMedicinePriceSync(BuildContext context, WidgetRef ref) async {
   );
 }
 
-/// Confirmation popup for the price sync. Built as a custom [Dialog] (not
-/// AlertDialog.actions) so the two buttons always render side by side — the
-/// default OverflowBar was stacking/hiding them.
+/// Confirmation popup for the price sync — Windows-style dialog: narrow fixed
+/// width, a close ✕ in the header, and small content-sized buttons aligned to
+/// the end (not full-width stretched like the old mobile-style popup).
 class _PriceSyncConfirmDialog extends StatelessWidget {
   const _PriceSyncConfirmDialog();
 
@@ -64,51 +65,88 @@ class _PriceSyncConfirmDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Dialog(
+      backgroundColor: theme.colorScheme.surface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.price_change_outlined, color: theme.colorScheme.primary),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text('مزامنة أسعار الأدوية',
-                      style: theme.textTheme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.bold)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Text(
-              'سيتم تحديث أسعار أدويتك من الكاتلوغ العام (سعر العموم).\n\n'
-              'الأدوية التي أوقفتَ فيها خيار «تحديث السعر تلقائياً» لن تتغيّر أسعارها. '
-              'لاستثناء دواء معيّن، أوقِف الخيار من صفحة الدواء ثم أعِد المزامنة.\n\n'
-              'هل تريد المتابعة؟',
-              style: theme.textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 22),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: const Text('إلغاء'),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 14, 12, 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // رأس بأسلوب نوافذ ويندوز: أيقونة + عنوان + زر إغلاق صغير.
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.price_change_outlined,
+                      color: theme.colorScheme.primary, size: 26),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text('مزامنة أسعار الأدوية',
+                          style: theme.textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w600)),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    child: const Text('مزامنة'),
+                  SizedBox(
+                    width: 28,
+                    height: 28,
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      visualDensity: VisualDensity.compact,
+                      iconSize: 16,
+                      tooltip: AppStrings.close,
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context, false),
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'سيتم تحديث أسعار أدويتك من الكاتلوغ العام (سعر العموم).\n\n'
+                'الأدوية التي أوقفتَ فيها خيار «تحديث السعر تلقائياً» لن تتغيّر أسعارها. '
+                'لاستثناء دواء معيّن، أوقِف الخيار من صفحة الدواء ثم أعِد المزامنة.\n\n'
+                'هل تريد المتابعة؟',
+                style: theme.textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 20),
+              // أزرار بحجم محتواها بدل الممتدة — أسلوب نوافذ ويندوز.
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  SizedBox(
+                    width: 96,
+                    height: 32,
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        textStyle: theme.textTheme.bodyMedium,
+                      ),
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text(AppStrings.cancel),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 96,
+                    height: 32,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        textStyle: theme.textTheme.bodyMedium,
+                      ),
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('مزامنة'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

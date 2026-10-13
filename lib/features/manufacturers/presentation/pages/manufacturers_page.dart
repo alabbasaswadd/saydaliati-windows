@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
+import 'package:saydaliati/features/catalog/presentation/pages/catalog_page.dart';
 import 'package:saydaliati/features/manufacturers/domain/entities/manufacturer.dart';
 import 'package:saydaliati/features/manufacturers/manufacturer_providers.dart';
-import 'package:saydaliati/shared/widgets/async_list_view.dart';
 import 'package:saydaliati/shared/widgets/dialogs/app_dialogs.dart';
 import 'package:saydaliati/shared/widgets/dialogs/entity_form_dialog.dart';
 import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
+import 'package:saydaliati/shared/widgets/grids/simple_entity_grid.dart';
+import 'package:saydaliati/shared/widgets/states/app_states.dart';
 
 /// Manufacturers management — list + add/edit/delete.
 class ManufacturersPage extends ConsumerWidget {
@@ -75,25 +77,48 @@ class ManufacturersPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(manufacturersProvider);
-    return Scaffold(
-      appBar: AppBar(title: const Text(AppStrings.manufacturers)),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _addOrEdit(context, ref),
-        child: const Icon(Icons.add),
-      ),
-      body: AsyncListView<Manufacturer>(
-        value: async,
-        emptyMessage: AppStrings.noManufacturers,
-        onRefresh: () => ref.refresh(manufacturersProvider.future),
-        itemBuilder: (context, m) => ListTile(
-          leading: const Icon(Icons.store_outlined),
-          title: Text(m.name),
-          subtitle: m.location.isEmpty ? null : Text(m.location),
-          onTap: () => _addOrEdit(context, ref, m),
-          trailing: IconButton(
-            icon: const Icon(Icons.delete_outline),
-            onPressed: () => _delete(context, ref, m),
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text(AppStrings.manufacturers),
+          actions: [
+            IconButton(
+              tooltip: AppStrings.addNew,
+              icon: const Icon(Icons.add),
+              onPressed: () => _addOrEdit(context, ref),
+            ),
+          ],
+          bottom: const TabBar(
+            tabs: [Tab(text: 'شركاتي'), Tab(text: 'شركات الكتالوغ')],
           ),
+        ),
+        body: TabBarView(
+          children: [
+            async.when(
+              loading: () => const LoadingState(),
+              error: (e, _) => ErrorState.fromError(e,
+                  onRetry: () => ref.invalidate(manufacturersProvider)),
+              data: (items) => items.isEmpty
+                  ? const EmptyState(message: AppStrings.noManufacturers)
+                  : SimpleEntityGrid<Manufacturer>(
+                      items: items,
+                      idOf: (m) => m.id,
+                      columns: [
+                        SimpleEntityColumn(
+                            AppStrings.manufacturerName, (m) => m.name,
+                            width: 240),
+                        SimpleEntityColumn(
+                            AppStrings.location, (m) => m.location,
+                            width: 200),
+                      ],
+                      onEdit: (m) => _addOrEdit(context, ref, m),
+                      onDelete: (m) => _delete(context, ref, m),
+                    ),
+            ),
+            // شركات الكاتلوغ العام (انتقلت من شاشة الكتالوغ).
+            const CatalogCompaniesTab(),
+          ],
         ),
       ),
     );

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:saydaliati/core/theme/app_semantic_colors.dart';
+import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/features/alternatives/alternatives_providers.dart';
 import 'package:saydaliati/features/medicines/domain/entities/medicine.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
+import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
 import 'package:saydaliati/shared/widgets/states/app_states.dart';
+import 'package:trina_grid/trina_grid.dart';
 
 /// Alternatives of a medicine (same active ingredient). Clean, scannable list:
 /// a header that states the active ingredient, then one card per alternative
@@ -40,12 +42,9 @@ class AlternativesPage extends ConsumerWidget {
                     message: 'لا توجد بدائل مسجّلة لهذا الدواء',
                   );
                 }
-                return ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.xl),
-                  itemCount: items.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
-                  itemBuilder: (_, i) => _AlternativeCard(medicine: items[i]),
+                return Padding(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: _AlternativesGrid(items: items),
                 );
               },
             ),
@@ -105,19 +104,26 @@ class _Header extends StatelessWidget {
   }
 }
 
-/// One alternative medicine — brand name, manufacturer, dosage form, and price.
-class _AlternativeCard extends StatelessWidget {
-  const _AlternativeCard({required this.medicine});
+/// شبكة البدائل — الأسلوب المعتمد: صف لكل بديل بأعمدة واضحة (الدواء، الشركة،
+/// الشكل الدوائي، السعر) مع فرز وفلترة لكل عمود.
+class _AlternativesGrid extends StatelessWidget {
+  const _AlternativesGrid({required this.items});
 
-  final Medicine medicine;
+  final List<Medicine> items;
 
-  double get _price {
-    if (medicine.units.isEmpty) return 0;
-    final u = medicine.units.firstWhere(
+  static const _fName = 'name';
+  static const _fCompany = 'company';
+  static const _fForm = 'form';
+  static const _fForeign = 'foreign';
+  static const _fPrice = 'price';
+
+  static double _priceOf(Medicine m) {
+    if (m.units.isEmpty) return 0;
+    final u = m.units.firstWhere(
       (x) => x.isDefault,
-      orElse: () => medicine.units.firstWhere(
+      orElse: () => m.units.firstWhere(
         (x) => x.isBaseUnit,
-        orElse: () => medicine.units.first,
+        orElse: () => m.units.first,
       ),
     );
     return u.salePrice;
@@ -126,140 +132,46 @@ class _AlternativeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final semantic = context.semantic;
-    final price = _price;
-    final company = medicine.manufacturerName?.trim();
-
-    return Material(
-      color: theme.colorScheme.surface,
-      borderRadius: AppRadius.brLg,
-      elevation: 0,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: AppRadius.brLg,
-          border: Border.all(color: semantic.border),
-        ),
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Avatar
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withValues(alpha: 0.12),
-                borderRadius: AppRadius.brMd,
-              ),
-              child: Icon(Icons.medication_rounded,
-                  color: theme.colorScheme.primary, size: 24),
-            ),
-            const SizedBox(width: AppSpacing.md),
-            // Details
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(medicine.displayName,
-                      style: theme.textTheme.titleSmall
-                          ?.copyWith(fontWeight: FontWeight.bold),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Icon(Icons.factory_outlined,
-                          size: 15, color: semantic.textSecondary),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          (company != null && company.isNotEmpty) ? company : '—',
-                          style: theme.textTheme.bodySmall
-                              ?.copyWith(color: semantic.textSecondary),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: AppSpacing.sm,
-                    runSpacing: AppSpacing.xs,
-                    children: [
-                      _chip(theme, medicine.dosageForm.label,
-                          theme.colorScheme.secondary),
-                      if (medicine.foreignName.isNotEmpty &&
-                          medicine.foreignName != medicine.brandName)
-                        _chip(theme, medicine.foreignName, semantic.textSecondary,
-                            outlined: true),
-                    ],
-                  ),
-                ],
+    return AppGrid(
+      columns: [
+        appGridTextColumn(AppStrings.medicineName, _fName, width: 220),
+        appGridTextColumn(AppStrings.manufacturer, _fCompany, width: 170),
+        appGridTextColumn(AppStrings.dosageForm, _fForm, width: 120),
+        appGridTextColumn('الاسم الأجنبي', _fForeign, width: 160, hide: true),
+        appGridNumberColumn(AppStrings.price, _fPrice, width: 120,
+            renderer: (ctx) {
+          final v = ctx.cell.value;
+          final n = v is num ? v.toDouble() : 0.0;
+          if (n <= 0) {
+            return Text('غير مسعّر',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.labelSmall
+                    ?.copyWith(color: theme.hintColor));
+          }
+          return Directionality(
+            textDirection: TextDirection.ltr,
+            child: Text(
+              Formatters.number(n),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(width: AppSpacing.sm),
-            // Price badge
-            _PriceBadge(price: price, theme: theme, semantic: semantic),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _chip(ThemeData theme, String label, Color color,
-          {bool outlined = false}) =>
-      Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 2),
-        decoration: BoxDecoration(
-          color: outlined ? Colors.transparent : color.withValues(alpha: 0.12),
-          borderRadius: AppRadius.brSm,
-          border: outlined ? Border.all(color: color.withValues(alpha: 0.4)) : null,
-        ),
-        child: Text(label,
-            style: theme.textTheme.labelSmall
-                ?.copyWith(color: color, fontWeight: FontWeight.w600)),
-      );
-}
-
-class _PriceBadge extends StatelessWidget {
-  const _PriceBadge(
-      {required this.price, required this.theme, required this.semantic});
-
-  final double price;
-  final ThemeData theme;
-  final AppSemanticColors semantic;
-
-  @override
-  Widget build(BuildContext context) {
-    if (price <= 0) {
-      return Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 4),
-        decoration: BoxDecoration(
-          color: semantic.textSecondary.withValues(alpha: 0.10),
-          borderRadius: AppRadius.brSm,
-        ),
-        child: Text('غير مسعّر',
-            style: theme.textTheme.labelSmall
-                ?.copyWith(color: semantic.textSecondary)),
-      );
-    }
-    return Container(
-      padding:
-          const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 6),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withValues(alpha: 0.12),
-        borderRadius: AppRadius.brSm,
-      ),
-      child: Text(
-        Formatters.money(price),
-        style: theme.textTheme.titleSmall?.copyWith(
-          color: theme.colorScheme.primary,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
+          );
+        }),
+      ],
+      rows: [
+        for (final m in items)
+          TrinaRow(cells: {
+            _fName: TrinaCell(value: m.displayName),
+            _fCompany: TrinaCell(value: m.manufacturerName?.trim() ?? ''),
+            _fForm: TrinaCell(value: m.dosageForm.label),
+            _fForeign: TrinaCell(
+                value: m.foreignName != m.brandName ? m.foreignName : ''),
+            _fPrice: TrinaCell(value: _priceOf(m)),
+          }),
+      ],
     );
   }
 }

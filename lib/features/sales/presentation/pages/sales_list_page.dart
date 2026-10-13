@@ -18,13 +18,14 @@ import 'package:saydaliati/features/sales/presentation/pages/sales_page.dart';
 import 'package:saydaliati/features/sales/presentation/providers/sales_provider.dart';
 import 'package:saydaliati/features/sales/sale_providers.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
-import 'package:saydaliati/shared/widgets/async_list_view.dart';
 import 'package:saydaliati/shared/widgets/dialogs/app_dialogs.dart';
 import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
 import 'package:saydaliati/shared/widgets/filters/filter_side_sheet.dart';
 import 'package:saydaliati/shared/widgets/filters/period_filter_list.dart';
+import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_dropdown.dart';
+import 'package:trina_grid/trina_grid.dart';
 
 /// The sales invoices (online). Each row shows the invoice number, time, and
 /// amount in its ORIGINAL transaction currency. Filters (الفترة / العميل /
@@ -38,6 +39,9 @@ class SalesListPage extends ConsumerStatefulWidget {
 
 class _SalesListPageState extends ConsumerState<SalesListPage> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  /// مدير الشبكة — لزر إظهار/إخفاء الأعمدة.
+  TrinaGridStateManager? _gridManager;
   ReportPeriod? _period;
   String? _customerId;
   String? _medicineId;
@@ -97,6 +101,7 @@ class _SalesListPageState extends ConsumerState<SalesListPage> {
       appBar: AppBar(
         title: const Text(AppStrings.salesList),
         actions: [
+          AppGridColumnsButton(managerGetter: () => _gridManager),
           IconButton(
             tooltip: AppStrings.filters,
             onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
@@ -118,32 +123,130 @@ class _SalesListPageState extends ConsumerState<SalesListPage> {
         onMedicine: (v) => setState(() => _medicineId = v),
         onCurrency: (v) => setState(() => _currencyId = v),
       ),
-      body: AsyncListView<Sale>(
-        value: async,
-        emptyMessage: AppStrings.noSales,
-        onRefresh: () => ref.refresh(provider.future),
-        itemBuilder: (context, sale) {
-          // Show the amount in the currency the sale was actually made in.
-          final foreign = sale.originalCurrencyId.isNotEmpty;
-          final code = foreign
-              ? (codeFor(sale.originalCurrencyId).isNotEmpty
-                  ? codeFor(sale.originalCurrencyId)
-                  : sale.currencyCode)
-              : sale.currencyCode;
-          final amount =
-              foreign ? sale.totalAmount * sale.exchangeRate : sale.totalAmount;
-          return _SaleTile(
-            sale: sale,
-            amount: amount,
-            code: code,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => SaleDetailPage(sale: sale)),
+      // الغريد المعتمد: صف لكل فاتورة، فلترة لكل عمود، نقرة مزدوجة للتفاصيل.
+      body: async.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text(e.toString())),
+        data: (sales) {
+          if (sales.isEmpty) {
+            return const Center(child: Text(AppStrings.noSales));
+          }
+          final byId = {for (final s in sales) s.id: s};
+          return Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: AppGrid(
+              columns: _columns(byId),
+              rows: [for (final s in sales) _row(s, codeFor)],
+              onLoaded: (m) => _gridManager = m,
+              onRowDoubleTap: (e) {
+                final sale = byId[e.row.cells[_fId]?.value];
+                if (sale != null) {
+                  Navigator.of(context).push(MaterialPageRoute<void>(
+                      builder: (_) => SaleDetailPage(sale: sale)));
+                }
+              },
             ),
-            onEdit: () => _edit(sale),
-            onDelete: () => _delete(sale),
           );
         },
       ),
+    );
+  }
+
+  static const _fId = 'id';
+  static const _fInvoice = 'invoice';
+  static const _fDate = 'date';
+  static const _fItems = 'items';
+  static const _fCurrency = 'currency';
+  static const _fTotal = 'total';
+  static const _fActions = 'actions';
+
+  List<TrinaColumn> _columns(Map<String, Sale> byId) {
+    return [
+      appGridNumberColumn(AppStrings.invoiceLabel, _fInvoice,
+          width: 110, format: '#'),
+      appGridTextColumn(AppStrings.dateColumn, _fDate,
+          width: 150, textAlign: TrinaColumnTextAlign.center),
+      appGridNumberColumn(AppStrings.piecesCountColumn, _fItems,
+          width: 95, format: '#'),
+      appGridTextColumn(AppStrings.filterByCurrency, _fCurrency,
+          width: 90, hide: true, textAlign: TrinaColumnTextAlign.center),
+      appGridNumberColumn(AppStrings.total, _fTotal, width: 130,
+          renderer: (ctx) {
+        final v = ctx.cell.value;
+        final n = v is num ? v.toDouble() : 0.0;
+        return Directionality(
+          textDirection: TextDirection.ltr,
+          child: Text(
+            Formatters.number(n),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.primary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        );
+      }),
+      TrinaColumn(
+        title: '',
+        field: _fActions,
+        type: TrinaColumnType.text(),
+        width: 90,
+        enableEditingMode: false,
+        enableContextMenu: false,
+        enableFilterMenuItem: false,
+        enableSorting: false,
+        renderer: (ctx) {
+          final sale = byId[ctx.row.cells[_fId]?.value];
+          if (sale == null) return const SizedBox.shrink();
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.edit_outlined, size: 16),
+                visualDensity: VisualDensity.compact,
+                tooltip: AppStrings.edit,
+                onPressed: () => _edit(sale),
+              ),
+              IconButton(
+                icon: Icon(Icons.delete_outline,
+                    size: 16, color: Theme.of(context).colorScheme.error),
+                visualDensity: VisualDensity.compact,
+                tooltip: AppStrings.delete,
+                onPressed: () => _delete(sale),
+              ),
+            ],
+          );
+        },
+      ),
+      // معرف داخلي مخفي للربط بالكيان.
+      TrinaColumn(
+        title: '',
+        field: _fId,
+        type: TrinaColumnType.text(),
+        hide: true,
+      ),
+    ];
+  }
+
+  TrinaRow<dynamic> _row(Sale sale, String Function(String) codeFor) {
+    // Show the amount in the currency the sale was actually made in.
+    final foreign = sale.originalCurrencyId.isNotEmpty;
+    final code = foreign
+        ? (codeFor(sale.originalCurrencyId).isNotEmpty
+            ? codeFor(sale.originalCurrencyId)
+            : sale.currencyCode)
+        : sale.currencyCode;
+    final amount =
+        foreign ? sale.totalAmount * sale.exchangeRate : sale.totalAmount;
+    return TrinaRow(
+      cells: {
+        _fId: TrinaCell(value: sale.id),
+        _fInvoice: TrinaCell(value: sale.invoiceNumber),
+        _fDate: TrinaCell(value: AppDate.ymdHm(sale.saleDate)),
+        _fItems: TrinaCell(value: sale.items.length),
+        _fCurrency: TrinaCell(value: code),
+        _fTotal: TrinaCell(value: amount),
+      },
     );
   }
 }
@@ -231,55 +334,3 @@ class _FilterDrawer extends ConsumerWidget {
   }
 }
 
-class _SaleTile extends StatelessWidget {
-  const _SaleTile({
-    required this.sale,
-    required this.amount,
-    required this.code,
-    required this.onTap,
-    required this.onEdit,
-    required this.onDelete,
-  });
-
-  final Sale sale;
-  final double amount;
-  final String code;
-  final VoidCallback onTap;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return ListTile(
-      leading: const CircleAvatar(child: Icon(Icons.receipt_long_outlined)),
-      title: Row(
-        children: [
-          Expanded(
-            child: Text('${AppStrings.invoiceLabel} #${sale.invoiceNumber}',
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w600)),
-          ),
-          Text(Formatters.money(amount, code),
-              style: theme.textTheme.titleMedium?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.w700)),
-        ],
-      ),
-      subtitle: Text(
-          '${AppDate.ymdHm(sale.saleDate)}  •  ${sale.items.length} صنف',
-          style: theme.textTheme.bodySmall),
-      trailing: PopupMenuButton<String>(
-        onSelected: (v) {
-          if (v == 'edit') onEdit();
-          if (v == 'delete') onDelete();
-        },
-        itemBuilder: (_) => const [
-          PopupMenuItem(value: 'edit', child: Text(AppStrings.edit)),
-          PopupMenuItem(value: 'delete', child: Text(AppStrings.delete)),
-        ],
-      ),
-      onTap: onTap,
-    );
-  }
-}

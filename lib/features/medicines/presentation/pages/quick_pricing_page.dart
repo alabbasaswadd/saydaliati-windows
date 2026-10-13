@@ -9,14 +9,14 @@ import 'package:saydaliati/features/medicines/presentation/providers/medicines_p
 import 'package:saydaliati/shared/utils/formatters.dart';
 import 'package:saydaliati/shared/widgets/async_value_widget.dart';
 import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
-import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
-import 'package:saydaliati/shared/widgets/inputs/app_number_field.dart';
+import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_search_field.dart';
 import 'package:saydaliati/shared/widgets/states/app_states.dart';
+import 'package:trina_grid/trina_grid.dart';
 
-/// Fast pricing screen: search a medicine and edit the sale price of each of
-/// its units inline (detailed per unit, with the per-unit cost shown and a
-/// loss warning), then save that medicine's prices in one tap.
+/// Fast pricing screen — the project-standard grid: every medicine×unit as
+/// one row, the sale-price cell edits in place (loss rows tinted orange), and
+/// a lightweight save bar (like أدويتي) commits all pending prices in one tap.
 class QuickPricingPage extends ConsumerStatefulWidget {
   const QuickPricingPage({super.key});
 
@@ -24,26 +24,29 @@ class QuickPricingPage extends ConsumerStatefulWidget {
   ConsumerState<QuickPricingPage> createState() => _QuickPricingPageState();
 }
 
+/// صف واحد في الغريد = وحدة دواء واحدة.
+class _UnitRow {
+  const _UnitRow(this.medicine, this.unit);
+  final Medicine medicine;
+  final MedicineUnit unit;
+
+  String get key => '${medicine.id}:${unit.unitId}';
+  double get cost => medicine.purchaseCost * unit.conversionFactor;
+}
+
 class _QuickPricingPageState extends ConsumerState<QuickPricingPage> {
   String _query = '';
-  final _ctrls = <String, TextEditingController>{};
-  final _saving = <String>{};
 
-  @override
-  void dispose() {
-    for (final c in _ctrls.values) {
-      c.dispose();
-    }
-    super.dispose();
-  }
+  /// تعديلات معلّقة {medId:unitId → السعر الجديد}.
+  final Map<String, double> _pending = {};
+  bool _saving = false;
+  TrinaGridStateManager? _gridManager;
 
-  TextEditingController _controller(String medId, MedicineUnit u) {
-    return _ctrls.putIfAbsent(
-      '$medId:${u.unitId}',
-      () => TextEditingController(
-          text: u.salePrice == 0 ? '' : Formatters.qty(u.salePrice)),
-    );
-  }
+  static const _fKey = 'key';
+  static const _fMed = 'medicine';
+  static const _fUnit = 'unit';
+  static const _fCost = 'cost';
+  static const _fPrice = 'price';
 
   List<Medicine> _filter(List<Medicine> all) {
     final q = _query.trim().toLowerCase();
@@ -58,25 +61,50 @@ class _QuickPricingPageState extends ConsumerState<QuickPricingPage> {
         .toList();
   }
 
-  Future<void> _save(Medicine m) async {
-    final prices = <String, double>{};
-    for (final u in m.units) {
-      final v = double.tryParse(_controller(m.id, u).text.trim());
-      if (v != null && v >= 0) prices[u.unitId] = v;
+  List<_UnitRow> _rowsFor(List<Medicine> medicines) {
+    final rows = <_UnitRow>[];
+    for (final m in medicines) {
+      final units = [...m.units]
+        ..sort((a, b) {
+          if (a.isBaseUnit != b.isBaseUnit) return a.isBaseUnit ? -1 : 1;
+          return a.conversionFactor.compareTo(b.conversionFactor);
+        });
+      for (final u in units) {
+        rows.add(_UnitRow(m, u));
+      }
     }
-    if (prices.isEmpty) return;
-    setState(() => _saving.add(m.id));
-    final res = await ref.read(medicineRepositoryProvider).updatePrices(m.id, prices);
+    return rows;
+  }
+
+  Future<void> _saveAll() async {
+    if (_pending.isEmpty) return;
+    // تجميع التعديلات حسب الدواء — نداء واحد لكل دواء بكل وحداته المعدَّلة.
+    final byMedicine = <String, Map<String, double>>{};
+    for (final entry in _pending.entries) {
+      final parts = entry.key.split(':');
+      final medId = parts[0];
+      final unitId = parts[1];
+      byMedicine.putIfAbsent(medId, () => {})[unitId] = entry.value;
+    }
+    setState(() => _saving = true);
+    final repo = ref.read(medicineRepositoryProvider);
+    var failures = 0;
+    for (final e in byMedicine.entries) {
+      final res = await repo.updatePrices(e.key, e.value);
+      res.fold(
+          (_) => ref.read(medicineCatalogProvider.notifier).refreshOne(e.key),
+          (_) => failures++);
+    }
     if (!mounted) return;
-    setState(() => _saving.remove(m.id));
-    res.fold(
-      (_) {
-        // Refresh ONLY the edited medicine (no full-catalog re-pull).
-        ref.read(medicineCatalogProvider.notifier).refreshOne(m.id);
-        AppSnackbar.success(context, AppStrings.pricesSaved);
-      },
-      (failure) => showFailureSnackbar(context, failure),
-    );
+    setState(() {
+      _saving = false;
+      _pending.clear();
+    });
+    if (failures == 0) {
+      AppSnackbar.success(context, AppStrings.pricesSaved);
+    } else {
+      AppSnackbar.error(context, 'تعذّر حفظ $failures من التعديلات');
+    }
   }
 
   @override
@@ -102,31 +130,158 @@ class _QuickPricingPageState extends ConsumerState<QuickPricingPage> {
         value: async,
         onRetry: () => ref.invalidate(medicineCatalogProvider),
         data: (all) {
-          final items = _filter(all);
+          final rows = _rowsFor(_filter(all));
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const _BaseCurrencyBanner(),
+              _BaseCurrencyBanner(columnsButton: () => _gridManager),
               Expanded(
-                child: items.isEmpty
+                child: rows.isEmpty
                     ? const EmptyState(
                         icon: Icons.sell_outlined,
                         message: AppStrings.noMedicines)
-                    : ListView.builder(
+                    : Padding(
                         padding: const EdgeInsets.all(AppSpacing.lg),
-                        itemCount: items.length,
-                        itemBuilder: (context, i) => _MedicineCard(
-                          medicine: items[i],
-                          controllerFor: (u) => _controller(items[i].id, u),
-                          saving: _saving.contains(items[i].id),
-                          onSave: () => _save(items[i]),
-                        ),
+                        child: _grid(rows),
                       ),
               ),
+              _pendingSaveBar(),
             ],
           );
         },
       ),
+    );
+  }
+
+  Widget _grid(List<_UnitRow> rows) {
+    final theme = Theme.of(context);
+    final byKey = {for (final r in rows) r.key: r};
+
+    return AppGrid(
+      key: ValueKey(rows.length ^ rows.hashCode),
+      columns: [
+        appGridTextColumn(AppStrings.medicineName, _fMed, width: 240),
+        appGridTextColumn(AppStrings.unitLabel, _fUnit, width: 130),
+        appGridNumberColumn(AppStrings.costPerUnit, _fCost, width: 110),
+        TrinaColumn(
+          title: AppStrings.salePrice,
+          field: _fPrice,
+          type: TrinaColumnType.number(
+              format: '#,##0.##', locale: 'en', applyFormatOnInit: false),
+          width: 120,
+          textAlign: TrinaColumnTextAlign.center,
+          enableEditingMode: true,
+          renderer: (ctx) {
+            final key = ctx.row.cells[_fKey]?.value;
+            final pending = _pending.containsKey(key);
+            final v = ctx.cell.value;
+            final n = v is num ? v.toDouble() : 0.0;
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: Text(
+                    n > 0 ? Formatters.number(n) : '—',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: pending ? theme.colorScheme.primary : null,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Icon(Icons.edit_outlined,
+                    size: 12,
+                    color: pending ? theme.colorScheme.primary : theme.hintColor),
+              ],
+            );
+          },
+        ),
+        TrinaColumn(
+            title: '', field: _fKey, type: TrinaColumnType.text(), hide: true),
+      ],
+      rows: [
+        for (final r in rows)
+          TrinaRow(cells: {
+            _fKey: TrinaCell(value: r.key),
+            _fMed: TrinaCell(value: r.medicine.displayName),
+            _fUnit: TrinaCell(
+                value: r.unit.isBaseUnit
+                    ? '${r.unit.unitName} (${AppStrings.baseBadge})'
+                    : '${r.unit.unitName} ×${r.unit.conversionFactor}'),
+            _fCost: TrinaCell(value: r.cost),
+            _fPrice: TrinaCell(value: _pending[r.key] ?? r.unit.salePrice),
+          }),
+      ],
+      onLoaded: (m) => _gridManager = m,
+      onChanged: (e) {
+        if (e.column.field != _fPrice) return;
+        final row = byKey[e.row.cells[_fKey]?.value];
+        if (row == null) return;
+        final v = e.value is num
+            ? (e.value as num).toDouble()
+            : double.tryParse(e.value?.toString() ?? '');
+        setState(() {
+          if (v == null || v < 0 || v == row.unit.salePrice) {
+            _pending.remove(row.key);
+          } else {
+            _pending[row.key] = v;
+          }
+        });
+      },
+      // سعر أقل من الكلفة → تظليل تحذيري لكامل السطر.
+      rowColorCallback: (ctx) {
+        final row = byKey[ctx.row.cells[_fKey]?.value];
+        if (row == null || row.cost <= 0) return Colors.transparent;
+        final price = _pending[row.key] ?? row.unit.salePrice;
+        return price > 0 && price < row.cost
+            ? Colors.orange.withValues(alpha: 0.08)
+            : Colors.transparent;
+      },
+    );
+  }
+
+  /// شريط حفظ خفيف يظهر فقط عند وجود تعديلات أسعار معلّقة (مطابق لأدويتي).
+  Widget _pendingSaveBar() {
+    final theme = Theme.of(context);
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 180),
+      child: _pending.isEmpty
+          ? const SizedBox(width: double.infinity)
+          : Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                border: Border(top: BorderSide(color: theme.dividerColor)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.sell_outlined,
+                      size: 18, color: theme.colorScheme.primary),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text('${_pending.length} تعديل سعر غير محفوظ',
+                      style: theme.textTheme.bodyMedium),
+                  const Spacer(),
+                  TextButton(
+                    onPressed:
+                        _saving ? null : () => setState(_pending.clear),
+                    child: const Text('تجاهل'),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  FilledButton.icon(
+                    onPressed: _saving ? null : _saveAll,
+                    icon: _saving
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.save_outlined, size: 16),
+                    label: const Text(AppStrings.save),
+                  ),
+                ],
+              ),
+            ),
     );
   }
 }
@@ -134,7 +289,9 @@ class _QuickPricingPageState extends ConsumerState<QuickPricingPage> {
 /// Reminds the pharmacist that all prices here are entered in the pharmacy's
 /// base currency (الليرة السورية), so the typed numbers are unambiguous.
 class _BaseCurrencyBanner extends ConsumerWidget {
-  const _BaseCurrencyBanner();
+  const _BaseCurrencyBanner({required this.columnsButton});
+
+  final TrinaGridStateManager? Function() columnsButton;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -151,7 +308,7 @@ class _BaseCurrencyBanner extends ConsumerWidget {
           horizontal: AppSpacing.md, vertical: AppSpacing.sm),
       decoration: BoxDecoration(
         color: theme.colorScheme.primary.withValues(alpha: 0.10),
-        borderRadius: AppRadius.brMd,
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
@@ -164,160 +321,9 @@ class _BaseCurrencyBanner extends ConsumerWidget {
                   color: theme.colorScheme.primary, fontWeight: FontWeight.w600),
             ),
           ),
+          AppGridColumnsButton(managerGetter: columnsButton),
         ],
       ),
     );
   }
-}
-
-class _MedicineCard extends StatefulWidget {
-  const _MedicineCard({
-    required this.medicine,
-    required this.controllerFor,
-    required this.saving,
-    required this.onSave,
-  });
-
-  final Medicine medicine;
-  final TextEditingController Function(MedicineUnit) controllerFor;
-  final bool saving;
-  final VoidCallback onSave;
-
-  @override
-  State<_MedicineCard> createState() => _MedicineCardState();
-}
-
-class _MedicineCardState extends State<_MedicineCard> {
-  Medicine get medicine => widget.medicine;
-  bool get saving => widget.saving;
-  VoidCallback get onSave => widget.onSave;
-  TextEditingController Function(MedicineUnit) get controllerFor =>
-      widget.controllerFor;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    // Base unit first, then by ascending factor — a clear, predictable order.
-    final units = [...medicine.units]
-      ..sort((a, b) {
-        if (a.isBaseUnit != b.isBaseUnit) return a.isBaseUnit ? -1 : 1;
-        return a.conversionFactor.compareTo(b.conversionFactor);
-      });
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppSpacing.md),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(medicine.displayName,
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w600),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis),
-            if (medicine.purchaseCost > 0)
-              Text(
-                '${AppStrings.costLabel}: ${Formatters.qty(medicine.purchaseCost)}',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: theme.hintColor),
-              ),
-            const Divider(),
-            for (final u in units) _unitRow(theme, u),
-            const SizedBox(height: AppSpacing.sm),
-            Align(
-              alignment: AlignmentDirectional.centerEnd,
-              child: FilledButton.icon(
-                onPressed: saving ? null : onSave,
-                icon: saving
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.save_outlined, size: 18),
-                label: const Text(AppStrings.save),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _unitRow(ThemeData theme, MedicineUnit u) {
-    // Cost allocated to this unit = base cost × units-per-this-unit (factor).
-    final unitCost = medicine.purchaseCost * u.conversionFactor;
-    final price = double.tryParse(controllerFor(u).text.trim()) ?? u.salePrice;
-    final belowCost = unitCost > 0 && price < unitCost;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(u.unitName,
-                          style: theme.textTheme.bodyLarge,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis),
-                    ),
-                    const SizedBox(width: AppSpacing.xs),
-                    _badge(
-                      theme,
-                      u.isBaseUnit
-                          ? AppStrings.baseBadge
-                          : '×${Formatters.qty(u.conversionFactor)}',
-                    ),
-                  ],
-                ),
-                if (unitCost > 0)
-                  Row(
-                    children: [
-                      if (belowCost)
-                        Icon(Icons.warning_amber_rounded,
-                            size: 13, color: Colors.orange.shade800),
-                      if (belowCost) const SizedBox(width: 2),
-                      Flexible(
-                        child: Text(
-                          '${AppStrings.costPerUnit}: ${Formatters.qty(unitCost)}',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                              color: belowCost
-                                  ? Colors.orange.shade800
-                                  : theme.hintColor),
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          SizedBox(
-            width: 120,
-            child: AppNumberField(
-              controller: controllerFor(u),
-              label: AppStrings.salePrice,
-              onChanged: (_) => setState(() {}),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _badge(ThemeData theme, String text) => Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 2),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Text(text, style: theme.textTheme.labelSmall),
-      );
 }

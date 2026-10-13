@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:saydaliati/core/theme/app_semantic_colors.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/features/catalog/catalog_providers.dart';
 import 'package:saydaliati/features/catalog/domain/catalog_item.dart';
@@ -11,7 +10,9 @@ import 'package:saydaliati/features/catalog/presentation/pages/catalog_detail_pa
 import 'package:saydaliati/features/medicines/presentation/price_sync_action.dart';
 import 'package:saydaliati/services/barcode_scanner.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
+import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
 import 'package:saydaliati/shared/widgets/states/app_states.dart';
+import 'package:trina_grid/trina_grid.dart';
 
 /// الكاتلوغ العام — global, read-only drug reference. Two views:
 ///  • «الأدوية»: searchable (trade/generic/english/arabic/barcode) + camera scan.
@@ -94,38 +95,30 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
 
   @override
   Widget build(BuildContext context) {
+    // شركات الكتالوغ انتقلت إلى شاشة «الشركات المصنعة» (تبويب شركات الكتالوغ).
     return BarcodeScannerListener(
       onScan: _handleScan,
-      child: DefaultTabController(
-        length: 2,
-        child: Scaffold(
-          appBar: AppBar(
-            title: const Text('الكاتلوغ العام'),
-            actions: [
-              IconButton(
-                tooltip: 'مزامنة أسعار أدويتي',
-                icon: const Icon(Icons.price_change_outlined),
-                onPressed: () => runMedicinePriceSync(context, ref),
-              ),
-              IconButton(
-                tooltip: 'تحديث البيانات محلياً',
-                icon: const Icon(Icons.cloud_download_outlined),
-                onPressed: _updateLocal,
-              ),
-            ],
-            bottom: const TabBar(tabs: [Tab(text: 'الأدوية'), Tab(text: 'الشركات')]),
-          ),
-          body: TabBarView(
-            children: [
-              _SearchTab(
-                controller: _controller,
-                query: _query,
-                onSearch: _runSearch,
-                onChanged: _onChanged,
-              ),
-              const _CompaniesTab(),
-            ],
-          ),
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('الكاتلوغ العام'),
+          actions: [
+            IconButton(
+              tooltip: 'مزامنة أسعار أدويتي',
+              icon: const Icon(Icons.price_change_outlined),
+              onPressed: () => runMedicinePriceSync(context, ref),
+            ),
+            IconButton(
+              tooltip: 'تحديث البيانات محلياً',
+              icon: const Icon(Icons.cloud_download_outlined),
+              onPressed: _updateLocal,
+            ),
+          ],
+        ),
+        body: _SearchTab(
+          controller: _controller,
+          query: _query,
+          onSearch: _runSearch,
+          onChanged: _onChanged,
         ),
       ),
     );
@@ -185,19 +178,14 @@ class _SearchResults extends ConsumerWidget {
           ? const EmptyState(
               icon: Icons.medication_outlined,
               message: 'لا نتائج — جرّب اسماً أو باركود آخر')
-          : ListView.separated(
-              padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.md, 0, AppSpacing.md, AppSpacing.xl),
-              itemCount: items.length,
-              separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
-              itemBuilder: (_, i) => _CatalogTile(item: items[i]),
-            ),
+          : CatalogGrid(items: items),
     );
   }
 }
 
-/// Lazily scrolls through the ENTIRE local mirror (loads a page at a time) so
-/// every one of the ~22.5k drugs is reachable without decoding them all at once.
+/// Browse the ENTIRE local mirror as the project-standard grid: all pages are
+/// loaded once (local SQLite) then the grid virtualizes rendering — so the
+/// per-column filters search the whole catalog, not just the visible page.
 class _BrowseAllList extends ConsumerStatefulWidget {
   const _BrowseAllList();
 
@@ -206,82 +194,200 @@ class _BrowseAllList extends ConsumerStatefulWidget {
 }
 
 class _BrowseAllListState extends ConsumerState<_BrowseAllList> {
-  static const int _pageSize = 200;
-  final _scroll = ScrollController();
-  final List<CatalogItem> _items = [];
-  bool _loading = false;
-  bool _done = false;
-  bool _initialized = false;
+  static const int _pageSize = 2000;
+  List<CatalogItem>? _items;
 
   @override
   void initState() {
     super.initState();
-    _scroll.addListener(_onScroll);
-    _loadMore();
+    _loadAll();
   }
 
-  @override
-  void dispose() {
-    _scroll.dispose();
-    super.dispose();
-  }
-
-  void _onScroll() {
-    if (_scroll.position.pixels >= _scroll.position.maxScrollExtent - 400) {
-      _loadMore();
+  Future<void> _loadAll() async {
+    final local = ref.read(catalogLocalDataSourceProvider);
+    final all = <CatalogItem>[];
+    while (true) {
+      final rows = await local.page(limit: _pageSize, offset: all.length);
+      all.addAll(rows);
+      if (rows.length < _pageSize) break;
     }
-  }
-
-  Future<void> _loadMore() async {
-    if (_loading || _done) return;
-    setState(() => _loading = true);
-    final rows = await ref
-        .read(catalogLocalDataSourceProvider)
-        .page(limit: _pageSize, offset: _items.length);
-    if (!mounted) return;
-    setState(() {
-      _items.addAll(rows);
-      if (rows.length < _pageSize) _done = true;
-      _loading = false;
-      _initialized = true;
-    });
+    if (mounted) setState(() => _items = all);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_initialized) return const LoadingState();
-    if (_items.isEmpty) {
+    final items = _items;
+    if (items == null) return const LoadingState();
+    if (items.isEmpty) {
       return const EmptyState(
         icon: Icons.cloud_download_outlined,
-        message: 'لم يُحمّل الكاتلوغ محلياً بعد — اضغط «تحديث البيانات محلياً» أعلى الصفحة',
+        message:
+            'لم يُحمّل الكاتلوغ محلياً بعد — اضغط «تحديث البيانات محلياً» أعلى الصفحة',
       );
     }
-    return ListView.separated(
-      controller: _scroll,
-      padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.xl),
-      itemCount: _items.length + (_done ? 0 : 1),
-      separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
-      itemBuilder: (_, i) {
-        if (i >= _items.length) {
-          return const Padding(
-            padding: EdgeInsets.all(AppSpacing.md),
-            child: Center(child: CircularProgressIndicator()),
+    return CatalogGrid(items: items);
+  }
+}
+
+/// قالب غريد الكتالوغ — جاهز لإعادة الاستخدام في أي شاشة تعرض أدوية الكتالوغ:
+/// أعمدة بفلترة «يحتوي»، إظهار/إخفاء أعمدة، نقرة مزدوجة للتفاصيل، وعمود
+/// إجراءات (تفاصيل / إضافة للمخزون).
+class CatalogGrid extends StatefulWidget {
+  const CatalogGrid({required this.items, super.key});
+
+  final List<CatalogItem> items;
+
+  @override
+  State<CatalogGrid> createState() => _CatalogGridState();
+}
+
+class _CatalogGridState extends State<CatalogGrid> {
+  TrinaGridStateManager? _manager;
+
+  static const _fId = 'id';
+  static const _fName = 'name';
+  static const _fCompany = 'company';
+  static const _fGeneric = 'generic';
+  static const _fPack = 'pack';
+  static const _fBarcode = 'barcode';
+  static const _fPublic = 'pricePublic';
+  static const _fPharmacist = 'pricePharmacist';
+  static const _fActions = 'actions';
+
+  void _openDetail(CatalogItem item) {
+    Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => CatalogDetailPage(item: item)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final byId = {for (final it in widget.items) it.id: it};
+    return Padding(
+      padding:
+          const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: AppGridColumnsButton(managerGetter: () => _manager),
+          ),
+          Expanded(
+            child: AppGrid(
+              // تغيّر النتائج (بحث جديد) → شبكة جديدة بصفوفها.
+              key: ValueKey(widget.items.length ^ widget.items.hashCode),
+              columns: _columns(byId),
+              rows: [for (final it in widget.items) _row(it)],
+              onLoaded: (m) => _manager = m,
+              onRowDoubleTap: (e) {
+                final item = byId[e.row.cells[_fId]?.value];
+                if (item != null) _openDetail(item);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<TrinaColumn> _columns(Map<String, CatalogItem> byId) {
+    return [
+      appGridTextColumn('الاسم', _fName, width: 220),
+      appGridTextColumn('الشركة', _fCompany, width: 150),
+      appGridTextColumn('التركيب العلمي', _fGeneric, width: 180),
+      appGridTextColumn('العبوة', _fPack, width: 120, hide: true),
+      appGridTextColumn('الباركود', _fBarcode, width: 130, hide: true),
+      appGridNumberColumn('السعر العام', _fPublic, width: 130,
+          renderer: (ctx) {
+        final v = ctx.cell.value;
+        final n = v is num ? v.toDouble() : 0.0;
+        if (n <= 0) return const SizedBox.shrink();
+        final item = byId[ctx.row.cells[_fId]?.value];
+        final sym = item?.currencySymbol ?? '';
+        return Directionality(
+          textDirection: TextDirection.ltr,
+          child: Text(
+            sym.isEmpty
+                ? Formatters.number(n)
+                : '${Formatters.number(n)} $sym',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.primary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        );
+      }),
+      appGridNumberColumn('سعر الصيدلاني', _fPharmacist,
+          width: 110, hide: true),
+      TrinaColumn(
+        title: '',
+        field: _fActions,
+        type: TrinaColumnType.text(),
+        width: 90,
+        enableEditingMode: false,
+        enableContextMenu: false,
+        enableFilterMenuItem: false,
+        enableSorting: false,
+        renderer: (ctx) {
+          final item = byId[ctx.row.cells[_fId]?.value];
+          if (item == null) return const SizedBox.shrink();
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.info_outline, size: 16),
+                visualDensity: VisualDensity.compact,
+                tooltip: 'التفاصيل',
+                onPressed: () => _openDetail(item),
+              ),
+              IconButton(
+                icon: const Icon(Icons.add_business_outlined, size: 16),
+                visualDensity: VisualDensity.compact,
+                tooltip: 'إضافة للمخزون',
+                onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                        builder: (_) => AddCatalogToStockPage(item: item))),
+              ),
+            ],
           );
-        }
-        return _CatalogTile(item: _items[i]);
+        },
+      ),
+      TrinaColumn(
+        title: '',
+        field: _fId,
+        type: TrinaColumnType.text(),
+        hide: true,
+      ),
+    ];
+  }
+
+  TrinaRow<dynamic> _row(CatalogItem it) {
+    return TrinaRow(
+      cells: {
+        _fId: TrinaCell(value: it.id),
+        _fName: TrinaCell(value: it.displayName),
+        _fCompany: TrinaCell(value: it.manufacturerName),
+        _fGeneric: TrinaCell(value: it.genericName),
+        _fPack: TrinaCell(value: it.note),
+        _fBarcode: TrinaCell(value: it.barcode),
+        _fPublic: TrinaCell(value: it.pricePublic),
+        _fPharmacist: TrinaCell(value: it.pricePharmacist),
       },
     );
   }
 }
 
-class _CompaniesTab extends ConsumerStatefulWidget {
-  const _CompaniesTab();
+/// شركات الكتالوغ العام: بحث عن شركة ← قائمة شركات بعدد أدويتها ← أدوية
+/// الشركة كغريد. تُعرض كتبويب داخل شاشة «الشركات المصنعة».
+class CatalogCompaniesTab extends ConsumerStatefulWidget {
+  const CatalogCompaniesTab({super.key});
 
   @override
-  ConsumerState<_CompaniesTab> createState() => _CompaniesTabState();
+  ConsumerState<CatalogCompaniesTab> createState() => _CompaniesTabState();
 }
 
-class _CompaniesTabState extends ConsumerState<_CompaniesTab> {
+class _CompaniesTabState extends ConsumerState<CatalogCompaniesTab> {
   final _controller = TextEditingController();
   String _query = '';
 
@@ -379,67 +485,7 @@ class _ManufacturerItemsPage extends ConsumerWidget {
             onRetry: () => ref.invalidate(catalogByManufacturerProvider(name))),
         data: (items) => items.isEmpty
             ? const EmptyState(icon: Icons.medication_outlined, message: 'لا أدوية')
-            : ListView.separated(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                itemCount: items.length,
-                separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
-                itemBuilder: (_, i) => _CatalogTile(item: items[i]),
-              ),
-      ),
-    );
-  }
-}
-
-/// One catalog row — name, company, price (SYP). Opens the detail page.
-class _CatalogTile extends StatelessWidget {
-  const _CatalogTile({required this.item});
-  final CatalogItem item;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final semantic = context.semantic;
-    return Material(
-      color: theme.colorScheme.surface,
-      borderRadius: AppRadius.brMd,
-      child: ListTile(
-        shape: RoundedRectangleBorder(
-            borderRadius: AppRadius.brMd, side: BorderSide(color: semantic.border)),
-        leading: CircleAvatar(
-          backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.12),
-          child: Icon(Icons.medication_rounded, color: theme.colorScheme.primary),
-        ),
-        title: Text(item.displayName, maxLines: 1, overflow: TextOverflow.ellipsis),
-        subtitle: Text(
-          [
-            if (item.manufacturerName.isNotEmpty) item.manufacturerName,
-            if (item.genericName.isNotEmpty) item.genericName,
-          ].join(' · '),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.bodySmall?.copyWith(color: semantic.textSecondary),
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              item.pricePublic > 0
-                  ? Formatters.money(item.pricePublic, item.currencySymbol)
-                  : '—',
-              style: theme.textTheme.labelLarge?.copyWith(
-                  color: theme.colorScheme.primary, fontWeight: FontWeight.bold),
-            ),
-            IconButton(
-              tooltip: 'إضافة للمخزون',
-              visualDensity: VisualDensity.compact,
-              icon: const Icon(Icons.add_business_outlined),
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                  builder: (_) => AddCatalogToStockPage(item: item))),
-            ),
-          ],
-        ),
-        onTap: () => Navigator.of(context)
-            .push(MaterialPageRoute<void>(builder: (_) => CatalogDetailPage(item: item))),
+            : CatalogGrid(items: items),
       ),
     );
   }

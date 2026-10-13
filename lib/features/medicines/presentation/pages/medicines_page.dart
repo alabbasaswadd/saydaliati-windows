@@ -18,8 +18,10 @@ import 'package:saydaliati/shared/widgets/buttons/app_button.dart';
 import 'package:saydaliati/shared/widgets/dialogs/app_dialogs.dart';
 import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
+import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_search_field.dart';
 import 'package:saydaliati/shared/widgets/states/app_states.dart';
+import 'package:trina_grid/trina_grid.dart';
 
 /// Tab 2 — الأدوية. Cache-first catalog with search, a side filter drawer (by
 /// manufacturer), add/edit/delete, and an online-search fallback when the
@@ -33,6 +35,12 @@ class MedicinesPage extends ConsumerStatefulWidget {
 
 class _MedicinesPageState extends ConsumerState<MedicinesPage> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  /// مدير الشبكة + تعديلات الأسعار المعلّقة {medicineId: السعر الجديد} —
+  /// تُحفظ دفعة واحدة بزر الحفظ الخفيف أسفل الجدول.
+  TrinaGridStateManager? _gridManager;
+  final Map<String, double> _pendingPrices = {};
+  bool _savingPrices = false;
   String _query = '';
   String? _manufacturer; // selected company filter (null = all)
   List<Medicine>? _online; // online-search results for the current query
@@ -153,6 +161,7 @@ class _MedicinesPageState extends ConsumerState<MedicinesPage> {
       appBar: AppBar(
         title: const Text('أدويتي'),
         actions: [
+          AppGridColumnsButton(managerGetter: () => _gridManager),
           const NotificationBell(),
           IconButton(
             tooltip: 'تحديث أدويتي',
@@ -190,22 +199,31 @@ class _MedicinesPageState extends ConsumerState<MedicinesPage> {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(
                 AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.sm),
-            child: AppSearchField(
-              hint: AppStrings.searchMedicineHint,
-              debounce: const Duration(milliseconds: 250),
-              // A new query invalidates any previous online results.
-              onChanged: (v) => setState(() {
-                _query = v;
-                _online = null;
-              }),
+            child: Row(
+              children: [
+                Expanded(
+                  child: AppSearchField(
+                    hint: AppStrings.searchMedicineHint,
+                    debounce: const Duration(milliseconds: 250),
+                    // A new query invalidates any previous online results.
+                    onChanged: (v) => setState(() {
+                      _query = v;
+                      _online = null;
+                    }),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                // زر إضافة دواء بأسلوب سطح المكتب — بجانب البحث بدل الزر العائم.
+                FilledButton.icon(
+                  key: _addKey,
+                  onPressed: () => _openForm(),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('إضافة دواء'),
+                ),
+              ],
             ),
           ),
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        key: _addKey,
-        onPressed: () => _openForm(),
-        child: const Icon(Icons.add),
       ),
       body: RefreshIndicator(
         onRefresh: () => ref.refresh(medicineCatalogProvider.future),
@@ -250,31 +268,264 @@ class _MedicinesPageState extends ConsumerState<MedicinesPage> {
                   _activeFilterChip(context),
                 if (usingOnline) _onlineBanner(context),
                 Expanded(
-                  child: ListView.separated(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    itemCount: items.length,
-                    separatorBuilder: (_, _) =>
-                        const Divider(height: 1, indent: 56),
-                    itemBuilder: (context, i) {
-                      final m = items[i];
-                      return _MedicineTile(
-                        medicine: m,
-                        onOpen: () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => MedicineDetailPage(medicine: m),
-                          ),
-                        ),
-                        onEdit: () => _openForm(m),
-                        onDelete: () => _delete(m),
-                      );
-                    },
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    child: _medicinesGrid(items),
                   ),
                 ),
+                _pendingSaveBar(),
               ],
             );
           },
         ),
       ),
+    );
+  }
+
+  // ─── الغريد المعتمد مع تعديل السعر داخل الخلية ─────────────────────────────
+
+  static const _fId = 'id';
+  static const _fName = 'name';
+  static const _fCompany = 'company';
+  static const _fBarcode = 'barcode';
+  static const _fUnit = 'unit';
+  static const _fPrice = 'price';
+  static const _fCost = 'cost';
+  static const _fActions = 'actions';
+
+  Widget _medicinesGrid(List<Medicine> items) {
+    final byId = {for (final m in items) m.id: m};
+    return AppGrid(
+      key: ValueKey(items.length ^ items.hashCode),
+      columns: _columns(byId),
+      rows: [for (final m in items) _row(m)],
+      onLoaded: (m) => _gridManager = m,
+      onChanged: (e) => _onPriceCellChanged(e, byId),
+      onRowDoubleTap: (e) {
+        // نقرة مزدوجة على خلية السعر تبقى للتعديل، لا تفتح تفاصيل الدواء.
+        if (e.row.cells[_fPrice] == e.cell) return;
+        final m = byId[e.row.cells[_fId]?.value];
+        if (m != null) {
+          Navigator.of(context).push(MaterialPageRoute<void>(
+              builder: (_) => MedicineDetailPage(medicine: m)));
+        }
+      },
+      // الصفوف ذات تعديل سعر معلّق تُظلَّل بخفّة حتى الحفظ.
+      rowColorCallback: (ctx) {
+        final id = ctx.row.cells[_fId]?.value;
+        return _pendingPrices.containsKey(id)
+            ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.06)
+            : Colors.transparent;
+      },
+    );
+  }
+
+  void _onPriceCellChanged(TrinaGridOnChangedEvent e, Map<String, Medicine> byId) {
+    if (e.column.field != _fPrice) return;
+    final m = byId[e.row.cells[_fId]?.value];
+    if (m == null || m.units.isEmpty) return;
+    final unit =
+        m.units.firstWhere((u) => u.isDefault, orElse: () => m.units.first);
+    final v = e.value is num
+        ? (e.value as num).toDouble()
+        : double.tryParse(e.value?.toString() ?? '');
+    setState(() {
+      if (v == null || v < 0 || v == unit.salePrice) {
+        _pendingPrices.remove(m.id);
+      } else {
+        _pendingPrices[m.id] = v;
+      }
+    });
+  }
+
+  /// شريط حفظ خفيف يظهر فقط عند وجود تعديلات أسعار معلّقة.
+  Widget _pendingSaveBar() {
+    final theme = Theme.of(context);
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 180),
+      child: _pendingPrices.isEmpty
+          ? const SizedBox(width: double.infinity)
+          : Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                border: Border(top: BorderSide(color: theme.dividerColor)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.sell_outlined,
+                      size: 18, color: theme.colorScheme.primary),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text('${_pendingPrices.length} تعديل سعر غير محفوظ',
+                      style: theme.textTheme.bodyMedium),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: _savingPrices
+                        ? null
+                        : () => setState(() {
+                              _pendingPrices.clear();
+                              // إعادة بناء الشبكة تسترجع الأسعار الأصلية.
+                              ref.invalidate(medicineCatalogProvider);
+                            }),
+                    child: const Text('تجاهل'),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  FilledButton.icon(
+                    onPressed: _savingPrices ? null : _savePendingPrices,
+                    icon: _savingPrices
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.save_outlined, size: 16),
+                    label: const Text(AppStrings.save),
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
+
+  Future<void> _savePendingPrices() async {
+    final all = ref.read(medicineCatalogProvider).value ?? const <Medicine>[];
+    final byId = {for (final m in all) m.id: m};
+    setState(() => _savingPrices = true);
+    final repo = ref.read(medicineRepositoryProvider);
+    var failures = 0;
+    for (final entry in _pendingPrices.entries) {
+      final m = byId[entry.key];
+      if (m == null || m.units.isEmpty) continue;
+      final unit =
+          m.units.firstWhere((u) => u.isDefault, orElse: () => m.units.first);
+      final res = await repo.updatePrices(m.id, {unit.unitId: entry.value});
+      res.fold((_) {}, (_) => failures++);
+    }
+    if (!mounted) return;
+    setState(() {
+      _savingPrices = false;
+      _pendingPrices.clear();
+    });
+    ref.invalidate(medicineCatalogProvider);
+    if (failures == 0) {
+      AppSnackbar.success(context, AppStrings.updatedSuccess);
+    } else {
+      AppSnackbar.error(context, 'تعذّر حفظ $failures من التعديلات');
+    }
+  }
+
+  List<TrinaColumn> _columns(Map<String, Medicine> byId) {
+    return [
+      appGridTextColumn(AppStrings.medicineName, _fName, width: 240),
+      appGridTextColumn('الشركة', _fCompany, width: 150),
+      appGridTextColumn('الباركود', _fBarcode, width: 130, hide: true),
+      appGridTextColumn(AppStrings.unitLabel, _fUnit, width: 100),
+      // سعر البيع — قابل للتعديل داخل الخلية (الوحدة الافتراضية).
+      TrinaColumn(
+        title: AppStrings.price,
+        field: _fPrice,
+        type: TrinaColumnType.number(
+          format: '#,##0.##',
+          locale: 'en',
+          applyFormatOnInit: false,
+        ),
+        width: 120,
+        textAlign: TrinaColumnTextAlign.center,
+        enableEditingMode: true,
+        checkReadOnly: (row, cell) =>
+            byId[row.cells[_fId]?.value]?.units.isEmpty ?? true,
+        renderer: (ctx) {
+          final id = ctx.row.cells[_fId]?.value;
+          final pending = _pendingPrices.containsKey(id);
+          final v = ctx.cell.value;
+          final n = v is num ? v.toDouble() : 0.0;
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Directionality(
+                textDirection: TextDirection.ltr,
+                child: Text(
+                  n > 0 ? Formatters.number(n) : '—',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: pending
+                        ? Theme.of(context).colorScheme.primary
+                        : null,
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Icon(Icons.edit_outlined,
+                  size: 13,
+                  color: pending
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).hintColor),
+            ],
+          );
+        },
+      ),
+      appGridNumberColumn(AppStrings.costShort, _fCost,
+          width: 110, hide: true),
+      TrinaColumn(
+        title: '',
+        field: _fActions,
+        type: TrinaColumnType.text(),
+        width: 120,
+        enableEditingMode: false,
+        enableContextMenu: false,
+        enableFilterMenuItem: false,
+        enableSorting: false,
+        renderer: (ctx) {
+          final m = byId[ctx.row.cells[_fId]?.value];
+          if (m == null) return const SizedBox.shrink();
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.info_outline, size: 16),
+                visualDensity: VisualDensity.compact,
+                tooltip: AppStrings.details,
+                onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                        builder: (_) => MedicineDetailPage(medicine: m))),
+              ),
+              IconButton(
+                icon: const Icon(Icons.edit_outlined, size: 16),
+                visualDensity: VisualDensity.compact,
+                tooltip: AppStrings.edit,
+                onPressed: () => _openForm(m),
+              ),
+              IconButton(
+                icon: Icon(Icons.delete_outline,
+                    size: 16, color: Theme.of(context).colorScheme.error),
+                visualDensity: VisualDensity.compact,
+                tooltip: AppStrings.delete,
+                onPressed: () => _delete(m),
+              ),
+            ],
+          );
+        },
+      ),
+      TrinaColumn(
+          title: '', field: _fId, type: TrinaColumnType.text(), hide: true),
+    ];
+  }
+
+  TrinaRow<dynamic> _row(Medicine m) {
+    final unit = m.units.isEmpty
+        ? null
+        : m.units.firstWhere((u) => u.isDefault, orElse: () => m.units.first);
+    return TrinaRow(
+      cells: {
+        _fId: TrinaCell(value: m.id),
+        _fName: TrinaCell(value: m.displayName),
+        _fCompany: TrinaCell(value: m.manufacturerName ?? ''),
+        _fBarcode: TrinaCell(value: m.barcode),
+        _fUnit: TrinaCell(value: unit?.unitName ?? ''),
+        _fPrice: TrinaCell(
+            value: _pendingPrices[m.id] ?? unit?.salePrice ?? 0),
+        _fCost: TrinaCell(value: m.purchaseCost),
+      },
     );
   }
 
@@ -507,81 +758,6 @@ class _ManufacturerFilterDrawerState extends State<_ManufacturerFilterDrawer> {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _MedicineTile extends StatelessWidget {
-  const _MedicineTile({
-    required this.medicine,
-    required this.onOpen,
-    required this.onEdit,
-    required this.onDelete,
-  });
-
-  final Medicine medicine;
-  final VoidCallback onOpen;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final price = medicine.units.isNotEmpty
-        ? Formatters.money(medicine.units.first.salePrice)
-        : '—';
-    return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.12),
-        child: Icon(Icons.medication_outlined, color: theme.colorScheme.primary),
-      ),
-      title: Text(medicine.displayName, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            [
-              if (medicine.genericName.isNotEmpty) medicine.genericName,
-              if (medicine.barcode.isNotEmpty) medicine.barcode,
-            ].join('  •  '),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          if ((medicine.manufacturerName ?? '').trim().isNotEmpty)
-            Row(
-              children: [
-                Icon(Icons.factory_outlined, size: 13, color: theme.hintColor),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    medicine.manufacturerName!.trim(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: theme.colorScheme.primary),
-                  ),
-                ),
-              ],
-            ),
-        ],
-      ),
-      onTap: onOpen,
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(price, style: theme.textTheme.titleSmall),
-          PopupMenuButton<String>(
-            onSelected: (v) {
-              if (v == 'edit') onEdit();
-              if (v == 'delete') onDelete();
-            },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'edit', child: Text(AppStrings.edit)),
-              PopupMenuItem(value: 'delete', child: Text(AppStrings.delete)),
-            ],
-          ),
-        ],
       ),
     );
   }

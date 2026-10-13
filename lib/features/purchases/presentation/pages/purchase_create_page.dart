@@ -25,7 +25,8 @@ import 'package:saydaliati/shared/widgets/buttons/app_button.dart';
 import 'package:saydaliati/shared/widgets/cards/app_cards.dart';
 import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
-import 'package:saydaliati/shared/widgets/grids/app_editable_grid.dart';
+import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
+import 'package:trina_grid/trina_grid.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_dropdown.dart';
 import 'package:saydaliati/services/barcode_scanner.dart';
 
@@ -374,147 +375,323 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
     }
   }
 
-  /// Invoice lines as the project-wide editable grid (same style as the
-  /// expiry grid). Columns edit in place: unit, cost, qty, expiry, barcode.
-  /// A `null` row is the always-present trailing "new row" — the medicine is
-  /// picked INSIDE its cell (wakeed-style).
+  // ─── جدول الفاتورة: غريد Trina حقيقي (نفس أسلوب فاتورة المبيعات) ──────────
+
+  static const _fId = 'id';
+  static const _fMed = 'med';
+  static const _fUnit = 'unit';
+  static const _fCost = 'cost';
+  static const _fQty = 'qty';
+  static const _fExpiry = 'expiry';
+  static const _fBarcode = 'barcode';
+  static const _fTotal = 'total';
+  static const _fDel = 'del';
+  static const _newRowId = '__new__';
+
+  String _lineId(_PurLine l) => identityHashCode(l).toString();
+
+  /// بصمة بنيوية للأسطر: أي تغيير يعيد بناء الشبكة بقيم محدّثة
+  /// (التحرير داخل الخلية يلتزم عند الخروج منها).
+  Key _gridKey() => ValueKey(Object.hashAll([
+        for (final l in _lines) ...[
+          identityHashCode(l),
+          l.unitId,
+          l.price.text,
+          l.qty.text,
+          l.expiry,
+          l.scannedBarcode,
+        ],
+      ]));
+
   Widget _linesGrid(List<Medicine> catalog) {
+    final theme = Theme.of(context);
     // عمود الباركود يظهر فقط إذا كان في الفاتورة دواء بلا باركود.
     final needsBarcode = _lines.any((l) => l.medicine.barcode.isEmpty);
-    final rows = <_PurLine?>[..._lines, null];
-    return AppEditableGrid<_PurLine?>(
-      rows: rows,
-      minWidth: needsBarcode ? 860 : 720,
-      canDeleteRow: (l) => l != null,
-      onDeleteRow: (line, _) {
-        if (line == null) return;
-        setState(() {
-          _lines.remove(line);
-          line.dispose();
-        });
-      },
+    final byId = {for (final l in _lines) _lineId(l): l};
+
+    bool isNewRow(TrinaRow<dynamic> row) => row.cells[_fId]?.value == _newRowId;
+    _PurLine? lineOf(TrinaRow<dynamic> row) => byId[row.cells[_fId]?.value];
+
+    return AppGrid(
+      key: _gridKey(),
+      showColumnFilter: false,
       columns: [
-        AppGridColumn(
-          label: AppStrings.medicineName,
-          flex: 3,
-          cellBuilder: (_, l, _) => AppGridPickerCell(
-            text: l?.medicine.displayName,
-            hint: l == null ? 'اختر مادة…' : null,
-            emphasizedHint: l == null,
-            onPick: () => _pickMedicineForLine(catalog, l),
-          ),
-        ),
-        AppGridColumn(
-          label: AppStrings.unitLabel,
-          flex: 2,
-          cellBuilder: (_, l, _) => l == null
-              ? const SizedBox.shrink()
-              : AppGridDropdownCell<String>(
-                  value: l.unitId,
-                  items: [
-                    for (final u in l.medicine.units) (u.unitId, u.unitName),
-                  ],
-                  onChanged: (v) => setState(() => l.unitId = v ?? l.unitId),
+        TrinaColumn(
+          title: AppStrings.medicineName,
+          field: _fMed,
+          type: TrinaColumnType.text(),
+          width: 240,
+          enableEditingMode: false,
+          renderer: (ctx) {
+            if (isNewRow(ctx.row)) {
+              return Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: TextButton.icon(
+                  onPressed: () => _pickMedicineForLine(catalog, null),
+                  icon: const Icon(Icons.add_circle_outline, size: 16),
+                  label: const Text('اختر مادة…'),
                 ),
+              );
+            }
+            final l = lineOf(ctx.row);
+            if (l == null) return const SizedBox.shrink();
+            return InkWell(
+              onTap: () => _pickMedicineForLine(catalog, l),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(l.medicine.displayName,
+                        overflow: TextOverflow.ellipsis),
+                  ),
+                  Icon(Icons.edit_outlined, size: 13, color: theme.hintColor),
+                ],
+              ),
+            );
+          },
         ),
-        AppGridColumn(
-          label: AppStrings.unitCost,
-          flex: 2,
-          cellBuilder: (_, l, _) => l == null
-              ? const SizedBox.shrink()
-              : AppGridNumberCell(
-                  controller: l.price,
-                  onChanged: (_) => setState(() {}),
-                ),
+        TrinaColumn(
+          title: AppStrings.unitLabel,
+          field: _fUnit,
+          type: TrinaColumnType.text(),
+          width: 120,
+          enableEditingMode: false,
+          renderer: (ctx) {
+            final l = lineOf(ctx.row);
+            if (l == null) return const SizedBox.shrink();
+            return PopupMenuButton<String>(
+              tooltip: AppStrings.unitLabel,
+              onSelected: (v) => setState(() => l.unitId = v),
+              itemBuilder: (_) => [
+                for (final u in l.medicine.units)
+                  PopupMenuItem(value: u.unitId, child: Text(u.unitName)),
+              ],
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(ctx.cell.value?.toString() ?? '',
+                        overflow: TextOverflow.ellipsis),
+                  ),
+                  Icon(Icons.arrow_drop_down, size: 16, color: theme.hintColor),
+                ],
+              ),
+            );
+          },
         ),
-        AppGridColumn(
-          label: AppStrings.quantity,
-          flex: 2,
-          cellBuilder: (_, l, _) => l == null
-              ? const SizedBox.shrink()
-              : AppGridNumberCell(
-                  controller: l.qty,
-                  onChanged: (_) => setState(() {}),
-                ),
+        TrinaColumn(
+          title: AppStrings.unitCost,
+          field: _fCost,
+          type: TrinaColumnType.number(
+              format: '#,##0.##', locale: 'en', applyFormatOnInit: false),
+          width: 110,
+          textAlign: TrinaColumnTextAlign.center,
+          enableEditingMode: true,
+          checkReadOnly: (row, cell) => isNewRow(row),
         ),
-        AppGridColumn(
-          label: AppStrings.expiryDateLabel,
-          flex: 3,
-          cellBuilder: (_, l, _) => l == null
-              ? const SizedBox.shrink()
-              : AppGridDateCell(
-                  value: l.expiry,
-                  hint: AppStrings.expirationDate,
-                  onChanged: (d) => setState(() => l.expiry = d),
-                ),
+        TrinaColumn(
+          title: AppStrings.quantity,
+          field: _fQty,
+          type: TrinaColumnType.number(
+              format: '#,##0.##', locale: 'en', applyFormatOnInit: false),
+          width: 95,
+          textAlign: TrinaColumnTextAlign.center,
+          enableEditingMode: true,
+          checkReadOnly: (row, cell) => isNewRow(row),
+        ),
+        TrinaColumn(
+          title: AppStrings.expiryDateLabel,
+          field: _fExpiry,
+          type: TrinaColumnType.text(),
+          width: 130,
+          enableEditingMode: false,
+          renderer: (ctx) {
+            final l = lineOf(ctx.row);
+            if (l == null) return const SizedBox.shrink();
+            return InkWell(
+              onTap: () async {
+                final now = DateTime.now();
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: l.expiry ?? now,
+                  firstDate: DateTime(now.year - 5),
+                  lastDate: DateTime(now.year + 15),
+                );
+                if (picked != null) setState(() => l.expiry = picked);
+              },
+              child: Row(
+                children: [
+                  Icon(Icons.event_outlined,
+                      size: 14, color: theme.hintColor),
+                  const SizedBox(width: AppSpacing.xs),
+                  Expanded(
+                    child: Text(
+                      ctx.cell.value?.toString().isNotEmpty == true
+                          ? ctx.cell.value.toString()
+                          : AppStrings.expirationDate,
+                      overflow: TextOverflow.ellipsis,
+                      style: ctx.cell.value?.toString().isNotEmpty == true
+                          ? null
+                          : TextStyle(
+                              color: theme.hintColor, fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
         if (needsBarcode)
-          AppGridColumn(
-            label: 'الباركود',
-            flex: 2,
-            cellBuilder: (_, l, _) => l == null
-                ? const SizedBox.shrink()
-                : l.medicine.barcode.isEmpty
-                    ? AppGridTextCell(
-                        controller: l.barcodeCtrl,
-                        hint: 'امسح أو أدخِل',
-                        onChanged: (v) => l.scannedBarcode =
-                            v.trim().isEmpty ? null : v.trim(),
-                      )
-                    : const AppGridText('—', secondary: true),
+          TrinaColumn(
+            title: 'الباركود',
+            field: _fBarcode,
+            type: TrinaColumnType.text(),
+            width: 130,
+            enableEditingMode: true,
+            // يُحرَّر فقط لدواء بلا باركود.
+            checkReadOnly: (row, cell) {
+              if (isNewRow(row)) return true;
+              final l = lineOf(row);
+              return l == null || l.medicine.barcode.isNotEmpty;
+            },
           ),
-        AppGridColumn(
-          label: AppStrings.total,
-          flex: 2,
-          alignEnd: true,
-          cellBuilder: (_, l, _) => l == null
-              ? const SizedBox.shrink()
-              : AppGridText(Formatters.number(l.lineTotal), emphasized: true),
+        appGridNumberColumn(AppStrings.total, _fTotal, width: 120,
+            renderer: (ctx) {
+          if (isNewRow(ctx.row)) return const SizedBox.shrink();
+          final v = ctx.cell.value;
+          final n = v is num ? v.toDouble() : 0.0;
+          return Directionality(
+            textDirection: TextDirection.ltr,
+            child: Text(
+              Formatters.number(n),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          );
+        }),
+        TrinaColumn(
+          title: '',
+          field: _fDel,
+          type: TrinaColumnType.text(),
+          width: 50,
+          enableEditingMode: false,
+          enableContextMenu: false,
+          enableFilterMenuItem: false,
+          enableSorting: false,
+          renderer: (ctx) {
+            final l = lineOf(ctx.row);
+            if (l == null) return const SizedBox.shrink();
+            return IconButton(
+              icon: Icon(Icons.delete_outline,
+                  size: 16, color: theme.colorScheme.error),
+              visualDensity: VisualDensity.compact,
+              tooltip: AppStrings.delete,
+              onPressed: () => setState(() {
+                _lines.remove(l);
+                l.dispose();
+              }),
+            );
+          },
         ),
+        TrinaColumn(
+            title: '', field: _fId, type: TrinaColumnType.text(), hide: true),
       ],
+      rows: [
+        for (final l in _lines)
+          TrinaRow(cells: {
+            _fId: TrinaCell(value: _lineId(l)),
+            _fMed: TrinaCell(value: l.medicine.displayName),
+            _fUnit: TrinaCell(
+                value: l.medicine.units
+                        .where((u) => u.unitId == l.unitId)
+                        .map((u) => u.unitName)
+                        .firstOrNull ??
+                    ''),
+            _fCost: TrinaCell(
+                value: double.tryParse(l.price.text.trim()) ?? ''),
+            _fQty: TrinaCell(value: double.tryParse(l.qty.text.trim()) ?? ''),
+            _fExpiry: TrinaCell(
+                value: l.expiry != null ? _ymd(l.expiry!) : ''),
+            if (needsBarcode)
+              _fBarcode: TrinaCell(
+                  value: l.medicine.barcode.isNotEmpty
+                      ? l.medicine.barcode
+                      : (l.scannedBarcode ?? '')),
+            _fTotal: TrinaCell(value: l.lineTotal),
+            _fDel: TrinaCell(value: ''),
+          }),
+        // صف الإضافة الدائم.
+        TrinaRow(cells: {
+          _fId: TrinaCell(value: _newRowId),
+          _fMed: TrinaCell(value: ''),
+          _fUnit: TrinaCell(value: ''),
+          _fCost: TrinaCell(value: ''),
+          _fQty: TrinaCell(value: ''),
+          _fExpiry: TrinaCell(value: ''),
+          if (needsBarcode) _fBarcode: TrinaCell(value: ''),
+          _fTotal: TrinaCell(value: ''),
+          _fDel: TrinaCell(value: ''),
+        }),
+      ],
+      onChanged: (e) {
+        final l = lineOf(e.row);
+        if (l == null) return;
+        setState(() {
+          switch (e.column.field) {
+            case _fCost:
+              final v = e.value is num
+                  ? (e.value as num).toDouble()
+                  : double.tryParse(e.value?.toString() ?? '');
+              if (v != null && v >= 0) l.price.text = _plainNum(v);
+            case _fQty:
+              final v = e.value is num
+                  ? (e.value as num).toDouble()
+                  : double.tryParse(e.value?.toString() ?? '');
+              if (v != null && v > 0) l.qty.text = _plainNum(v);
+            case _fBarcode:
+              final s = e.value?.toString().trim() ?? '';
+              l.barcodeCtrl.text = s;
+              l.scannedBarcode = s.isEmpty ? null : s;
+          }
+        });
+      },
     );
   }
+
+  static String _ymd(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
   Widget _summaryBar(String code, String? warehouseId, Currency? base) {
     final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      // شريط ملخص بأسلوب سطح المكتب (مطابق لفاتورة المبيعات).
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg, vertical: AppSpacing.md),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         border: Border(top: BorderSide(color: context.semantic.border)),
       ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(AppStrings.total,
-                          style: theme.textTheme.bodySmall),
-                      Text(
-                          Formatters.money(_total, code),
-                          style: theme.textTheme.headlineSmall
-                              ?.copyWith(fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: AppButton.primary(
-                    label: _saving ? AppStrings.saving : AppStrings.save,
-                    isLoading: _saving,
-                    onPressed: () => _save(warehouseId, base),
-                  ),
-                ),
-              ],
+      child: Row(
+        children: [
+          Text(AppStrings.total, style: theme.textTheme.bodyMedium),
+          const SizedBox(width: AppSpacing.sm),
+          Text(
+            Formatters.money(_total, code),
+            style: theme.textTheme.titleLarge
+                ?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const Spacer(),
+          SizedBox(
+            width: 180,
+            child: AppButton.primary(
+              label: _saving ? AppStrings.saving : AppStrings.save,
+              icon: Icons.save_outlined,
+              isLoading: _saving,
+              onPressed: () => _save(warehouseId, base),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

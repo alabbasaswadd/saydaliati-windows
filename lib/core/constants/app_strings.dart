@@ -75,6 +75,8 @@ abstract final class AppStrings {
   static const String costOfGoods = 'تكلفة المبيعات';
   static const String grossProfit = 'الربح الإجمالي';
   // Tree-grid reports (sales/purchases)
+  static const String unitPriceColumn = 'الإفرادي';
+  static const String piecesCountColumn = 'عدد القطع';
   static const String discountShort = 'الحسم';
   static const String marginLabel = 'الهامش';
   static const String estimatedCost = 'كلفة تقديرية';

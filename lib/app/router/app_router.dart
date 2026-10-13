@@ -27,7 +27,6 @@ import 'package:saydaliati/features/reports/presentation/pages/inventory_report_
 import 'package:saydaliati/features/reports/presentation/pages/prescriptions_report_page.dart';
 import 'package:saydaliati/features/reports/presentation/pages/profit_report_page.dart';
 import 'package:saydaliati/features/reports/presentation/pages/purchases_report_page.dart';
-import 'package:saydaliati/features/reports/presentation/pages/reports_hub_page.dart';
 import 'package:saydaliati/features/reports/presentation/pages/sales_report_page.dart';
 import 'package:saydaliati/features/reports/presentation/pages/stocktake_report_page.dart';
 import 'package:saydaliati/features/sales/presentation/pages/sales_page.dart';
@@ -143,47 +142,41 @@ GoRouter goRouter(Ref ref) {
           branch(AppRoutes.units, const UnitsPage()),
           branch(AppRoutes.currencies, const CurrenciesPage()),
 
-          // ── Reports hub (index 13) ─────────────────────────────────────
-          // Individual reports are NESTED routes so they render inside the
-          // shell (sidebar stays visible + highlighted on "reports").
+          // ── Reports (index 13) ─────────────────────────────────────────
+          // مسارات شقيقة (لا تداخل ولا صفحة مركز): `go` بينها يستبدل الصفحة
+          // فلا مكدس ولا سهم رجوع، والشريط الجانبي يظلّل التقرير المفتوح.
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: AppRoutes.reports,
-                builder: (c, s) => const ReportsHubPage(),
-                routes: [
-                  GoRoute(
-                    path: 'sales',
-                    builder: (c, s) =>
-                        SalesReportPage(initialPeriod: ReportPeriod.month()),
-                  ),
-                  GoRoute(
-                    path: 'profit',
-                    builder: (c, s) =>
-                        ProfitReportPage(initialPeriod: ReportPeriod.month()),
-                  ),
-                  GoRoute(
-                    path: 'purchases',
-                    builder: (c, s) => PurchasesReportPage(
-                        initialPeriod: ReportPeriod.month()),
-                  ),
-                  GoRoute(
-                    path: 'inventory',
-                    builder: (c, s) => const InventoryReportPage(),
-                  ),
-                  GoRoute(
-                    path: 'expiry',
-                    builder: (c, s) => const ExpiryReportPage(),
-                  ),
-                  GoRoute(
-                    path: 'stocktake',
-                    builder: (c, s) => const StocktakeReportPage(),
-                  ),
-                  GoRoute(
-                    path: 'prescriptions',
-                    builder: (c, s) => const PrescriptionsReportPage(),
-                  ),
-                ],
+                path: AppRoutes.salesReport,
+                builder: (c, s) =>
+                    SalesReportPage(initialPeriod: ReportPeriod.month()),
+              ),
+              GoRoute(
+                path: AppRoutes.profitReport,
+                builder: (c, s) =>
+                    ProfitReportPage(initialPeriod: ReportPeriod.month()),
+              ),
+              GoRoute(
+                path: AppRoutes.purchasesReport,
+                builder: (c, s) =>
+                    PurchasesReportPage(initialPeriod: ReportPeriod.month()),
+              ),
+              GoRoute(
+                path: AppRoutes.inventoryReport,
+                builder: (c, s) => const InventoryReportPage(),
+              ),
+              GoRoute(
+                path: AppRoutes.expiryReport,
+                builder: (c, s) => const ExpiryReportPage(),
+              ),
+              GoRoute(
+                path: AppRoutes.stocktakeReport,
+                builder: (c, s) => const StocktakeReportPage(),
+              ),
+              GoRoute(
+                path: AppRoutes.prescriptionsReport,
+                builder: (c, s) => const PrescriptionsReportPage(),
               ),
             ],
           ),

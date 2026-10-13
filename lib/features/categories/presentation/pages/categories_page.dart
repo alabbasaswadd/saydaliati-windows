@@ -3,11 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/features/categories/category_providers.dart';
 import 'package:saydaliati/features/categories/domain/entities/category.dart';
-import 'package:saydaliati/shared/widgets/async_list_view.dart';
 import 'package:saydaliati/shared/widgets/dialogs/app_dialogs.dart';
 import 'package:saydaliati/shared/widgets/dialogs/entity_form_dialog.dart';
 import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
+import 'package:saydaliati/shared/widgets/grids/simple_entity_grid.dart';
+import 'package:saydaliati/shared/widgets/states/app_states.dart';
 
 /// Categories management — list + add/edit/delete. Online-only writes.
 class CategoriesPage extends ConsumerWidget {
@@ -77,66 +78,38 @@ class CategoriesPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(categoriesProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text(AppStrings.categories)),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _addOrEdit(context, ref),
-        child: const Icon(Icons.add),
-      ),
-      body: AsyncListView<Category>(
-        value: async,
-        emptyMessage: AppStrings.noCategories,
-        onRefresh: () => ref.refresh(categoriesProvider.future),
-        itemBuilder: (context, c) {
-          final theme = Theme.of(context);
-          return Card(
-            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.12),
-                child: Icon(Icons.category_outlined,
-                    color: theme.colorScheme.primary),
-              ),
-              title: Text(c.categoryName,
-                  style:
-                      theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
-              subtitle: c.description.isEmpty ? null : Text(c.description,
-                  maxLines: 1, overflow: TextOverflow.ellipsis),
-              onTap: () => _addOrEdit(context, ref, c),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _countBadge(theme, c.medicinesCount),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline),
-                    tooltip: AppStrings.delete,
-                    onPressed: () => _delete(context, ref, c),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _countBadge(ThemeData theme, int count) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.medication_outlined,
-              size: 14, color: theme.colorScheme.primary),
-          const SizedBox(width: 4),
-          Text('$count ${AppStrings.medicinesUnit}',
-              style: theme.textTheme.labelMedium
-                  ?.copyWith(color: theme.colorScheme.primary)),
+      appBar: AppBar(
+        title: const Text(AppStrings.categories),
+        actions: [
+          IconButton(
+            tooltip: AppStrings.addNew,
+            icon: const Icon(Icons.add),
+            onPressed: () => _addOrEdit(context, ref),
+          ),
         ],
+      ),
+      body: async.when(
+        loading: () => const LoadingState(),
+        error: (e, _) => ErrorState.fromError(e,
+            onRetry: () => ref.invalidate(categoriesProvider)),
+        data: (items) => items.isEmpty
+            ? const EmptyState(message: AppStrings.noCategories)
+            : SimpleEntityGrid<Category>(
+                items: items,
+                idOf: (c) => c.id,
+                columns: [
+                  SimpleEntityColumn(
+                      AppStrings.categoryName, (c) => c.categoryName,
+                      width: 220),
+                  SimpleEntityColumn(AppStrings.description, (c) => c.description,
+                      width: 260),
+                  SimpleEntityColumn(AppStrings.medicinesUnit,
+                      (c) => '${c.medicinesCount}',
+                      width: 90),
+                ],
+                onEdit: (c) => _addOrEdit(context, ref, c),
+                onDelete: (c) => _delete(context, ref, c),
+              ),
       ),
     );
   }

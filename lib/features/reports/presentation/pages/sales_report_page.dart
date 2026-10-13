@@ -1,18 +1,22 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
+import 'package:saydaliati/core/theme/app_semantic_colors.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/features/reports/domain/entities/sales_grid.dart';
 import 'package:saydaliati/features/reports/domain/report_period.dart';
-import 'package:saydaliati/features/reports/presentation/widgets/report_list.dart';
 import 'package:saydaliati/features/reports/presentation/widgets/report_scaffold.dart';
 import 'package:saydaliati/features/reports/report_providers.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
+import 'package:saydaliati/shared/widgets/cards/stat_chips_bar.dart';
+import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
 import 'package:saydaliati/shared/widgets/states/app_states.dart';
+import 'package:trina_grid/trina_grid.dart';
 
-/// Sales report — a tree grid only (no page stats): each parent row is an
-/// invoice (number, date, customer, total + profit); expanding it shows its
-/// line items. Filtered by the period selector. Profit (green) / loss (red).
+/// Sales report — a REAL tree grid (TrinaGrid): each parent row is an invoice
+/// (number, date, customer, payment, cost, profit, margin, total); expanding
+/// it shows its line items. Per-column "contains" filters under the headers,
+/// sortable columns, and a stat-chips strip on top. Wakeed-style.
 class SalesReportPage extends ConsumerStatefulWidget {
   const SalesReportPage({required this.initialPeriod, super.key});
 
@@ -24,6 +28,23 @@ class SalesReportPage extends ConsumerStatefulWidget {
 
 class _SalesReportPageState extends ConsumerState<SalesReportPage> {
   late ReportPeriod _period = widget.initialPeriod;
+
+  /// مدير الشبكة — لفتح نافذة إظهار/إخفاء الأعمدة من زر «الأعمدة».
+  TrinaGridStateManager? _gridManager;
+
+  // Column field keys.
+  static const _fInvoice = 'invoice';
+  static const _fDate = 'date';
+  static const _fParty = 'party';
+  static const _fPayment = 'payment';
+  static const _fCurrency = 'currency';
+  static const _fUnitPrice = 'unitPrice';
+  static const _fQty = 'qty';
+  static const _fDiscount = 'discount';
+  static const _fCost = 'cost';
+  static const _fProfit = 'profit';
+  static const _fMargin = 'margin';
+  static const _fTotal = 'total';
 
   @override
   Widget build(BuildContext context) {
@@ -48,72 +69,210 @@ class _SalesReportPageState extends ConsumerState<SalesReportPage> {
     );
   }
 
-  Widget _content(BuildContext context, List<SalesGridInvoice> rows) {
-    return ListView(
+  Widget _content(BuildContext context, List<SalesGridInvoice> invoices) {
+    if (invoices.isEmpty) {
+      return const EmptyState(
+        icon: Icons.point_of_sale_outlined,
+        message: AppStrings.noDataForPeriod,
+      );
+    }
+    final theme = Theme.of(context);
+    final sym = invoices.first.currencySymbol.isNotEmpty
+        ? invoices.first.currencySymbol
+        : invoices.first.currencyCode;
+
+    final totalRevenue = invoices.fold<double>(0, (s, i) => s + i.totalAmount);
+    final totalProfit = invoices.fold<double>(0, (s, i) => s + i.profit);
+    final totalCost = invoices.fold<double>(0, (s, i) => s + i.cost);
+    final profitColor =
+        totalProfit >= 0 ? Colors.green.shade700 : Colors.red.shade700;
+
+    return Padding(
       padding: const EdgeInsets.all(AppSpacing.lg),
-      children: [
-        ReportList(
-          emptyMessage: AppStrings.noDataForPeriod,
-          items: [for (final inv in rows) _invoiceItem(context, inv)],
-        ),
-      ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(child: _statsBar(profitColor, theme,
+                  totalProfit: totalProfit,
+                  totalRevenue: totalRevenue,
+                  totalCost: totalCost,
+                  count: invoices.length,
+                  sym: sym)),
+              const SizedBox(width: AppSpacing.sm),
+              AppGridColumnsButton(managerGetter: () => _gridManager),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Expanded(
+            child: AppGrid(
+              tree: true,
+              columns: _columns(context),
+              rows: [for (final inv in invoices) _invoiceRow(inv)],
+              onLoaded: (m) => _gridManager = m,
+              // بيع بخسارة → تظليل تحذيري خفيف على صف الفاتورة.
+              rowColorCallback: (ctx) {
+                final profit = ctx.row.cells[_fProfit]?.value;
+                if (profit is num && profit < 0) {
+                  return context.semantic.warning.withValues(alpha: 0.07);
+                }
+                return Colors.transparent;
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  ReportItem _invoiceItem(BuildContext context, SalesGridInvoice inv) {
-    final sym = _symbol(inv.currencySymbol, inv.currencyCode);
-    final profitColor =
-        inv.profit >= 0 ? Colors.green.shade700 : Colors.red.shade700;
+  Widget _statsBar(Color profitColor, ThemeData theme,
+      {required double totalProfit,
+      required double totalRevenue,
+      required double totalCost,
+      required int count,
+      required String sym}) {
+    return StatChipsBar(chips: [
+            StatChip(
+              label: AppStrings.grossProfit,
+              value: Formatters.money(totalProfit, sym),
+              icon: Icons.trending_up_outlined,
+              color: profitColor,
+            ),
+            StatChip(
+              label: AppStrings.totalRevenue,
+              value: Formatters.money(totalRevenue, sym),
+              icon: Icons.payments_outlined,
+            ),
+            StatChip(
+              label: AppStrings.costOfGoods,
+              value: Formatters.money(totalCost, sym),
+              icon: Icons.shopping_bag_outlined,
+              color: theme.colorScheme.secondary,
+            ),
+            StatChip(
+              label: AppStrings.invoicesCount,
+              value: Formatters.integer(count),
+              icon: Icons.receipt_long_outlined,
+            ),
+          ]);
+  }
 
-    final fields = <ReportField>[
-      ReportField(AppStrings.paymentMethod, _payLabel(inv.paymentMethod)),
-      ReportField(AppStrings.profitLabel, Formatters.money(inv.profit, sym),
-          color: profitColor),
-      ReportField(AppStrings.marginLabel, '${Formatters.number(inv.profitMargin)}%',
-          color: profitColor),
-      ReportField(AppStrings.costShort, Formatters.money(inv.cost, sym)),
-      if (inv.discountAmount > 0)
-        ReportField(
-            AppStrings.discountShort, Formatters.money(inv.discountAmount, sym)),
-      if (inv.warehouseName.isNotEmpty)
-        ReportField(AppStrings.warehouseColumn, inv.warehouseName),
-      if (inv.originalCurrencyCode.isNotEmpty &&
-          inv.originalCurrencyCode != inv.currencyCode)
-        ReportField(AppStrings.exchangeRateLabel,
-            '${inv.originalCurrencyCode} × ${Formatters.number(inv.originalExchangeRate)}'),
-      if (inv.costMissing) const ReportField(AppStrings.estimatedCost, '•'),
+  List<TrinaColumn> _columns(BuildContext context) {
+    return [
+      // فاتورة/الدواء، ثم الإفرادي وعدد القطع والإجمالي متتالية بعده مباشرة.
+      appGridTextColumn(AppStrings.invoiceLabel, _fInvoice, width: 170),
+      appGridNumberColumn(AppStrings.unitPriceColumn, _fUnitPrice, width: 100),
+      appGridNumberColumn(AppStrings.piecesCountColumn, _fQty, width: 95),
+      appGridNumberColumn(AppStrings.total, _fTotal,
+          width: 120, renderer: (ctx) => _totalCell(context, ctx)),
+      appGridTextColumn(AppStrings.dateColumn, _fDate,
+          width: 105, textAlign: TrinaColumnTextAlign.center),
+      appGridTextColumn('العميل / البيان', _fParty, width: 180),
+      // مخفيان افتراضياً — يُظهَران من زر «الأعمدة» أو قائمة رأس العمود.
+      appGridTextColumn(AppStrings.paymentMethod, _fPayment,
+          width: 110, hide: true),
+      appGridTextColumn(AppStrings.filterByCurrency, _fCurrency,
+          width: 90, hide: true, textAlign: TrinaColumnTextAlign.center),
+      appGridNumberColumn(AppStrings.discountShort, _fDiscount, width: 90),
+      appGridNumberColumn(AppStrings.costShort, _fCost,
+          width: 110, hide: true),
+      appGridNumberColumn(AppStrings.profitShort, _fProfit,
+          width: 110, renderer: (ctx) => _signedCell(context, ctx)),
+      appGridNumberColumn(AppStrings.marginLabel, _fMargin,
+          width: 85,
+          format: '#,##0.#',
+          renderer: (ctx) => _signedCell(context, ctx, suffix: '%')),
     ];
+  }
 
-    return ReportItem(
-      title: '${AppStrings.invoiceLabel} #${inv.invoiceNumber}',
-      subtitle: '${_ymd(inv.saleDate)} · '
-          '${inv.customerName.isNotEmpty ? inv.customerName : AppStrings.cashSale}',
-      trailing: Formatters.money(inv.totalAmount, sym),
-      trailingCaption: Formatters.money(inv.profit, sym),
-      trailingColor: null,
-      accentColor: inv.costMissing ? Colors.orange.shade600 : null,
-      fields: fields,
-      children: [for (final line in inv.items) _lineItem(line, sym)],
+  /// قيمة موقَّعة: خضراء للربح وحمراء للخسارة — LTR صراحةً حتى لا تظهر إشارة
+  /// السالب بموضع مضلِّل وسط سياق RTL.
+  Widget _signedCell(BuildContext context, TrinaColumnRendererContext ctx,
+      {String suffix = ''}) {
+    final v = ctx.cell.value;
+    if (v == null || (v is String && v.isEmpty)) return const SizedBox.shrink();
+    final n = v is num ? v.toDouble() : double.tryParse(v.toString());
+    if (n == null || n == 0) return const SizedBox.shrink();
+    final color = n >= 0 ? Colors.green.shade700 : Colors.red.shade700;
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Text(
+        '${Formatters.number(n)}$suffix',
+        textAlign: TextAlign.center,
+        style: TextStyle(color: color, fontWeight: FontWeight.w600),
+      ),
     );
   }
 
-  ReportItem _lineItem(SalesGridItem line, String? sym) {
-    final profitColor =
-        line.lineProfit >= 0 ? Colors.green.shade700 : Colors.red.shade700;
-    final unit = line.unitName.isNotEmpty ? ' ${line.unitName}' : '';
-    return ReportItem(
-      title: line.brandName,
-      subtitle: '${Formatters.qty(line.quantity)}$unit × '
-          '${Formatters.number(line.unitPrice)}'
-          '${line.discount > 0 ? ' − ${Formatters.number(line.discount)}' : ''}'
-          ' · ${AppStrings.profitLabel}: ${Formatters.money(line.lineProfit, sym)}',
-      trailing: Formatters.money(line.subTotal, sym),
-      trailingColor: profitColor,
+  Widget _totalCell(BuildContext context, TrinaColumnRendererContext ctx) {
+    final v = ctx.cell.value;
+    final n = v is num ? v.toDouble() : double.tryParse(v?.toString() ?? '');
+    if (n == null || n == 0) return const SizedBox.shrink();
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Text(
+        Formatters.number(n),
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.primary,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
     );
   }
 
-  static String? _symbol(String symbol, String code) =>
-      symbol.isNotEmpty ? symbol : (code.isNotEmpty ? code : null);
+  TrinaRow<dynamic> _invoiceRow(SalesGridInvoice inv) {
+    return TrinaRow(
+      cells: {
+        _fInvoice: TrinaCell(
+            value: '${AppStrings.invoiceLabel} #${inv.invoiceNumber}'),
+        _fDate: TrinaCell(value: _ymd(inv.saleDate)),
+        _fParty: TrinaCell(
+            value: inv.customerName.isNotEmpty
+                ? inv.customerName
+                : AppStrings.cashSale),
+        _fPayment: TrinaCell(value: _payLabel(inv.paymentMethod)),
+        _fCurrency: TrinaCell(
+            value: inv.currencySymbol.isNotEmpty
+                ? inv.currencySymbol
+                : inv.currencyCode),
+        _fUnitPrice: TrinaCell(value: ''),
+        _fQty: TrinaCell(value: ''),
+        _fDiscount: TrinaCell(value: inv.discountAmount),
+        _fCost: TrinaCell(value: inv.cost),
+        _fProfit: TrinaCell(value: inv.profit),
+        _fMargin: TrinaCell(value: inv.profitMargin),
+        _fTotal: TrinaCell(value: inv.totalAmount),
+      },
+      type: TrinaRowType.group(
+        children: FilteredList(
+          initialList: [for (final it in inv.items) _itemRow(it)],
+        ),
+      ),
+    );
+  }
+
+  TrinaRow<dynamic> _itemRow(SalesGridItem it) {
+    return TrinaRow(
+      cells: {
+        _fInvoice: TrinaCell(value: it.brandName),
+        _fDate: TrinaCell(value: ''),
+        // البيان: اسم الوحدة (الإفرادي والعدد صارا عمودين مستقلّين).
+        _fParty: TrinaCell(value: it.unitName),
+        _fPayment: TrinaCell(value: ''),
+        _fCurrency: TrinaCell(value: ''),
+        _fUnitPrice: TrinaCell(value: it.unitPrice),
+        _fQty: TrinaCell(value: it.quantity),
+        _fDiscount: TrinaCell(value: it.discount),
+        _fCost: TrinaCell(value: it.lineCost),
+        _fProfit: TrinaCell(value: it.lineProfit),
+        _fMargin: TrinaCell(value: ''),
+        _fTotal: TrinaCell(value: it.subTotal),
+      },
+    );
+  }
 
   static String _ymd(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';

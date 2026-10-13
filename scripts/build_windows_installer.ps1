@@ -1,4 +1,4 @@
-<#
+﻿<#
   build_windows_installer.ps1
   One-shot: build the Flutter Windows Release and package it into
   dist\Setup.exe with Inno Setup. Run on a Windows machine from any directory.
@@ -33,11 +33,12 @@ if (-not (Test-Path (Join-Path $releaseDir 'saydaliati.exe'))) {
     throw "Release build not found at $releaseDir — did `flutter build windows` succeed?"
 }
 
-# Locate ISCC.exe (Inno Setup compiler).
+# Locate ISCC.exe (Inno Setup compiler) — machine-wide or per-user install.
 $iscc = $null
 foreach ($p in @(
         "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
-        "$env:ProgramFiles\Inno Setup 6\ISCC.exe")) {
+        "$env:ProgramFiles\Inno Setup 6\ISCC.exe",
+        "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe")) {
     if ($p -and (Test-Path $p)) { $iscc = $p; break }
 }
 if (-not $iscc) {

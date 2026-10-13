@@ -214,26 +214,96 @@ class SettingsPage extends ConsumerWidget {
     final controller = TextEditingController(text: current ?? '');
     final value = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text(AppStrings.pharmacyName),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          textInputAction: TextInputAction.done,
-          decoration: const InputDecoration(hintText: AppStrings.pharmacyName),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text(AppStrings.cancel),
+      builder: (dialogContext) {
+        final theme = Theme.of(dialogContext);
+        return Dialog(
+          backgroundColor: theme.colorScheme.surface,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 360),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 14, 12, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.local_pharmacy_outlined,
+                          color: theme.colorScheme.primary, size: 24),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(AppStrings.pharmacyName,
+                              style: theme.textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                      SizedBox(
+                        width: 28,
+                        height: 28,
+                        child: IconButton(
+                          padding: EdgeInsets.zero,
+                          visualDensity: VisualDensity.compact,
+                          iconSize: 16,
+                          tooltip: AppStrings.close,
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(dialogContext),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  TextField(
+                    controller: controller,
+                    autofocus: true,
+                    textInputAction: TextInputAction.done,
+                    decoration:
+                        const InputDecoration(hintText: AppStrings.pharmacyName),
+                    onSubmitted: (_) =>
+                        Navigator.pop(dialogContext, controller.text.trim()),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      SizedBox(
+                        width: 96,
+                        height: 32,
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            textStyle: theme.textTheme.bodyMedium,
+                          ),
+                          onPressed: () => Navigator.pop(dialogContext),
+                          child: const Text(AppStrings.cancel),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      SizedBox(
+                        width: 96,
+                        height: 32,
+                        child: FilledButton(
+                          style: FilledButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            textStyle: theme.textTheme.bodyMedium,
+                          ),
+                          onPressed: () =>
+                              Navigator.pop(dialogContext, controller.text.trim()),
+                          child: const Text(AppStrings.save),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ),
-          TextButton(
-            onPressed: () =>
-                Navigator.pop(dialogContext, controller.text.trim()),
-            child: const Text(AppStrings.save),
-          ),
-        ],
-      ),
+        );
+      },
     );
 
     if (value == null) return;

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:saydaliati/app/router/app_routes.dart';
 import 'package:saydaliati/core/theme/app_semantic_colors.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/features/notifications/notification_center_providers.dart';
@@ -12,13 +13,20 @@ class _NavItem {
     required this.label,
     required this.icon,
     required this.selectedIcon,
+    this.route,
     this.hasBadge = false,
   });
 
+  /// Branch index in the StatefulShellRoute (selection + goBranch).
   final int index;
   final String label;
   final IconData icon;
   final IconData selectedIcon;
+
+  /// When set, tapping navigates to this exact route (nested shell routes —
+  /// the individual reports) and selection matches the location, not the
+  /// branch index.
+  final String? route;
   final bool hasBadge;
 }
 
@@ -53,12 +61,6 @@ const _mainSections = <_NavSection>[
       label: 'الكتالوغ',
       icon: Icons.menu_book_outlined,
       selectedIcon: Icons.menu_book,
-    ),
-    _NavItem(
-      index: 3,
-      label: 'لوحة التحكم',
-      icon: Icons.bar_chart_outlined,
-      selectedIcon: Icons.bar_chart,
     ),
   ]),
   _NavSection('المخزون والمشتريات', [
@@ -119,24 +121,64 @@ const _mainSections = <_NavSection>[
       selectedIcon: Icons.currency_exchange,
     ),
   ]),
+  // التقارير: عناصر بمسارات متداخلة داخل فرع التقارير (index 13) — التظليل
+  // يطابق المسار الحالي لا رقم الفرع.
   _NavSection('التقارير', [
     _NavItem(
       index: 13,
-      label: 'التقارير الكاملة',
-      icon: Icons.assessment_outlined,
-      selectedIcon: Icons.assessment,
+      label: 'تقرير المبيعات',
+      icon: Icons.point_of_sale_outlined,
+      selectedIcon: Icons.point_of_sale,
+      route: AppRoutes.salesReport,
+    ),
+    _NavItem(
+      index: 13,
+      label: 'تقرير الأرباح',
+      icon: Icons.trending_up_outlined,
+      selectedIcon: Icons.trending_up,
+      route: AppRoutes.profitReport,
+    ),
+    _NavItem(
+      index: 13,
+      label: 'تقرير المشتريات',
+      icon: Icons.shopping_cart_outlined,
+      selectedIcon: Icons.shopping_cart,
+      route: AppRoutes.purchasesReport,
+    ),
+    _NavItem(
+      index: 13,
+      label: 'تقرير المخزون',
+      icon: Icons.inventory_outlined,
+      selectedIcon: Icons.inventory,
+      route: AppRoutes.inventoryReport,
+    ),
+    _NavItem(
+      index: 13,
+      label: 'تقرير الصلاحية',
+      icon: Icons.event_busy_outlined,
+      selectedIcon: Icons.event_busy,
+      route: AppRoutes.expiryReport,
+    ),
+    _NavItem(
+      index: 13,
+      label: 'الجرد',
+      icon: Icons.fact_check_outlined,
+      selectedIcon: Icons.fact_check,
+      route: AppRoutes.stocktakeReport,
+    ),
+    _NavItem(
+      index: 13,
+      label: 'تقرير الوصفات',
+      icon: Icons.medical_services_outlined,
+      selectedIcon: Icons.medical_services,
+      route: AppRoutes.prescriptionsReport,
     ),
   ]),
 ];
 
+// عناصر النظام السفلية — قسمان منفصلان بحدّ بينهما: البقية أولاً، والإشعارات
+// أخيراً وحدها في قسمها الخاص (واجهة أنظف).
 const _bottomItems = <_NavItem>[
-  _NavItem(
-    index: 14,
-    label: 'الإشعارات',
-    icon: Icons.notifications_outlined,
-    selectedIcon: Icons.notifications,
-    hasBadge: true,
-  ),
   _NavItem(
     index: 15,
     label: 'الشروحات',
@@ -157,21 +199,35 @@ const _bottomItems = <_NavItem>[
   ),
 ];
 
+const _notificationsItem = _NavItem(
+  index: 14,
+  label: 'الإشعارات',
+  icon: Icons.notifications_outlined,
+  selectedIcon: Icons.notifications,
+  hasBadge: true,
+);
+
 // ─── Widget ────────────────────────────────────────────────────────────────
 
-class DesktopSidebar extends ConsumerWidget {
+class DesktopSidebar extends ConsumerStatefulWidget {
   const DesktopSidebar({
     required this.currentIndex,
+    required this.currentLocation,
     required this.expanded,
     required this.onToggle,
     required this.onNavigate,
+    required this.onNavigateRoute,
     super.key,
   });
 
   final int currentIndex;
+
+  /// المسار الحالي (uri.path) — لتظليل عناصر المسارات المتداخلة.
+  final String currentLocation;
   final bool expanded;
   final VoidCallback onToggle;
   final ValueChanged<int> onNavigate;
+  final ValueChanged<String> onNavigateRoute;
 
   // Labels are visible only once the sidebar is within 20 px of fully expanded.
   // This keeps labels in sync with the AnimatedContainer width so they never
@@ -179,7 +235,27 @@ class DesktopSidebar extends ConsumerWidget {
   static const double _labelThreshold = AppDesktopSizes.sidebarExpanded - 20;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DesktopSidebar> createState() => _DesktopSidebarState();
+}
+
+class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
+  /// الكتل المطوية (بالاسم). كل الكتل مفتوحة افتراضياً.
+  final Set<String> _collapsedSections = {};
+
+  bool _isSelected(_NavItem item) => item.route != null
+      ? widget.currentLocation == item.route
+      : widget.currentIndex == item.index;
+
+  void _onTap(_NavItem item) {
+    if (item.route != null) {
+      widget.onNavigateRoute(item.route!);
+    } else {
+      widget.onNavigate(item.index);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final unread = ref.watch(notificationsUnreadCountProvider);
 
@@ -187,25 +263,29 @@ class DesktopSidebar extends ConsumerWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeInOut,
-        width: expanded
+        width: widget.expanded
             ? AppDesktopSizes.sidebarExpanded
             : AppDesktopSizes.sidebarCollapsed,
         decoration: BoxDecoration(
           color: theme.scaffoldBackgroundColor,
           border: Border(
-            left: BorderSide(color: theme.extension<AppSemanticColors>()!.border),
+            left:
+                BorderSide(color: theme.extension<AppSemanticColors>()!.border),
           ),
         ),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final showLabels = constraints.maxWidth > _labelThreshold;
+            final showLabels =
+                constraints.maxWidth > DesktopSidebar._labelThreshold;
             return Column(
               children: [
                 // Header: collapse toggle + optional app name
-                _SidebarHeader(showLabels: showLabels, onToggle: onToggle),
+                _SidebarHeader(
+                    showLabels: showLabels, onToggle: widget.onToggle),
                 const Divider(height: 1, thickness: 1),
 
-                // Main navigation sections (scrollable)
+                // Main navigation sections (scrollable) — حدّ رفيع بين كل كتلة
+                // والتي تليها.
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(
@@ -215,26 +295,17 @@ class DesktopSidebar extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        for (final section in _mainSections) ...[
-                          if (showLabels)
-                            _SectionHeader(label: section.label)
-                          else
-                            const SizedBox(height: AppSpacing.sm),
-                          for (final item in section.items)
-                            _NavItemTile(
-                              item: item,
-                              isSelected: currentIndex == item.index,
-                              showLabels: showLabels,
-                              badgeCount: item.hasBadge ? unread : 0,
-                              onTap: () => onNavigate(item.index),
-                            ),
+                        for (var i = 0; i < _mainSections.length; i++) ...[
+                          if (i > 0) _sectionDivider(),
+                          _buildSection(_mainSections[i], showLabels, unread),
                         ],
                       ],
                     ),
                   ),
                 ),
 
-                // Bottom system items
+                // عناصر النظام السفلية — قسمان بحدّ بينهما: البقية، ثم الإشعارات
+                // أخيراً وحدها في قسمها الخاص.
                 const Divider(height: 1, thickness: 1),
                 Padding(
                   padding: const EdgeInsets.symmetric(
@@ -246,12 +317,25 @@ class DesktopSidebar extends ConsumerWidget {
                       for (final item in _bottomItems)
                         _NavItemTile(
                           item: item,
-                          isSelected: currentIndex == item.index,
+                          isSelected: _isSelected(item),
                           showLabels: showLabels,
-                          badgeCount: item.hasBadge ? unread : 0,
-                          onTap: () => onNavigate(item.index),
+                          badgeCount: 0,
+                          onTap: () => _onTap(item),
                         ),
                     ],
+                  ),
+                ),
+                _sectionDivider(),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.sm, 0, AppSpacing.sm, AppSpacing.sm,
+                  ),
+                  child: _NavItemTile(
+                    item: _notificationsItem,
+                    isSelected: _isSelected(_notificationsItem),
+                    showLabels: showLabels,
+                    badgeCount: unread,
+                    onTap: () => _onTap(_notificationsItem),
                   ),
                 ),
               ],
@@ -259,6 +343,67 @@ class DesktopSidebar extends ConsumerWidget {
           },
         ),
       ),
+    );
+  }
+
+  /// حدّ رفيع بين كتلتين من كتل القائمة الجانبية.
+  Widget _sectionDivider() => Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+        child: const Divider(height: 1, thickness: 1),
+      );
+
+  /// كتلة قابلة للطي: رأس بسهم دوّار يفتح/يغلق عناصرها. في الوضع المطوي
+  /// (أيقونات فقط) لا رؤوس — تُعرض كل العناصر.
+  Widget _buildSection(_NavSection section, bool showLabels, int unread) {
+    // الطي هنا يتبع نقرة المستخدم دوماً — حتى لو كانت الكتلة تحوي العنصر
+    // المحدّد حالياً (الطي السابق كان يمنع إغلاق كتلة فيها تظليل، فبدا للمستخدم
+    // كأن الكتلة "لا تُقفل").
+    final effectiveCollapsed = _collapsedSections.contains(section.label);
+
+    final items = [
+      for (final item in section.items)
+        _NavItemTile(
+          item: item,
+          isSelected: _isSelected(item),
+          showLabels: showLabels,
+          badgeCount: item.hasBadge ? unread : 0,
+          onTap: () => _onTap(item),
+        ),
+    ];
+
+    if (!showLabels) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [const SizedBox(height: AppSpacing.sm), ...items],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionHeader(
+          label: section.label,
+          collapsed: effectiveCollapsed,
+          onTap: () => setState(() {
+            if (effectiveCollapsed) {
+              _collapsedSections.remove(section.label);
+            } else {
+              _collapsedSections.add(section.label);
+            }
+          }),
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeInOut,
+          alignment: Alignment.topCenter,
+          child: effectiveCollapsed
+              ? const SizedBox(width: double.infinity)
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: items,
+                ),
+        ),
+      ],
     );
   }
 }
@@ -277,8 +422,9 @@ class _SidebarHeader extends StatelessWidget {
     return SizedBox(
       height: AppDesktopSizes.titleBarHeight,
       child: Row(
-        mainAxisAlignment:
-            showLabels ? MainAxisAlignment.spaceBetween : MainAxisAlignment.center,
+        mainAxisAlignment: showLabels
+            ? MainAxisAlignment.spaceBetween
+            : MainAxisAlignment.center,
         children: [
           if (showLabels) ...[
             Padding(
@@ -327,30 +473,50 @@ class _SidebarHeader extends StatelessWidget {
   }
 }
 
+/// رأس كتلة قابل للنقر: التسمية + سهم يدور عند الطي.
 class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.label});
+  const _SectionHeader({
+    required this.label,
+    required this.collapsed,
+    required this.onTap,
+  });
 
   final String label;
+  final bool collapsed;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return SizedBox(
-      height: AppDesktopSizes.sidebarSectionHeaderHeight,
-      child: Padding(
-        padding: const EdgeInsetsDirectional.only(
-          start: AppSpacing.sm,
-          bottom: AppSpacing.xs,
-        ),
-        child: Align(
-          alignment: AlignmentDirectional.centerStart,
-          child: Text(
-            label,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.extension<AppSemanticColors>()!.textSecondary,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.4,
-            ),
+    final color = theme.extension<AppSemanticColors>()!.textSecondary;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: AppRadius.brSm,
+      child: SizedBox(
+        height: AppDesktopSizes.sidebarSectionHeaderHeight,
+        child: Padding(
+          padding: const EdgeInsetsDirectional.only(
+            start: AppSpacing.sm,
+            end: AppSpacing.xs,
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+              ),
+              AnimatedRotation(
+                turns: collapsed ? -0.25 : 0,
+                duration: const Duration(milliseconds: 180),
+                child: Icon(Icons.expand_more, size: 16, color: color),
+              ),
+            ],
           ),
         ),
       ),
@@ -417,14 +583,25 @@ class _NavItemTileState extends State<_NavItemTile> {
             ),
             child: Row(
               children: [
-                SizedBox(
-                  width: AppDesktopSizes.sidebarCollapsed - AppSpacing.sm * 2,
-                  child: Center(
-                    child: widget.badgeCount > 0
-                        ? Badge.count(count: widget.badgeCount, child: icon)
-                        : icon,
+                // مطوي: الأيقونة تملأ المساحة المتاحة (عرض ثابت 48 يفيض 1px
+                // عن قيود الشريط المطوي)؛ موسّع: منطقة أيقونة ثابتة 48.
+                if (widget.showLabels)
+                  SizedBox(
+                    width: AppDesktopSizes.sidebarCollapsed - AppSpacing.sm * 2,
+                    child: Center(
+                      child: widget.badgeCount > 0
+                          ? Badge.count(count: widget.badgeCount, child: icon)
+                          : icon,
+                    ),
+                  )
+                else
+                  Expanded(
+                    child: Center(
+                      child: widget.badgeCount > 0
+                          ? Badge.count(count: widget.badgeCount, child: icon)
+                          : icon,
+                    ),
                   ),
-                ),
                 if (widget.showLabels) ...[
                   Expanded(
                     child: Text(

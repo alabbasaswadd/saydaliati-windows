@@ -3,13 +3,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/features/reports/domain/entities/expiry_report.dart';
-import 'package:saydaliati/features/reports/presentation/widgets/report_list.dart';
 import 'package:saydaliati/features/reports/report_providers.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
+import 'package:saydaliati/shared/widgets/cards/stat_chips_bar.dart';
+import 'package:saydaliati/shared/widgets/filters/filter_bar.dart';
+import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
 import 'package:saydaliati/shared/widgets/states/app_states.dart';
+import 'package:trina_grid/trina_grid.dart';
 
-/// Batch-level expiry report: two tabs (expiring soon / expired) as readable
-/// tables, with the warning-window filter in a side sheet (end drawer).
+enum _ExpiryView { all, soon, expired }
+
+/// Batch-level expiry report — the project-standard grid: clickable stat chips
+/// (الكل / قريبة الانتهاء / منتهية) filter the rows, a menu chip picks the
+/// warning window, and the batches render as one sortable/filterable grid with
+/// colored status + days-left.
 class ExpiryReportPage extends ConsumerStatefulWidget {
   const ExpiryReportPage({super.key});
 
@@ -18,14 +25,18 @@ class ExpiryReportPage extends ConsumerStatefulWidget {
 }
 
 class _ExpiryReportPageState extends ConsumerState<ExpiryReportPage> {
-  static const _windows = <int, String>{
-    30: '30',
-    60: '60',
-    90: '90',
-    180: '180',
-    36500: AppStrings.windowAll,
-  };
+  static const _windows = <int>[30, 60, 90, 180, 36500];
   int _window = 60;
+  _ExpiryView _view = _ExpiryView.all;
+
+  TrinaGridStateManager? _gridManager;
+
+  static const _fName = 'name';
+  static const _fWarehouse = 'warehouse';
+  static const _fExpiry = 'expiry';
+  static const _fDays = 'days';
+  static const _fQty = 'qty';
+  static const _fStatus = 'status';
 
   String _windowLabel(int w) =>
       w >= 36500 ? AppStrings.windowAll : '$w ${AppStrings.daysUnit}';
@@ -34,109 +45,187 @@ class _ExpiryReportPageState extends ConsumerState<ExpiryReportPage> {
   Widget build(BuildContext context) {
     final async = ref.watch(expiryReportProvider(_window));
 
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text(AppStrings.expiryReport),
-          actions: [
-            Builder(
-              builder: (ctx) => Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-                child: ActionChip(
-                  avatar: const Icon(Icons.filter_list, size: 16),
-                  label: Text(_windowLabel(_window)),
-                  onPressed: () => Scaffold.of(ctx).openEndDrawer(),
-                ),
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: () => ref.invalidate(expiryReportProvider(_window)),
-            ),
-          ],
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: AppStrings.expiringSoonTab),
-              Tab(text: AppStrings.expiredTab),
-            ],
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(AppStrings.expiryReport),
+        actions: [
+          AppGridColumnsButton(managerGetter: () => _gridManager),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => ref.invalidate(expiryReportProvider(_window)),
           ),
+        ],
+      ),
+      body: async.when(
+        loading: () => const LoadingState(),
+        error: (e, _) => ErrorState.fromError(
+          e,
+          onRetry: () => ref.invalidate(expiryReportProvider(_window)),
         ),
-        endDrawer: Drawer(
-          child: SafeArea(
-            child: ListView(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(AppSpacing.sm),
-                  child: Text(AppStrings.expiryWindow,
-                      style: Theme.of(context).textTheme.titleLarge),
-                ),
-                const Divider(),
-                for (final e in _windows.entries)
-                  ListTile(
-                    leading: Icon(_window == e.key
-                        ? Icons.radio_button_checked
-                        : Icons.radio_button_off),
-                    title: Text(_windowLabel(e.key)),
-                    selected: _window == e.key,
-                    onTap: () {
-                      setState(() => _window = e.key);
-                      Navigator.of(context).pop();
-                    },
-                  ),
-              ],
-            ),
-          ),
-        ),
-        body: async.when(
-          loading: () => const LoadingState(),
-          error: (e, _) => ErrorState.fromError(
-            e,
-            onRetry: () => ref.invalidate(expiryReportProvider(_window)),
-          ),
-          data: (r) => TabBarView(
-            children: [
-              _table(r.expiringSoon, AppStrings.noExpiringSoon, soon: true),
-              _table(r.expired, AppStrings.noExpired, soon: false),
-            ],
-          ),
-        ),
+        data: (r) => _content(context, r),
       ),
     );
   }
 
-  Widget _table(List<ExpiryBatch> items, String emptyMsg, {required bool soon}) {
-    final color = soon ? Colors.orange.shade800 : Colors.red.shade700;
-    return ListView(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      children: [
-        ReportList(
-          emptyMessage: emptyMsg,
-          items: [
-            for (final b in items)
-              ReportItem(
-                title: b.brandName,
-                subtitle: b.warehouseName,
-                accentColor: color,
-                trailing: _daysText(b.daysLeft),
-                trailingColor: color,
-                trailingCaption: AppStrings.daysLeftColumn,
-                fields: [
-                  ReportField(AppStrings.expiryColumn, _ymd(b.expiryDate)),
-                  ReportField(
-                      AppStrings.qtyLabel, Formatters.qty(b.quantityAvailable)),
+  Widget _content(BuildContext context, ExpiryReport r) {
+    final soonColor = Colors.orange.shade800;
+    final expiredColor = Colors.red.shade700;
+
+    final rows = switch (_view) {
+      _ExpiryView.all => [...r.expiringSoon, ...r.expired],
+      _ExpiryView.soon => r.expiringSoon,
+      _ExpiryView.expired => r.expired,
+    };
+    final expiredIds = r.expired.map(identityHashCode).toSet();
+
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // شرائح الحالة القابلة للنقر (تفلتر العرض) + نافذة التنبيه.
+          FilterBar(
+            children: [
+              AppMenuChip<int>(
+                icon: Icons.filter_list,
+                tooltip: AppStrings.expiryWindow,
+                label: '${AppStrings.expiryWindow}: ${_windowLabel(_window)}',
+                items: [
+                  for (final w in _windows)
+                    PopupMenuItem(value: w, child: Text(_windowLabel(w))),
                 ],
+                onSelected: (w) => setState(() => _window = w),
               ),
-          ],
-        ),
-      ],
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          StatChipsBar(chips: [
+            StatChip(
+              label: AppStrings.windowAll,
+              value: Formatters.integer(
+                  r.expiringSoon.length + r.expired.length),
+              icon: Icons.list_alt_rounded,
+              selected: _view == _ExpiryView.all,
+              onTap: () => setState(() => _view = _ExpiryView.all),
+            ),
+            StatChip(
+              label: AppStrings.expiringSoonTab,
+              value: Formatters.integer(r.expiringSoon.length),
+              icon: Icons.schedule_outlined,
+              color: soonColor,
+              selected: _view == _ExpiryView.soon,
+              onTap: () => setState(() => _view = _ExpiryView.soon),
+            ),
+            StatChip(
+              label: AppStrings.expiredTab,
+              value: Formatters.integer(r.expired.length),
+              icon: Icons.event_busy_outlined,
+              color: expiredColor,
+              selected: _view == _ExpiryView.expired,
+              onTap: () => setState(() => _view = _ExpiryView.expired),
+            ),
+          ]),
+          const SizedBox(height: AppSpacing.md),
+          Expanded(
+            child: rows.isEmpty
+                ? EmptyState(
+                    icon: Icons.event_busy_outlined,
+                    message: _view == _ExpiryView.expired
+                        ? AppStrings.noExpired
+                        : AppStrings.noExpiringSoon,
+                  )
+                : AppGrid(
+                    key: ValueKey('$_window-$_view-${rows.length}'),
+                    columns: _columns(soonColor, expiredColor),
+                    rows: [
+                      for (final b in rows)
+                        _row(b, expired: expiredIds.contains(identityHashCode(b))),
+                    ],
+                    onLoaded: (m) => _gridManager = m,
+                    // تلوين السطر بلون الحالة (برتقالي قريب / أحمر منتهٍ).
+                    rowColorCallback: (ctx) {
+                      final expired =
+                          ctx.row.cells[_fStatus]?.value == AppStrings.expiredTab;
+                      return (expired ? expiredColor : soonColor)
+                          .withValues(alpha: 0.05);
+                    },
+                  ),
+          ),
+        ],
+      ),
     );
   }
 
-  static String _daysText(int days) => days >= 0
-      ? '$days ${AppStrings.daysUnit}'
-      : '-${-days} ${AppStrings.daysUnit}';
+  List<TrinaColumn> _columns(Color soonColor, Color expiredColor) {
+    return [
+      appGridTextColumn(AppStrings.medicineName, _fName, width: 240),
+      appGridTextColumn(AppStrings.warehouseColumn, _fWarehouse,
+          width: 140, hide: true),
+      appGridTextColumn(AppStrings.expiryColumn, _fExpiry,
+          width: 110, textAlign: TrinaColumnTextAlign.center),
+      // المتبقي بالأيام — سالب للمنتهي، ملوّن بالحالة، LTR لإشارة السالب.
+      appGridNumberColumn(AppStrings.daysLeftColumn, _fDays, width: 100,
+          format: '#', renderer: (ctx) {
+        final v = ctx.cell.value;
+        final n = v is num ? v.toInt() : int.tryParse(v?.toString() ?? '');
+        if (n == null) return const SizedBox.shrink();
+        final color = n < 0 ? expiredColor : soonColor;
+        return Directionality(
+          textDirection: TextDirection.ltr,
+          child: Text(
+            '$n',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: color, fontWeight: FontWeight.w700),
+          ),
+        );
+      }),
+      appGridNumberColumn(AppStrings.qtyLabel, _fQty, width: 100),
+      // الحالة: شريحة ملوّنة.
+      TrinaColumn(
+        title: AppStrings.stockStatus,
+        field: _fStatus,
+        type: TrinaColumnType.text(),
+        width: 120,
+        enableEditingMode: false,
+        textAlign: TrinaColumnTextAlign.center,
+        renderer: (ctx) {
+          final label = ctx.cell.value?.toString() ?? '';
+          final expired = label == AppStrings.expiredTab;
+          final color = expired ? expiredColor : soonColor;
+          return Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm, vertical: 2),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: AppRadius.brSm,
+              ),
+              child: Text(label,
+                  style: TextStyle(
+                      color: color,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600)),
+            ),
+          );
+        },
+      ),
+    ];
+  }
+
+  TrinaRow<dynamic> _row(ExpiryBatch b, {required bool expired}) {
+    return TrinaRow(
+      cells: {
+        _fName: TrinaCell(value: b.brandName),
+        _fWarehouse: TrinaCell(value: b.warehouseName),
+        _fExpiry: TrinaCell(value: _ymd(b.expiryDate)),
+        _fDays: TrinaCell(value: b.daysLeft),
+        _fQty: TrinaCell(value: b.quantityAvailable),
+        _fStatus: TrinaCell(
+            value:
+                expired ? AppStrings.expiredTab : AppStrings.expiringSoonTab),
+      },
+    );
+  }
 
   static String _ymd(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';

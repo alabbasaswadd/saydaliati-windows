@@ -4,11 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/features/medicine_units/domain/entities/unit.dart';
 import 'package:saydaliati/features/medicine_units/unit_providers.dart';
-import 'package:saydaliati/shared/widgets/async_list_view.dart';
 import 'package:saydaliati/shared/widgets/dialogs/app_dialogs.dart';
 import 'package:saydaliati/shared/widgets/dialogs/entity_form_dialog.dart';
 import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
+import 'package:saydaliati/shared/widgets/grids/simple_entity_grid.dart';
+import 'package:saydaliati/shared/widgets/states/app_states.dart';
 
 /// Units management — list + add/edit/delete.
 class UnitsPage extends ConsumerWidget {
@@ -75,26 +76,34 @@ class UnitsPage extends ConsumerWidget {
     final async = ref.watch(unitsProvider);
     return Scaffold(
       appBar: AppBar(
-          title: const Text(AppStrings.unitsList),
-          actions: const [TutorialHelpButton(TutorialTopic.unitsAndPrices)]),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _addOrEdit(context, ref),
-        child: const Icon(Icons.add),
-      ),
-      body: AsyncListView<Unit>(
-        value: async,
-        emptyMessage: AppStrings.noUnits,
-        onRefresh: () => ref.refresh(unitsProvider.future),
-        itemBuilder: (context, u) => ListTile(
-          leading: const Icon(Icons.straighten_outlined),
-          title: Text(u.name),
-          subtitle: u.description.isEmpty ? null : Text(u.description),
-          onTap: () => _addOrEdit(context, ref, u),
-          trailing: IconButton(
-            icon: const Icon(Icons.delete_outline),
-            onPressed: () => _delete(context, ref, u),
+        title: const Text(AppStrings.unitsList),
+        actions: [
+          IconButton(
+            tooltip: AppStrings.addNew,
+            icon: const Icon(Icons.add),
+            onPressed: () => _addOrEdit(context, ref),
           ),
-        ),
+          const TutorialHelpButton(TutorialTopic.unitsAndPrices),
+        ],
+      ),
+      body: async.when(
+        loading: () => const LoadingState(),
+        error: (e, _) =>
+            ErrorState.fromError(e, onRetry: () => ref.invalidate(unitsProvider)),
+        data: (items) => items.isEmpty
+            ? const EmptyState(message: AppStrings.noUnits)
+            : SimpleEntityGrid<Unit>(
+                items: items,
+                idOf: (u) => u.id,
+                columns: [
+                  SimpleEntityColumn(AppStrings.unitName, (u) => u.name,
+                      width: 200),
+                  SimpleEntityColumn(AppStrings.description, (u) => u.description,
+                      width: 260),
+                ],
+                onEdit: (u) => _addOrEdit(context, ref, u),
+                onDelete: (u) => _delete(context, ref, u),
+              ),
       ),
     );
   }

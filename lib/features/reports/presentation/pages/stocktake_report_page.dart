@@ -6,20 +6,19 @@ import 'package:saydaliati/features/currencies/domain/currency_conversion.dart';
 import 'package:saydaliati/features/currencies/domain/entities/currency.dart';
 import 'package:saydaliati/features/currencies/presentation/providers/currencies_provider.dart';
 import 'package:saydaliati/features/reports/domain/entities/stocktake.dart';
-import 'package:saydaliati/features/reports/presentation/widgets/report_hero_stat.dart';
-import 'package:saydaliati/features/reports/presentation/widgets/report_list.dart';
-import 'package:saydaliati/features/reports/presentation/widgets/stat_tile.dart';
 import 'package:saydaliati/features/reports/report_providers.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
-import 'package:saydaliati/shared/widgets/filters/filter_side_sheet.dart';
-import 'package:saydaliati/shared/widgets/inputs/app_dropdown.dart';
+import 'package:saydaliati/shared/widgets/cards/stat_chips_bar.dart';
+import 'package:saydaliati/shared/widgets/filters/filter_bar.dart';
+import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
 import 'package:saydaliati/shared/widgets/states/app_states.dart';
+import 'package:trina_grid/trina_grid.dart';
 
 enum _Basis { cost, sale }
 
-/// Stocktake: every medicine × unit as a readable list, with a cost/sale price
-/// toggle and a currency selector (default = base). Values come from the backend
-/// in the base currency and are converted on the client for display.
+/// Stocktake — the project-standard tree grid: inline filter bar (price basis
+/// + currency) and stat chips over a tree grid (medicine → units priced by the
+/// chosen basis). Values convert on the client from the base currency.
 class StocktakeReportPage extends ConsumerStatefulWidget {
   const StocktakeReportPage({super.key});
 
@@ -29,83 +28,45 @@ class StocktakeReportPage extends ConsumerStatefulWidget {
 }
 
 class _StocktakeReportPageState extends ConsumerState<StocktakeReportPage> {
-  final _scaffoldKey = GlobalKey<ScaffoldState>();
   _Basis _basis = _Basis.cost;
   String? _currencyId; // null => base currency
+
+  TrinaGridStateManager? _gridManager;
+
+  static const _fName = 'name';
+  static const _fQty = 'qty';
+  static const _fPrice = 'price';
 
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(stocktakeProvider);
     final base = ref.watch(baseCurrencyProvider);
-    final currencies = ref.watch(currenciesProvider).value ?? const <Currency>[];
+    final currencies =
+        ref.watch(currenciesProvider).value ?? const <Currency>[];
     final target =
         currencies.where((c) => c.id == (_currencyId ?? base?.id)).firstOrNull ??
             base;
     final code = target?.code ?? '';
 
     return Scaffold(
-      key: _scaffoldKey,
       appBar: AppBar(
         title: const Text(AppStrings.stocktakeReport),
         actions: [
-          IconButton(
-            tooltip: AppStrings.filters,
-            icon: const Icon(Icons.tune),
-            onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
-          ),
+          AppGridColumnsButton(managerGetter: () => _gridManager),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () => ref.invalidate(stocktakeProvider),
           ),
         ],
       ),
-      endDrawer: _filterDrawer(context, target, currencies),
       body: async.when(
         loading: () => const LoadingState(),
         error: (e, _) => ErrorState.fromError(
           e,
           onRetry: () => ref.invalidate(stocktakeProvider),
         ),
-        data: (s) => _content(context, s, base, target, code),
+        data: (s) => _content(context, s, base, target, code, currencies),
       ),
-    );
-  }
-
-  Widget _filterDrawer(
-      BuildContext context, Currency? target, List<Currency> currencies) {
-    final theme = Theme.of(context);
-    return FilterSideSheet(
-      children: [
-        Text(AppStrings.priceBasis, style: theme.textTheme.labelLarge),
-        const SizedBox(height: AppSpacing.xs),
-        SegmentedButton<_Basis>(
-          segments: const [
-            ButtonSegment(value: _Basis.cost, label: Text(AppStrings.basisCost)),
-            ButtonSegment(value: _Basis.sale, label: Text(AppStrings.basisSale)),
-          ],
-          selected: {_basis},
-          onSelectionChanged: (sel) => setState(() => _basis = sel.first),
-        ),
-        if (_basis == _Basis.cost)
-          Padding(
-            padding: const EdgeInsets.only(top: AppSpacing.sm),
-            child: Text(AppStrings.costCalcHint,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: theme.hintColor)),
-          ),
-        const SizedBox(height: AppSpacing.md),
-        const Divider(),
-        if (currencies.isNotEmpty)
-          AppDropdown<String>(
-            label: AppStrings.selectCurrency,
-            value: target?.id,
-            items: [
-              for (final c in currencies)
-                AppDropdownItem(value: c.id, label: c.code),
-            ],
-            onChanged: (v) => setState(() => _currencyId = v),
-          ),
-      ],
     );
   }
 
@@ -123,51 +84,134 @@ class _StocktakeReportPageState extends ConsumerState<StocktakeReportPage> {
   }
 
   Widget _content(BuildContext context, Stocktake s, Currency? base,
-      Currency? target, String code) {
+      Currency? target, String code, List<Currency> currencies) {
     double conv(double v) => convertFromBase(v, base, target);
-    return ListView(
+    final basisLabel =
+        _basis == _Basis.cost ? AppStrings.basisCost : AppStrings.basisSale;
+
+    if (s.items.isEmpty) {
+      return const EmptyState(
+        icon: Icons.fact_check_outlined,
+        message: AppStrings.noData,
+      );
+    }
+
+    return Padding(
       padding: const EdgeInsets.all(AppSpacing.lg),
-      children: [
-        ReportHeroStat(
-          label:
-              '${AppStrings.stocktakeValue} (${_basis == _Basis.cost ? AppStrings.basisCost : AppStrings.basisSale})',
-          value: Formatters.money(
-              conv(_basis == _Basis.cost ? s.totalCostValue : _saleTotal(s)),
-              code),
-          icon: Icons.fact_check_outlined,
-        ),
-        const SizedBox(height: AppSpacing.md),
-        StatTile(
-          label: AppStrings.materialsCount,
-          value: Formatters.integer(s.medicinesCount),
-          icon: Icons.medication_outlined,
-        ),
-        const SizedBox(height: AppSpacing.md),
-        ReportList(
-          emptyMessage: AppStrings.noData,
-          items: [
-            for (final it in s.items)
-              ReportItem(
-                title: it.brandName,
-                fields: [
-                  ReportField(
-                      AppStrings.qtyLabel, Formatters.qty(it.onHandQuantity)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // فلاتر مضمّنة: أساس التسعير + عملة العرض.
+          FilterBar(
+            children: [
+              SegmentedButton<_Basis>(
+                segments: const [
+                  ButtonSegment(
+                      value: _Basis.cost, label: Text(AppStrings.basisCost)),
+                  ButtonSegment(
+                      value: _Basis.sale, label: Text(AppStrings.basisSale)),
                 ],
-                children: [
-                  for (final u in it.units)
-                    ReportItem(
-                      title: u.isBaseUnit
-                          ? '${u.unitName} (${AppStrings.baseBadge})'
-                          : u.unitName,
-                      trailing: Formatters.money(
-                          conv(_basis == _Basis.cost ? u.costPrice : u.salePrice),
-                          code),
-                    ),
-                ],
+                selected: {_basis},
+                onSelectionChanged: (sel) =>
+                    setState(() => _basis = sel.first),
               ),
-          ],
-        ),
-      ],
+              if (currencies.isNotEmpty)
+                AppMenuChip<String>(
+                  icon: Icons.payments_outlined,
+                  tooltip: AppStrings.selectCurrency,
+                  label: code,
+                  items: [
+                    for (final c in currencies)
+                      PopupMenuItem(value: c.id, child: Text(c.code)),
+                  ],
+                  onSelected: (v) => setState(() => _currencyId = v),
+                ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          StatChipsBar(chips: [
+            StatChip(
+              label: '${AppStrings.stocktakeValue} ($basisLabel)',
+              value: Formatters.money(
+                  conv(_basis == _Basis.cost
+                      ? s.totalCostValue
+                      : _saleTotal(s)),
+                  code),
+              icon: Icons.fact_check_outlined,
+            ),
+            StatChip(
+              label: AppStrings.materialsCount,
+              value: Formatters.integer(s.medicinesCount),
+              icon: Icons.medication_outlined,
+            ),
+          ]),
+          if (_basis == _Basis.cost)
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.xs),
+              child: Text(AppStrings.costCalcHint,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: Theme.of(context).hintColor)),
+            ),
+          const SizedBox(height: AppSpacing.md),
+          Expanded(
+            child: AppGrid(
+              key: ValueKey('$code-$_basis-${s.items.length}'),
+              tree: true,
+              columns: [
+                appGridTextColumn(AppStrings.medicineName, _fName, width: 260),
+                appGridNumberColumn(AppStrings.qtyLabel, _fQty, width: 110),
+                appGridNumberColumn('$basisLabel ($code)', _fPrice,
+                    width: 140, renderer: (ctx) {
+                  final v = ctx.cell.value;
+                  if (v == '' || v == null) return const SizedBox.shrink();
+                  final n = v is num ? v.toDouble() : 0.0;
+                  if (n == 0) return const SizedBox.shrink();
+                  return Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: Text(
+                      Formatters.number(n),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  );
+                }),
+              ],
+              rows: [
+                for (final it in s.items)
+                  TrinaRow(
+                    cells: {
+                      _fName: TrinaCell(value: it.brandName),
+                      _fQty: TrinaCell(value: it.onHandQuantity),
+                      _fPrice: TrinaCell(value: ''),
+                    },
+                    type: TrinaRowType.group(
+                      children: FilteredList(initialList: [
+                        for (final u in it.units)
+                          TrinaRow(cells: {
+                            _fName: TrinaCell(
+                                value: u.isBaseUnit
+                                    ? '${u.unitName} (${AppStrings.baseBadge})'
+                                    : u.unitName),
+                            _fQty: TrinaCell(value: ''),
+                            _fPrice: TrinaCell(
+                                value: conv(_basis == _Basis.cost
+                                    ? u.costPrice
+                                    : u.salePrice)),
+                          }),
+                      ]),
+                    ),
+                  ),
+              ],
+              onLoaded: (m) => _gridManager = m,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

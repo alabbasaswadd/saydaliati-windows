@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:saydaliati/app/shell/widgets/desktop_sidebar.dart';
@@ -32,7 +31,6 @@ class DesktopShell extends ConsumerStatefulWidget {
 class _DesktopShellState extends ConsumerState<DesktopShell> {
   static const _prefKey = 'sidebar_expanded';
 
-  final _searchFocusNode = FocusNode(debugLabel: 'TitleBarSearch');
   bool _sidebarExpanded = true;
 
   @override
@@ -43,12 +41,6 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
       if (mounted) setState(() => _sidebarExpanded = prefs.getBool(_prefKey) ?? true);
       _showAnnouncements();
     });
-  }
-
-  @override
-  void dispose() {
-    _searchFocusNode.dispose();
-    super.dispose();
   }
 
   Future<void> _showAnnouncements() async {
@@ -87,12 +79,7 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
     final sync = ref.watch(dataSyncControllerProvider);
     final firstLoading = mirrorEmpty && sync.running;
 
-    return CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.keyF, control: true): () =>
-            _searchFocusNode.requestFocus(),
-      },
-      child: Focus(
+    return Focus(
         autofocus: true,
         child: Stack(
           children: [
@@ -100,10 +87,7 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
               body: Column(
                 children: [
                   // ── Custom title bar ──────────────────────────────────────
-                  DesktopTitleBar(
-                    searchFocusNode: _searchFocusNode,
-                    sidebarExpanded: _sidebarExpanded,
-                  ),
+                  DesktopTitleBar(sidebarExpanded: _sidebarExpanded),
 
                   // ── Sidebar + content ─────────────────────────────────────
                   Expanded(
@@ -113,6 +97,10 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
                       children: [
                         DesktopSidebar(
                           currentIndex: widget.shell.currentIndex,
+                          // المسار الحالي — لتظليل عناصر المسارات المتداخلة
+                          // (التقارير) داخل الشريط الجانبي.
+                          currentLocation:
+                              GoRouterState.of(context).uri.path,
                           expanded: _sidebarExpanded,
                           onToggle: () async {
                             final next = !_sidebarExpanded;
@@ -121,6 +109,7 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
                             await prefs.setBool(_prefKey, next);
                           },
                           onNavigate: _navigate,
+                          onNavigateRoute: (route) => context.go(route),
                         ),
                         Expanded(
                           child: Column(
@@ -139,8 +128,6 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
             if (firstLoading)
               const Positioned.fill(child: CatalogLoadingOverlay()),
           ],
-        ),
-      ),
-    );
+        ));
   }
 }

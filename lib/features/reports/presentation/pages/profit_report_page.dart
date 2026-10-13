@@ -9,15 +9,14 @@ import 'package:saydaliati/features/currencies/domain/entities/currency.dart';
 import 'package:saydaliati/features/currencies/presentation/providers/currencies_provider.dart';
 import 'package:saydaliati/features/reports/domain/entities/profit_report.dart';
 import 'package:saydaliati/features/reports/domain/report_period.dart';
-import 'package:saydaliati/features/reports/presentation/widgets/report_hero_stat.dart';
-import 'package:saydaliati/features/reports/presentation/widgets/report_list.dart';
 import 'package:saydaliati/features/reports/presentation/widgets/report_scaffold.dart';
-import 'package:saydaliati/features/reports/presentation/widgets/stat_tile.dart';
 import 'package:saydaliati/features/reports/report_providers.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
+import 'package:saydaliati/shared/widgets/cards/stat_chips_bar.dart';
+import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_dropdown.dart';
-import 'package:saydaliati/shared/widgets/lists/app_section_header.dart';
 import 'package:saydaliati/shared/widgets/states/app_states.dart';
+import 'package:trina_grid/trina_grid.dart';
 
 /// Profit report: per-invoice profit + totals. Defaults to today (opened from
 /// the sales page header). All amounts are stored in the base currency; the
@@ -35,6 +34,17 @@ class ProfitReportPage extends ConsumerStatefulWidget {
 class _ProfitReportPageState extends ConsumerState<ProfitReportPage> {
   late ReportPeriod _period = widget.initialPeriod ?? ReportPeriod.today();
   String? _displayCurrencyId; // null => base currency
+
+  /// مدير الشبكة — لزر إظهار/إخفاء الأعمدة.
+  TrinaGridStateManager? _gridManager;
+
+  static const _fInvoice = 'invoice';
+  static const _fDate = 'date';
+  static const _fPayment = 'payment';
+  static const _fRevenue = 'revenue';
+  static const _fCost = 'cost';
+  static const _fProfit = 'profit';
+  static const _fOriginal = 'original';
 
   @override
   Widget build(BuildContext context) {
@@ -87,83 +97,122 @@ class _ProfitReportPageState extends ConsumerState<ProfitReportPage> {
     Color profitColor(double v) =>
         v >= 0 ? Colors.green.shade700 : Colors.red.shade700;
 
-    return ListView(
+    if (r.invoices.isEmpty) {
+      return const EmptyState(
+        icon: Icons.trending_up_outlined,
+        message: AppStrings.noDataForPeriod,
+      );
+    }
+
+    return Padding(
       padding: const EdgeInsets.all(AppSpacing.lg),
-      children: [
-        ReportHeroStat(
-          label: AppStrings.profitShort,
-          value: Formatters.money(conv(r.totalProfit), code),
-          icon: Icons.trending_up_outlined,
-          color: profitColor(r.totalProfit),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        Row(
-          children: [
-            Expanded(
-              child: StatTile(
-                label: AppStrings.revenueShort,
-                value: Formatters.money(conv(r.totalRevenue), code),
-                icon: Icons.payments_outlined,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: StatChipsBar(chips: [
+                  StatChip(
+                    label: AppStrings.profitShort,
+                    value: Formatters.money(conv(r.totalProfit), code),
+                    icon: Icons.trending_up_outlined,
+                    color: profitColor(r.totalProfit),
+                  ),
+                  StatChip(
+                    label: AppStrings.revenueShort,
+                    value: Formatters.money(conv(r.totalRevenue), code),
+                    icon: Icons.payments_outlined,
+                  ),
+                  StatChip(
+                    label: AppStrings.costShort,
+                    value: Formatters.money(conv(r.totalCost), code),
+                    icon: Icons.shopping_bag_outlined,
+                    color: Theme.of(context).colorScheme.secondary,
+                  ),
+                  StatChip(
+                    label: AppStrings.invoicesCount,
+                    value: Formatters.integer(r.invoicesCount),
+                    icon: Icons.receipt_long_outlined,
+                  ),
+                ]),
               ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: StatTile(
-                label: AppStrings.costShort,
-                value: Formatters.money(conv(r.totalCost), code),
-                icon: Icons.shopping_bag_outlined,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: StatTile(
-                label: AppStrings.invoicesCount,
-                value: Formatters.integer(r.invoicesCount),
-                icon: Icons.receipt_long_outlined,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        const AppSectionHeader(title: AppStrings.invoicesTitle),
-        const SizedBox(height: AppSpacing.sm),
-        ReportList(
-          emptyMessage: AppStrings.noDataForPeriod,
-          items: [
-            for (final inv in r.invoices)
-              ReportItem(
-                title: '${AppStrings.invoiceLabel} #${inv.invoiceNumber}',
-                subtitle:
-                    '${AppDate.ymd(inv.saleDate)} • ${_payLabel(inv.paymentMethod)}',
-                accentColor: profitColor(inv.profit),
-                trailing: Formatters.money(conv(inv.profit), code),
-                trailingColor: profitColor(inv.profit),
-                trailingCaption: AppStrings.profitShort,
-                fields: [
-                  ReportField(
-                      AppStrings.revenueShort, Formatters.money(conv(inv.revenue), code)),
-                  ReportField(
-                      AppStrings.costShort, Formatters.money(conv(inv.cost), code)),
-                  // العملة الأصلية للمعاملة إن اختلفت عن الأساس (للتدقيق).
-                  if (inv.originalCurrencyCode.isNotEmpty)
-                    ReportField(
-                      AppStrings.originalCurrency,
-                      '${Formatters.money(inv.revenue * inv.originalExchangeRate)} ${inv.originalCurrencyCode}',
+              const SizedBox(width: AppSpacing.sm),
+              AppGridColumnsButton(managerGetter: () => _gridManager),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Expanded(
+            child: AppGrid(
+              key: ValueKey('$code-${r.invoices.length}'),
+              columns: [
+                appGridTextColumn(AppStrings.invoiceLabel, _fInvoice,
+                    width: 130),
+                appGridTextColumn(AppStrings.dateColumn, _fDate,
+                    width: 105, textAlign: TrinaColumnTextAlign.center),
+                appGridTextColumn(AppStrings.paymentMethod, _fPayment,
+                    width: 110, hide: true),
+                appGridNumberColumn(AppStrings.revenueShort, _fRevenue,
+                    width: 120),
+                appGridNumberColumn(AppStrings.costShort, _fCost, width: 120),
+                appGridNumberColumn(AppStrings.profitShort, _fProfit,
+                    width: 120, renderer: (ctx) {
+                  final v = ctx.cell.value;
+                  final n = v is num ? v.toDouble() : 0.0;
+                  if (n == 0) return const SizedBox.shrink();
+                  return Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: Text(
+                      Formatters.number(n),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: profitColor(n),
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                ],
-              ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.xl),
-        Text(
-          AppStrings.profitFormulaHint,
-          style: Theme.of(context)
-              .textTheme
-              .bodySmall
-              ?.copyWith(color: Theme.of(context).hintColor),
-          textAlign: TextAlign.center,
-        ),
-      ],
+                  );
+                }),
+                appGridTextColumn(AppStrings.originalCurrency, _fOriginal,
+                    width: 140, hide: true),
+              ],
+              rows: [
+                for (final inv in r.invoices)
+                  TrinaRow(cells: {
+                    _fInvoice: TrinaCell(
+                        value: '${AppStrings.invoiceLabel} #${inv.invoiceNumber}'),
+                    _fDate: TrinaCell(value: AppDate.ymd(inv.saleDate)),
+                    _fPayment: TrinaCell(value: _payLabel(inv.paymentMethod)),
+                    _fRevenue: TrinaCell(value: conv(inv.revenue)),
+                    _fCost: TrinaCell(value: conv(inv.cost)),
+                    _fProfit: TrinaCell(value: conv(inv.profit)),
+                    _fOriginal: TrinaCell(
+                        value: inv.originalCurrencyCode.isEmpty
+                            ? ''
+                            : '${Formatters.money(inv.revenue * inv.originalExchangeRate)} ${inv.originalCurrencyCode}'),
+                  }),
+              ],
+              onLoaded: (m) => _gridManager = m,
+              // فاتورة بخسارة → تظليل تحذيري خفيف.
+              rowColorCallback: (ctx) {
+                final p = ctx.row.cells[_fProfit]?.value;
+                return (p is num && p < 0)
+                    ? Colors.red.withValues(alpha: 0.05)
+                    : Colors.transparent;
+              },
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            AppStrings.profitFormulaHint,
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: Theme.of(context).hintColor),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
 

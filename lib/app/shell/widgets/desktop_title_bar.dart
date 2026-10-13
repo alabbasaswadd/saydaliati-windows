@@ -4,6 +4,7 @@ import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/core/offline/sync/sync_service.dart';
 import 'package:saydaliati/core/theme/app_semantic_colors.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
+import 'package:saydaliati/shared/widgets/dialogs/app_dialogs.dart';
 import 'package:window_manager/window_manager.dart';
 
 /// Custom 40-px title bar for the desktop shell.
@@ -15,12 +16,10 @@ import 'package:window_manager/window_manager.dart';
 /// top-right corner regardless of the app's RTL locale.
 class DesktopTitleBar extends ConsumerStatefulWidget {
   const DesktopTitleBar({
-    required this.searchFocusNode,
     required this.sidebarExpanded,
     super.key,
   });
 
-  final FocusNode searchFocusNode;
   final bool sidebarExpanded;
 
   @override
@@ -66,24 +65,14 @@ class _DesktopTitleBarState extends ConsumerState<DesktopTitleBar>
   }
 
   Future<void> _close() async {
-    final shouldExit = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text(AppStrings.exitTitle),
-        content: const Text(AppStrings.exitMessage),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text(AppStrings.cancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text(AppStrings.exit),
-          ),
-        ],
-      ),
+    final shouldExit = await showConfirmationDialog(
+      context,
+      title: AppStrings.exitTitle,
+      message: AppStrings.exitMessage,
+      confirmLabel: AppStrings.exit,
+      icon: Icons.logout_outlined,
     );
-    if (shouldExit ?? false) {
+    if (shouldExit) {
       await windowManager.close();
     }
   }
@@ -108,36 +97,9 @@ class _DesktopTitleBarState extends ConsumerState<DesktopTitleBar>
         ),
         child: Row(
           children: [
-            // Search + draggable area fills the available space
-            Expanded(
-              child: DragToMoveArea(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.xl,
-                    vertical: AppSpacing.xs + 2,
-                  ),
-                  child: TextField(
-                    focusNode: widget.searchFocusNode,
-                    style: theme.textTheme.bodyMedium,
-                    decoration: InputDecoration(
-                      hintText: '${AppStrings.search}… (Ctrl+F)',
-                      prefixIcon: const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-                        child: Icon(Icons.search, size: AppSizes.iconSm),
-                      ),
-                      prefixIconConstraints: const BoxConstraints(
-                        minWidth: 36,
-                        minHeight: 0,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        vertical: AppSpacing.xs,
-                        horizontal: AppSpacing.sm,
-                      ),
-                      isDense: true,
-                    ),
-                  ),
-                ),
-              ),
+            // Draggable area fills the available space (search field removed).
+            const Expanded(
+              child: DragToMoveArea(child: SizedBox.expand()),
             ),
 
             // Pending sync badge

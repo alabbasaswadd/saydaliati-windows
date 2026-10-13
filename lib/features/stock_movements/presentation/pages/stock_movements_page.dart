@@ -12,10 +12,11 @@ import 'package:saydaliati/features/reports/domain/report_period.dart';
 import 'package:saydaliati/features/stock_movements/domain/entities/stock_movement.dart';
 import 'package:saydaliati/features/stock_movements/stock_movement_providers.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
-import 'package:saydaliati/shared/widgets/async_list_view.dart';
 import 'package:saydaliati/shared/widgets/filters/filter_side_sheet.dart';
+import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
 import 'package:saydaliati/shared/widgets/filters/period_filter_list.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_dropdown.dart';
+import 'package:trina_grid/trina_grid.dart';
 
 /// Read-only stock movement audit log (newest first). Filters (دواء / صنف /
 /// الفترة) live in a right-side panel opened from the AppBar filter button.
@@ -108,111 +109,113 @@ class _StockMovementsPageState extends ConsumerState<StockMovementsPage> {
           ),
         ],
       ),
-      body: AsyncListView<StockMovement>(
-        value: async,
-        emptyMessage: AppStrings.noMovements,
-        onRefresh: () => ref.refresh(stockMovementsProvider(
-                _medicineId, _categoryId, _period?.startUtcIso, _period?.endUtcIso)
-            .future),
-        itemBuilder: (context, m) => _MovementCard(movement: m),
+      // الغريد المعتمد: إدخال (سهم أخضر هابط) / إخراج (سهم أحمر صاعد) مع
+      // تلوين خفيف لكامل السطر بلون الحركة.
+      body: async.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text(e.toString())),
+        data: (movements) {
+          if (movements.isEmpty) {
+            return const Center(child: Text(AppStrings.noMovements));
+          }
+          return Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: _MovementsGrid(movements: movements),
+          );
+        },
       ),
     );
   }
 }
 
-class _MovementCard extends StatelessWidget {
-  const _MovementCard({required this.movement});
+class _MovementsGrid extends StatelessWidget {
+  const _MovementsGrid({required this.movements});
 
-  final StockMovement movement;
+  final List<StockMovement> movements;
+
+  static const _fType = 'type';
+  static const _fMedicine = 'medicine';
+  static const _fDate = 'date';
+  static const _fQty = 'qty';
+  static const _fExpiry = 'expiry';
+  static const _fNote = 'note';
+  static const _fUp = 'up';
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final up = movement.type.isIncrease;
-    final color = up ? Colors.green.shade700 : Colors.red.shade700;
-    final title = movement.medicineName.isNotEmpty
-        ? movement.medicineName
-        : movement.type.label;
-
-    return Card(
-      margin: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md, vertical: AppSpacing.xs),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundColor: color.withValues(alpha: 0.12),
-              child: Icon(up ? Icons.arrow_downward : Icons.arrow_upward,
-                  color: color, size: 20),
-            ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title,
-                      style: theme.textTheme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 2),
-                  Text(movement.type.label,
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: theme.hintColor)),
-                  const SizedBox(height: AppSpacing.xs),
-                  Wrap(
-                    spacing: AppSpacing.sm,
-                    runSpacing: AppSpacing.xs,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      _chip(theme, Icons.event_outlined,
-                          AppDate.ymd(movement.occurredOn)),
-                      if (movement.expiryDate != null)
-                        _chip(theme, Icons.schedule_outlined,
-                            '${AppStrings.expiry}: ${AppDate.ymd(movement.expiryDate!)}'),
-                      if (movement.note.isNotEmpty)
-                        _chip(theme, Icons.sticky_note_2_outlined, movement.note),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+    return AppGrid(
+      key: ValueKey(movements.length ^ movements.hashCode),
+      columns: [
+        TrinaColumn(
+          title: AppStrings.stockStatus,
+          field: _fType,
+          type: TrinaColumnType.text(),
+          width: 150,
+          enableEditingMode: false,
+          renderer: (ctx) {
+            final up = ctx.row.cells[_fUp]?.value == 'true';
+            final color = up ? Colors.green.shade700 : Colors.red.shade700;
+            return Row(
               children: [
-                Text(
-                  '${up ? '+' : '-'}${Formatters.qty(movement.quantityDelta.abs())}',
-                  style: theme.textTheme.titleMedium
-                      ?.copyWith(color: color, fontWeight: FontWeight.w700),
+                Icon(up ? Icons.arrow_downward : Icons.arrow_upward,
+                    size: 15, color: color),
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: Text(
+                    ctx.cell.value?.toString() ?? '',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: color, fontWeight: FontWeight.w600),
+                  ),
                 ),
-                Text(up ? AppStrings.movementIn : AppStrings.movementOut,
-                    style: theme.textTheme.bodySmall?.copyWith(color: color)),
               ],
-            ),
-          ],
+            );
+          },
         ),
-      ),
-    );
-  }
-
-  Widget _chip(ThemeData theme, IconData icon, String text) {
-    return Container(
-      padding:
-          const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 3),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 13, color: theme.hintColor),
-          const SizedBox(width: 4),
-          Text(text, style: theme.textTheme.bodySmall),
-        ],
-      ),
+        appGridTextColumn(AppStrings.medicineName, _fMedicine, width: 220),
+        appGridTextColumn(AppStrings.dateColumn, _fDate,
+            width: 105, textAlign: TrinaColumnTextAlign.center),
+        appGridNumberColumn(AppStrings.qtyLabel, _fQty, width: 100,
+            renderer: (ctx) {
+          final up = ctx.row.cells[_fUp]?.value == 'true';
+          final color = up ? Colors.green.shade700 : Colors.red.shade700;
+          final v = ctx.cell.value;
+          final n = v is num ? v.toDouble() : 0.0;
+          return Directionality(
+            textDirection: TextDirection.ltr,
+            child: Text(
+              '${up ? '+' : '-'}${Formatters.qty(n.abs())}',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: color, fontWeight: FontWeight.w700),
+            ),
+          );
+        }),
+        appGridTextColumn(AppStrings.expiryColumn, _fExpiry,
+            width: 105, hide: true, textAlign: TrinaColumnTextAlign.center),
+        appGridTextColumn('ملاحظة', _fNote, width: 200),
+        TrinaColumn(
+            title: '', field: _fUp, type: TrinaColumnType.text(), hide: true),
+      ],
+      rows: [
+        for (final m in movements)
+          TrinaRow(cells: {
+            _fType: TrinaCell(value: m.type.label),
+            _fMedicine: TrinaCell(
+                value: m.medicineName.isNotEmpty
+                    ? m.medicineName
+                    : m.type.label),
+            _fDate: TrinaCell(value: AppDate.ymd(m.occurredOn)),
+            _fQty: TrinaCell(value: m.quantityDelta),
+            _fExpiry: TrinaCell(
+                value: m.expiryDate != null ? AppDate.ymd(m.expiryDate!) : ''),
+            _fNote: TrinaCell(value: m.note),
+            _fUp: TrinaCell(value: m.type.isIncrease.toString()),
+          }),
+      ],
+      // تلوين السطر كاملاً بلون الحركة (أخضر إدخال / أحمر إخراج) بشفافية خفيفة.
+      rowColorCallback: (ctx) {
+        final up = ctx.row.cells[_fUp]?.value == 'true';
+        return (up ? Colors.green : Colors.red).withValues(alpha: 0.05);
+      },
     );
   }
 }

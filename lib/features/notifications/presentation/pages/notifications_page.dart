@@ -44,23 +44,79 @@ class NotificationsPage extends ConsumerWidget {
               message: 'لا توجد إشعارات',
             );
           }
+          final theme = Theme.of(context);
+          final groups = _groupByDate(state.items);
           return RefreshIndicator(
             onRefresh: () =>
                 ref.read(notificationCenterProvider.notifier).refresh(),
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-              itemCount: state.items.length,
-              separatorBuilder: (_, __) => const Divider(height: 1, indent: 72),
-              itemBuilder: (context, i) => _NotificationTile(
-                notification: state.items[i],
-                onTap: () => _onTap(context, ref, state.items[i]),
-              ),
+            // أقسام (اليوم / أمس / أقدم): كل قسم بإطار بسيط خاص به — فتُفصل
+            // الأقسام عن بعضها بالبوردر، وداخل كل قسم بوردر رفيع بين الإشعارات.
+            child: ListView(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              children: [
+                for (final (label, items) in groups) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(
+                        bottom: AppSpacing.sm, top: AppSpacing.md),
+                    child: Text(label,
+                        style: theme.textTheme.labelLarge?.copyWith(
+                            color: context.semantic.textSecondary,
+                            fontWeight: FontWeight.w700)),
+                  ),
+                  Container(
+                    clipBehavior: Clip.antiAlias,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      borderRadius: AppRadius.brSm,
+                      border: Border.all(color: theme.dividerColor),
+                    ),
+                    child: Column(
+                      children: [
+                        for (var i = 0; i < items.length; i++) ...[
+                          if (i > 0)
+                            Divider(height: 1, color: theme.dividerColor),
+                          _NotificationTile(
+                            notification: items[i],
+                            onTap: () => _onTap(context, ref, items[i]),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ],
             ),
           );
         },
       ),
     );
   }
+}
+
+/// يُقسّم الإشعارات إلى أقسام زمنية (اليوم / أمس / أقدم) مع الحفاظ على ترتيبها.
+List<(String, List<AppNotification>)> _groupByDate(List<AppNotification> items) {
+  final now = DateTime.now();
+  final today = <AppNotification>[];
+  final yesterday = <AppNotification>[];
+  final earlier = <AppNotification>[];
+  for (final n in items) {
+    final d = n.createdOn;
+    final diff = DateTime(now.year, now.month, now.day)
+        .difference(DateTime(d.year, d.month, d.day))
+        .inDays;
+    if (diff <= 0) {
+      today.add(n);
+    } else if (diff == 1) {
+      yesterday.add(n);
+    } else {
+      earlier.add(n);
+    }
+  }
+  return [
+    if (today.isNotEmpty) ('اليوم', today),
+    if (yesterday.isNotEmpty) ('أمس', yesterday),
+    if (earlier.isNotEmpty) ('أقدم', earlier),
+  ];
 }
 
 /// Mark the notification read and, if it carries a link (e.g. a video), open it.

@@ -3,11 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/features/suppliers/domain/entities/supplier.dart';
 import 'package:saydaliati/features/suppliers/supplier_providers.dart';
-import 'package:saydaliati/shared/widgets/async_list_view.dart';
 import 'package:saydaliati/shared/widgets/dialogs/app_dialogs.dart';
 import 'package:saydaliati/shared/widgets/dialogs/entity_form_dialog.dart';
 import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
+import 'package:saydaliati/shared/widgets/grids/simple_entity_grid.dart';
+import 'package:saydaliati/shared/widgets/states/app_states.dart';
 
 /// Suppliers management — list + add/edit/delete.
 class SuppliersPage extends ConsumerWidget {
@@ -79,27 +80,37 @@ class SuppliersPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(suppliersProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text(AppStrings.suppliers)),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _addOrEdit(context, ref),
-        child: const Icon(Icons.add),
-      ),
-      body: AsyncListView<Supplier>(
-        value: async,
-        emptyMessage: AppStrings.noSuppliers,
-        onRefresh: () => ref.refresh(suppliersProvider.future),
-        itemBuilder: (context, s) => ListTile(
-          leading: const Icon(Icons.local_shipping_outlined),
-          title: Text(s.name),
-          subtitle: s.contactPerson.isEmpty && s.email.isEmpty
-              ? null
-              : Text([s.contactPerson, s.email].where((x) => x.isNotEmpty).join(' · ')),
-          onTap: () => _addOrEdit(context, ref, s),
-          trailing: IconButton(
-            icon: const Icon(Icons.delete_outline),
-            onPressed: () => _delete(context, ref, s),
+      appBar: AppBar(
+        title: const Text(AppStrings.suppliers),
+        actions: [
+          IconButton(
+            tooltip: AppStrings.addNew,
+            icon: const Icon(Icons.add),
+            onPressed: () => _addOrEdit(context, ref),
           ),
-        ),
+        ],
+      ),
+      body: async.when(
+        loading: () => const LoadingState(),
+        error: (e, _) => ErrorState.fromError(e,
+            onRetry: () => ref.invalidate(suppliersProvider)),
+        data: (items) => items.isEmpty
+            ? const EmptyState(message: AppStrings.noSuppliers)
+            : SimpleEntityGrid<Supplier>(
+                items: items,
+                idOf: (s) => s.id,
+                columns: [
+                  SimpleEntityColumn(AppStrings.name, (s) => s.name,
+                      width: 220),
+                  SimpleEntityColumn(
+                      AppStrings.contactPerson, (s) => s.contactPerson,
+                      width: 180),
+                  SimpleEntityColumn(AppStrings.email, (s) => s.email,
+                      width: 200),
+                ],
+                onEdit: (s) => _addOrEdit(context, ref, s),
+                onDelete: (s) => _delete(context, ref, s),
+              ),
       ),
     );
   }

@@ -5,6 +5,7 @@ import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/core/enums/payment_method.dart';
 import 'package:saydaliati/core/offline/connectivity/work_mode.dart';
 import 'package:saydaliati/core/offline/sync/sync_service.dart';
+import 'package:saydaliati/core/utils/app_date.dart';
 import 'package:saydaliati/core/theme/app_semantic_colors.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/features/currencies/domain/currency_conversion.dart';
@@ -35,7 +36,8 @@ import 'package:saydaliati/shared/widgets/dialogs/app_dialogs.dart';
 import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
 import 'package:saydaliati/shared/widgets/filters/filter_bar.dart';
-import 'package:saydaliati/shared/widgets/grids/app_editable_grid.dart';
+import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
+import 'package:trina_grid/trina_grid.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_date_picker.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_number_field.dart';
 import 'package:saydaliati/shared/widgets/states/app_states.dart';
@@ -56,10 +58,11 @@ class _PosLine {
   double get total => unitPrice * quantity;
 }
 
-/// Tab 3 — المبيعات (نقطة البيع). Reuses the debts app's clean POS layout:
-/// an always-on embedded scanner on top, currency + payment selectors, a manual
-/// medicine picker, readable receipt lines, and a summary bar with save.
-class SalesPage extends ConsumerStatefulWidget {
+/// Tab 3 — المبيعات (نقطة البيع). عند الاستخدام الرئيسي (بلا معاملات) يفتح
+/// عدة فواتير في تابات أعلى الشاشة (كمتصفح) عبر [_SalesTabsHost]؛ عند تمرير
+/// [saleToEdit]/[queuedId] (تعديل فاتورة من مكان آخر) يُفتح محرر فاتورة واحدة
+/// كما كان، بلا تابات.
+class SalesPage extends StatelessWidget {
   const SalesPage({this.saleToEdit, this.queuedId, this.queuedPayload, super.key});
 
   /// When set, the page edits this existing (synced) invoice instead of creating
@@ -73,11 +76,46 @@ class SalesPage extends ConsumerStatefulWidget {
   final Map<String, dynamic>? queuedPayload;
 
   @override
-  ConsumerState<SalesPage> createState() => _SalesPageState();
+  Widget build(BuildContext context) {
+    if (saleToEdit != null || queuedId != null) {
+      return _SingleSaleScaffold(
+        saleToEdit: saleToEdit,
+        queuedId: queuedId,
+        queuedPayload: queuedPayload,
+      );
+    }
+    return const _SalesTabsHost();
+  }
 }
 
-class _SalesPageState extends ConsumerState<SalesPage> {
+/// محرر فاتورة واحدة — نفس منطق نقطة البيع الأصلي. [standalone] يتحكم بإظهار
+/// الـ Scaffold/AppBar الخاصة به: true (الافتراضي، تعديل فاتورة) يعرضها كاملة
+/// كصفحة قائمة بذاتها؛ false (تاب داخل [_SalesTabsHost]) يعرض المحتوى فقط
+/// لأن الـ AppBar وشريط التابات مِن الحاوية الخارجية. [onDirtyChanged] يُبلّغ
+/// الحاوية إن كان في هذه الفاتورة أسطر غير محفوظة (لتحذير المستخدم عند إغلاق تابها).
+class _SingleSaleScaffold extends ConsumerStatefulWidget {
+  const _SingleSaleScaffold({
+    this.saleToEdit,
+    this.queuedId,
+    this.queuedPayload,
+    this.standalone = true,
+    this.onDirtyChanged,
+    super.key,
+  });
+
+  final Sale? saleToEdit;
+  final String? queuedId;
+  final Map<String, dynamic>? queuedPayload;
+  final bool standalone;
+  final ValueChanged<bool>? onDirtyChanged;
+
+  @override
+  ConsumerState<_SingleSaleScaffold> createState() => _SingleSaleScaffoldState();
+}
+
+class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
   final List<_PosLine> _lines = [];
+  DateTime _saleDate = DateTime.now();
   String? _currencyId;
   String? _customerId;
   PaymentMethod _payMethod = PaymentMethod.cash;
@@ -318,7 +356,7 @@ class _SalesPageState extends ConsumerState<SalesPage> {
           ? selected.exchangeRate / base.exchangeRate
           : 1,
       warehouseId: warehouseId,
-      saleDate: DateTime.now(),
+      saleDate: _saleDate,
       totalAmount: toBase(_total),
       paymentMethod: _payMethod,
       isPrescription: _isPrescription,
@@ -367,6 +405,7 @@ class _SalesPageState extends ConsumerState<SalesPage> {
         }
         setState(() {
           _lines.clear();
+          _saleDate = DateTime.now();
           _payMethod = PaymentMethod.cash;
           _customerId = null;
           _isPrescription = false;
@@ -516,6 +555,7 @@ class _SalesPageState extends ConsumerState<SalesPage> {
   /// the catalog by id). Amounts are stored in base → edit in the base currency.
   void _prefillFromSale(Sale sale, List<Medicine> catalog) {
     _prefilled = true;
+    _saleDate = sale.saleDate;
     _customerId = sale.customerId.isNotEmpty ? sale.customerId : null;
     _currencyId = null; // base
     _payMethod = sale.paymentMethod;
@@ -535,6 +575,8 @@ class _SalesPageState extends ConsumerState<SalesPage> {
   /// Prefills the POS from a still-queued offline invoice's request body.
   void _prefillFromPayload(Map<String, dynamic> payload, List<Medicine> catalog) {
     _prefilled = true;
+    _saleDate =
+        DateTime.tryParse('${payload['saleDate'] ?? ''}') ?? DateTime.now();
     final cust = payload['customerId'] as String?;
     _customerId = (cust != null && cust.isNotEmpty) ? cust : null;
     _currencyId = null; // amounts are stored in base
@@ -578,6 +620,42 @@ class _SalesPageState extends ConsumerState<SalesPage> {
     final offline = !ref.watch(effectiveOnlineProvider);
     final pending = ref.watch(pendingOperationsCountProvider).value ?? 0;
 
+    // يبلّغ حاوية التابات (إن وُجدت) إن كانت هذه الفاتورة تحمل أسطراً غير
+    // محفوظة — بعد انتهاء هذا البناء، حتى لا يُستدعى setState في الأب أثناءه.
+    final onDirty = widget.onDirtyChanged;
+    if (onDirty != null) {
+      final hasLines = _lines.isNotEmpty;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) onDirty(hasLines);
+      });
+    }
+
+    final body = catalogAsync.when(
+      loading: () => const LoadingState(message: AppStrings.loading),
+      error: (e, _) => ErrorState.fromError(
+        e,
+        onRetry: () => ref.invalidate(medicineCatalogProvider),
+      ),
+      data: (catalog) {
+        final currencies = currenciesAsync.value ?? const <Currency>[];
+        final warehouseId = warehouseAsync.value;
+        if (_isEdit && !_prefilled) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted || _prefilled) return;
+              setState(() => _prefillFromSale(widget.saleToEdit!, catalog));
+            });
+          } else if (_isQueuedEdit && !_prefilled) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted || _prefilled) return;
+              setState(() => _prefillFromPayload(widget.queuedPayload!, catalog));
+            });
+          }
+          return _buildPos(catalog, currencies, warehouseId, base);
+        },
+      );
+
+    if (!widget.standalone) return body;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(_isEdit || _isQueuedEdit
@@ -612,29 +690,7 @@ class _SalesPageState extends ConsumerState<SalesPage> {
           ],
         ],
       ),
-      body: catalogAsync.when(
-        loading: () => const LoadingState(message: AppStrings.loading),
-        error: (e, _) => ErrorState.fromError(
-          e,
-          onRetry: () => ref.invalidate(medicineCatalogProvider),
-        ),
-        data: (catalog) {
-          final currencies = currenciesAsync.value ?? const <Currency>[];
-          final warehouseId = warehouseAsync.value;
-          if (_isEdit && !_prefilled) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (!mounted || _prefilled) return;
-              setState(() => _prefillFromSale(widget.saleToEdit!, catalog));
-            });
-          } else if (_isQueuedEdit && !_prefilled) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (!mounted || _prefilled) return;
-              setState(() => _prefillFromPayload(widget.queuedPayload!, catalog));
-            });
-          }
-          return _buildPos(catalog, currencies, warehouseId, base);
-        },
-      ),
+      body: body,
     );
   }
 
@@ -694,17 +750,22 @@ class _SalesPageState extends ConsumerState<SalesPage> {
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),
-              // شريط أدوات مدمج بدل القوائم الكبيرة: العملة، العميل، وصفة
-              // طبية، وطريقة الدفع — إضافة الدواء صارت من خلية الجدول نفسها.
-              Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: Wrap(
-                  spacing: AppSpacing.sm,
-                  runSpacing: AppSpacing.sm,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    _toolbarMenu<String>(
-                      icon: Icons.payments_outlined,
+              // شريط أدوات مدمج بدل القوائم الكبيرة: التاريخ، العملة، العميل،
+              // وصفة طبية، وطريقة الدفع — إضافة الدواء صارت من خلية الجدول
+              // نفسها. الإجمالي ظاهر دوماً في نهاية هذا الشريط (لا في الأسفل
+              // فقط) حتى يبقى مرئياً حتى مع طول الجدول.
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Wrap(
+                      spacing: AppSpacing.sm,
+                      runSpacing: AppSpacing.sm,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        _dateChip(theme),
+                        _toolbarMenu<String>(
+                          icon: Icons.payments_outlined,
                       tooltip: AppStrings.selectCurrency,
                       label: currencyCode.isEmpty
                           ? AppStrings.selectCurrency
@@ -762,17 +823,23 @@ class _SalesPageState extends ConsumerState<SalesPage> {
                       selected: _isPrescription,
                       onSelected: (v) => setState(() => _isPrescription = v),
                     ),
-                  ],
-                ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  _totalBadge(theme, currencyCode),
+                ],
               ),
             ],
           ),
         ),
         const Divider(height: 1),
-        // الجدول دائم الظهور: آخر صف فيه هو "صف جديد" تُختار المادة من خليته.
+        // الجدول دائم الظهور ويملأ المساحة كاملة: آخر صف فيه هو "صف جديد"
+        // تُختار المادة من خليته.
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.sm, AppSpacing.sm, AppSpacing.sm, 0),
             child: _linesGrid(catalog),
           ),
         ),
@@ -809,100 +876,265 @@ class _SalesPageState extends ConsumerState<SalesPage> {
     }
   }
 
-  /// Invoice lines as the project-wide editable grid (same style as the
-  /// expiry grid). Unit, price, quantity and expiry batch edit in place; a
-  /// `null` row is the always-present trailing "new row" whose medicine is
-  /// picked INSIDE its cell (wakeed-style).
+  // ─── جدول الفاتورة: غريد Trina حقيقي (خلايا كخلايا التقارير) ──────────────
+
+  static const _fId = 'id';
+  static const _fMed = 'med';
+  static const _fUnit = 'unit';
+  static const _fPrice = 'price';
+  static const _fQty = 'qty';
+  static const _fBatch = 'batch';
+  static const _fTotal = 'total';
+  static const _fDel = 'del';
+  static const _newRowId = '__new__';
+
+  String _lineId(_PosLine l) => identityHashCode(l).toString();
+
+  /// بصمة بنيوية للأسطر: أي تغيير (إضافة/حذف/وحدة/سعر/كمية/دفعة/عملة) يعيد
+  /// بناء الشبكة بقيم محدثة. التحرير داخل الخلية يلتزم عند الخروج منها ثم
+  /// يُعاد البناء — آمن لأن قوائم نقطة البيع قصيرة.
+  Key _gridKey(Currency? base) => ValueKey(Object.hashAll([
+        _effectiveCurrencyId(base),
+        for (final l in _lines) ...[
+          identityHashCode(l),
+          l.unit.unitId,
+          l.unitPrice,
+          l.quantity,
+          l.selectedBatch?.stockId,
+          l.batches.length,
+        ],
+      ]));
+
   Widget _linesGrid(List<Medicine> catalog) {
+    final theme = Theme.of(context);
     final warning = context.semantic.warning;
-    final rows = <_PosLine?>[..._lines, null];
-    return AppEditableGrid<_PosLine?>(
-      rows: rows,
-      minWidth: 760,
-      canDeleteRow: (l) => l != null,
-      onDeleteRow: (line, _) {
-        if (line != null) _removeWithUndo(line);
-      },
-      // بيع بخسارة → شريط وتظليل تحذيري (نفس دلالة اللون القديمة).
-      rowAccent: (l) => l != null && _isNegativeProfit(l) ? warning : null,
-      rowBackground: (l) => l != null && _isNegativeProfit(l)
-          ? warning.withValues(alpha: 0.10)
-          : null,
+    final base = ref.watch(baseCurrencyProvider);
+    final byId = {for (final l in _lines) _lineId(l): l};
+
+    bool isNewRow(TrinaRow<dynamic> row) =>
+        row.cells[_fId]?.value == _newRowId;
+    _PosLine? lineOf(TrinaRow<dynamic> row) => byId[row.cells[_fId]?.value];
+
+    return AppGrid(
+      key: _gridKey(base),
       columns: [
-        AppGridColumn(
-          label: AppStrings.medicineName,
-          flex: 3,
-          cellBuilder: (_, l, _) => AppGridPickerCell(
-            text: l?.medicine.displayName,
-            hint: l == null ? 'اختر مادة…' : null,
-            emphasizedHint: l == null,
-            onPick: () => _pickMedicineForLine(catalog, l),
-          ),
-        ),
-        AppGridColumn(
-          label: AppStrings.unitLabel,
-          flex: 2,
-          cellBuilder: (_, l, _) => l == null
-              ? const SizedBox.shrink()
-              : AppGridDropdownCell<String>(
-                  value: l.unit.unitId,
-                  items: [
-                    for (final u in l.medicine.units) (u.unitId, u.unitName)
-                  ],
-                  onChanged: (v) => _changeUnit(l, v),
+        // الدواء: اسم + قلم للتبديل؛ وفي صف الإضافة زر «اختر مادة…».
+        TrinaColumn(
+          title: AppStrings.medicineName,
+          field: _fMed,
+          type: TrinaColumnType.text(),
+          width: 240,
+          enableEditingMode: false,
+          renderer: (ctx) {
+            if (isNewRow(ctx.row)) {
+              return Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: TextButton.icon(
+                  onPressed: () => _pickMedicineForLine(catalog, null),
+                  icon: const Icon(Icons.add_circle_outline, size: 16),
+                  label: const Text('اختر مادة…'),
                 ),
+              );
+            }
+            final l = lineOf(ctx.row);
+            if (l == null) return const SizedBox.shrink();
+            return InkWell(
+              onTap: () => _pickMedicineForLine(catalog, l),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(l.medicine.displayName,
+                        overflow: TextOverflow.ellipsis),
+                  ),
+                  Icon(Icons.edit_outlined,
+                      size: 13, color: theme.hintColor),
+                ],
+              ),
+            );
+          },
         ),
-        AppGridColumn(
-          label: AppStrings.price,
-          flex: 2,
-          cellBuilder: (_, l, _) => l == null
-              ? const SizedBox.shrink()
-              : AppGridNumberCell(
-                  value: l.unitPrice,
-                  onChanged: (v) => setState(() => l.unitPrice = v),
-                ),
+        // الوحدة: قائمة داخل الخلية (خيارات لكل صف على حدة).
+        TrinaColumn(
+          title: AppStrings.unitLabel,
+          field: _fUnit,
+          type: TrinaColumnType.text(),
+          width: 120,
+          enableEditingMode: false,
+          renderer: (ctx) {
+            final l = lineOf(ctx.row);
+            if (l == null) return const SizedBox.shrink();
+            return PopupMenuButton<String>(
+              tooltip: AppStrings.unitLabel,
+              onSelected: (v) => _changeUnit(l, v),
+              itemBuilder: (_) => [
+                for (final u in l.medicine.units)
+                  PopupMenuItem(value: u.unitId, child: Text(u.unitName)),
+              ],
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(ctx.cell.value?.toString() ?? '',
+                        overflow: TextOverflow.ellipsis),
+                  ),
+                  Icon(Icons.arrow_drop_down,
+                      size: 16, color: theme.hintColor),
+                ],
+              ),
+            );
+          },
         ),
-        AppGridColumn(
-          label: AppStrings.quantity,
-          flex: 2,
-          cellBuilder: (_, l, _) => l == null
-              ? const SizedBox.shrink()
-              : AppGridNumberCell(
-                  value: l.quantity,
-                  onChanged: (v) {
-                    if (v > 0) setState(() => l.quantity = v);
-                  },
-                ),
+        // السعر والكمية: خلايا أرقام تُحرَّر في مكانها (كخلايا التقارير).
+        TrinaColumn(
+          title: AppStrings.price,
+          field: _fPrice,
+          type: TrinaColumnType.number(
+              format: '#,##0.##', locale: 'en', applyFormatOnInit: false),
+          width: 110,
+          textAlign: TrinaColumnTextAlign.center,
+          enableEditingMode: true,
+          checkReadOnly: (row, cell) => isNewRow(row),
         ),
-        AppGridColumn(
-          label: AppStrings.expiryDateLabel,
-          flex: 3,
-          cellBuilder: (_, l, _) => l == null
-              ? const SizedBox.shrink()
-              : l.batches.isEmpty
-                  ? const AppGridText('—', secondary: true)
-                  : AppGridDropdownCell<String>(
-                      value: l.selectedBatch?.stockId,
-                      items: [
-                        for (final b in l.batches)
-                          (
-                            b.stockId,
-                            '${b.expiryLabel} (${Formatters.qty(b.quantityAvailable)})'
-                          ),
-                      ],
-                      onChanged: (v) => setState(() => l.selectedBatch =
-                          l.batches.where((b) => b.stockId == v).firstOrNull),
-                    ),
+        TrinaColumn(
+          title: AppStrings.quantity,
+          field: _fQty,
+          type: TrinaColumnType.number(
+              format: '#,##0.##', locale: 'en', applyFormatOnInit: false),
+          width: 95,
+          textAlign: TrinaColumnTextAlign.center,
+          enableEditingMode: true,
+          checkReadOnly: (row, cell) => isNewRow(row),
         ),
-        AppGridColumn(
-          label: AppStrings.total,
-          flex: 2,
-          alignEnd: true,
-          cellBuilder: (_, l, _) => l == null
-              ? const SizedBox.shrink()
-              : AppGridText(Formatters.number(l.total), emphasized: true),
+        // دفعة الصلاحية: قائمة داخل الخلية.
+        TrinaColumn(
+          title: AppStrings.expiryDateLabel,
+          field: _fBatch,
+          type: TrinaColumnType.text(),
+          width: 170,
+          enableEditingMode: false,
+          renderer: (ctx) {
+            final l = lineOf(ctx.row);
+            if (l == null) return const SizedBox.shrink();
+            if (l.batches.isEmpty) {
+              return Text('—',
+                  style: TextStyle(color: theme.hintColor));
+            }
+            return PopupMenuButton<String>(
+              tooltip: AppStrings.expiryDateLabel,
+              onSelected: (v) => setState(() => l.selectedBatch =
+                  l.batches.where((b) => b.stockId == v).firstOrNull),
+              itemBuilder: (_) => [
+                for (final b in l.batches)
+                  PopupMenuItem(
+                    value: b.stockId,
+                    child: Text(
+                        '${b.expiryLabel} (${Formatters.qty(b.quantityAvailable)})'),
+                  ),
+              ],
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(ctx.cell.value?.toString() ?? '',
+                        overflow: TextOverflow.ellipsis),
+                  ),
+                  Icon(Icons.arrow_drop_down,
+                      size: 16, color: theme.hintColor),
+                ],
+              ),
+            );
+          },
         ),
+        appGridNumberColumn(AppStrings.total, _fTotal, width: 120,
+            renderer: (ctx) {
+          final v = ctx.cell.value;
+          final n = v is num ? v.toDouble() : 0.0;
+          if (isNewRow(ctx.row)) return const SizedBox.shrink();
+          return Directionality(
+            textDirection: TextDirection.ltr,
+            child: Text(
+              Formatters.number(n),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          );
+        }),
+        TrinaColumn(
+          title: '',
+          field: _fDel,
+          type: TrinaColumnType.text(),
+          width: 50,
+          enableEditingMode: false,
+          enableContextMenu: false,
+          enableFilterMenuItem: false,
+          enableSorting: false,
+          renderer: (ctx) {
+            final l = lineOf(ctx.row);
+            if (l == null) return const SizedBox.shrink();
+            return IconButton(
+              icon: Icon(Icons.delete_outline,
+                  size: 16, color: theme.colorScheme.error),
+              visualDensity: VisualDensity.compact,
+              tooltip: AppStrings.delete,
+              onPressed: () => _removeWithUndo(l),
+            );
+          },
+        ),
+        TrinaColumn(
+            title: '', field: _fId, type: TrinaColumnType.text(), hide: true),
       ],
+      rows: [
+        for (final l in _lines)
+          TrinaRow(cells: {
+            _fId: TrinaCell(value: _lineId(l)),
+            _fMed: TrinaCell(value: l.medicine.displayName),
+            _fUnit: TrinaCell(value: l.unit.unitName),
+            _fPrice: TrinaCell(value: l.unitPrice),
+            _fQty: TrinaCell(value: l.quantity),
+            _fBatch: TrinaCell(
+                value: l.selectedBatch != null
+                    ? '${l.selectedBatch!.expiryLabel} (${Formatters.qty(l.selectedBatch!.quantityAvailable)})'
+                    : ''),
+            _fTotal: TrinaCell(value: l.total),
+            _fDel: TrinaCell(value: ''),
+          }),
+        // صف الإضافة الدائم.
+        TrinaRow(cells: {
+          _fId: TrinaCell(value: _newRowId),
+          _fMed: TrinaCell(value: ''),
+          _fUnit: TrinaCell(value: ''),
+          _fPrice: TrinaCell(value: ''),
+          _fQty: TrinaCell(value: ''),
+          _fBatch: TrinaCell(value: ''),
+          _fTotal: TrinaCell(value: ''),
+          _fDel: TrinaCell(value: ''),
+        }),
+      ],
+      showColumnFilter: false,
+      onChanged: (e) {
+        final l = lineOf(e.row);
+        if (l == null) return;
+        final v = e.value is num
+            ? (e.value as num).toDouble()
+            : double.tryParse(e.value?.toString() ?? '');
+        setState(() {
+          if (e.column.field == _fPrice && v != null && v >= 0) {
+            l.unitPrice = v;
+          } else if (e.column.field == _fQty && v != null && v > 0) {
+            l.quantity = v;
+          }
+          // قيمة غير صالحة → البصمة تعيد البناء بالقيمة القديمة.
+        });
+      },
+      // بيع بخسارة → تظليل تحذيري لكامل السطر.
+      rowColorCallback: (ctx) {
+        final l = lineOf(ctx.row);
+        if (l != null && _isNegativeProfit(l)) {
+          return warning.withValues(alpha: 0.08);
+        }
+        return Colors.transparent;
+      },
     );
   }
 
@@ -937,57 +1169,300 @@ class _SalesPageState extends ConsumerState<SalesPage> {
     );
   }
 
+  /// شريحة تاريخ الفاتورة — بنفس أسلوب [AppMenuChip] (حدّ + أيقونة)، تفتح
+  /// منتقي تاريخ عند الضغط. الافتراضي تاريخ اليوم (قيمة [_saleDate] الابتدائية).
+  Widget _dateChip(ThemeData theme) {
+    return InkWell(
+      borderRadius: AppRadius.brMd,
+      onTap: () async {
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: _saleDate,
+          firstDate: DateTime(_saleDate.year - 5),
+          lastDate: DateTime(_saleDate.year + 5),
+        );
+        if (picked != null) setState(() => _saleDate = picked);
+      },
+      child: Container(
+        padding:
+            const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 10),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          border: Border.all(color: context.semantic.border),
+          borderRadius: AppRadius.brMd,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.calendar_today_outlined,
+                size: AppSizes.iconSm, color: theme.colorScheme.primary),
+            const SizedBox(width: AppSpacing.xs),
+            Text(AppDate.ymd(_saleDate), style: theme.textTheme.bodyMedium),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// بطاقة الإجمالي — ظاهرة دوماً في نهاية شريط الأدوات أعلى الجدول (لا في
+  /// الأسفل فقط)، فتبقى مرئية حتى عند طول قائمة الأسطر.
+  Widget _totalBadge(ThemeData theme, String code) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md, vertical: 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primary.withValues(alpha: 0.08),
+        borderRadius: AppRadius.brMd,
+        border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(AppStrings.total,
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.primary)),
+          const SizedBox(width: AppSpacing.xs),
+          Text(
+            Formatters.money(_total, code),
+            style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold, color: theme.colorScheme.primary),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _summaryBar(
     String code,
     String? warehouseId,
     Currency? base,
     ThemeData theme,
   ) {
+    // شريط حفظ بأسلوب سطح المكتب: زر حفظ مدمج بحجم محتواه في نهاية السطر (لا
+    // زر ممتد بعرض الشاشة كالموبايل). الإجمالي صار ظاهراً بشريط الأدوات
+    // أعلى الجدول بدل هنا.
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg, vertical: AppSpacing.md),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         border: Border(top: BorderSide(color: context.semantic.border)),
       ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(AppStrings.total,
-                          style: theme.textTheme.bodySmall),
-                      Text(
-                        Formatters.money(_total, code),
-                        style: theme.textTheme.headlineSmall
-                            ?.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: AppButton.primary(
-                    label: _submitting ? AppStrings.saving : AppStrings.save,
-                    isLoading: _submitting,
-                    backgroundColor: context.semantic.success,
-                    onPressed: () => _submit(warehouseId, base),
-                  ),
-                ),
-              ],
+      child: Row(
+        children: [
+          const Spacer(),
+          SizedBox(
+            width: 180,
+            child: AppButton.primary(
+              label: _submitting ? AppStrings.saving : AppStrings.save,
+              icon: Icons.save_outlined,
+              isLoading: _submitting,
+              backgroundColor: context.semantic.success,
+              onPressed: () => _submit(warehouseId, base),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
+/// حاوية تابات فواتير المبيعات — تسمح بفتح أكثر من فاتورة بالتزامن (كتابات
+/// المتصفح): كل تاب [_SingleSaleScaffold] مستقل بالكامل (أسطره/عملته/عميله)
+/// ومُبقى حيّاً داخل [IndexedStack] عند التبديل بينها فلا تُفقد حالته. شريط
+/// التابات + الـ AppBar (الإشعارات، حالة الاتصال، الفواتير المعلّقة) من هنا
+/// فقط — التابات نفسها تعرض محتواها بلا Scaffold مكرَّر.
+class _SalesTabsHost extends ConsumerStatefulWidget {
+  const _SalesTabsHost();
+
+  @override
+  ConsumerState<_SalesTabsHost> createState() => _SalesTabsHostState();
+}
+
+class _SalesTabsHostState extends ConsumerState<_SalesTabsHost> {
+  final List<int> _tabIds = [1];
+  int _nextId = 2;
+  int _activeIndex = 0;
+  final Map<int, bool> _dirty = {};
+
+  void _addTab() {
+    setState(() {
+      _dirty[_nextId] = false;
+      _tabIds.add(_nextId);
+      _nextId++;
+      _activeIndex = _tabIds.length - 1;
+    });
+  }
+
+  /// إغلاق تاب — بتأكيد أولاً إن كانت فاتورته تحمل أسطراً غير محفوظة. آخر تاب
+  /// متبقٍ لا يُغلَق (يبقى دوماً تاب واحد على الأقل مفتوحاً).
+  Future<void> _closeTab(int index) async {
+    if (_tabIds.length <= 1) return;
+    final id = _tabIds[index];
+    if (_dirty[id] == true) {
+      final ok = await showConfirmationDialog(
+        context,
+        title: 'إغلاق الفاتورة؟',
+        message: 'هذه الفاتورة تحتوي أسطراً غير محفوظة، وستُفقد عند الإغلاق.',
+        confirmLabel: 'إغلاق',
+      );
+      if (!ok || !mounted) return;
+    }
+    setState(() {
+      _tabIds.removeAt(index);
+      _dirty.remove(id);
+      if (_activeIndex >= _tabIds.length) {
+        _activeIndex = _tabIds.length - 1;
+      } else if (_activeIndex > index) {
+        _activeIndex--;
+      }
+    });
+  }
+
+  void _setDirty(int id, bool value) {
+    if (_dirty[id] == value) return;
+    setState(() => _dirty[id] = value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final offline = !ref.watch(effectiveOnlineProvider);
+    final pending = ref.watch(pendingOperationsCountProvider).value ?? 0;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(AppStrings.newSale),
+        actions: [
+          const NotificationBell(),
+          IconButton(
+            tooltip: AppStrings.offlineToggleTooltip,
+            icon: Icon(offline ? Icons.cloud_off : Icons.cloud_done_outlined,
+                color: offline ? Colors.orange.shade800 : null),
+            onPressed: () => ref
+                .read(workModeControllerProvider.notifier)
+                .toggleOffline(
+                    ref.read(workModeControllerProvider) != WorkMode.offline),
+          ),
+          if (pending > 0)
+            IconButton(
+              tooltip: AppStrings.pendingInvoices,
+              icon: Badge(
+                label: Text('$pending'),
+                child: const Icon(Icons.cloud_queue),
+              ),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                    builder: (_) => const PendingInvoicesPage()),
+              ),
+            ),
+        ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(42),
+          child: _tabStrip(context),
+        ),
+      ),
+      body: IndexedStack(
+        index: _activeIndex,
+        children: [
+          for (final id in _tabIds)
+            _SingleSaleScaffold(
+              key: ValueKey(id),
+              standalone: false,
+              onDirtyChanged: (v) => _setDirty(id, v),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// شريط التابات بأسلوب سطح المكتب: تابات قابلة للسحب أفقياً + زر «+» لفاتورة
+  /// جديدة في نهاية الشريط.
+  Widget _tabStrip(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      height: 42,
+      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+      child: Row(
+        children: [
+          Expanded(
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                for (var i = 0; i < _tabIds.length; i++) _tabChip(theme, i),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'فاتورة جديدة',
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.add, size: 20),
+            onPressed: _addTab,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _tabChip(ThemeData theme, int index) {
+    final id = _tabIds[index];
+    final selected = index == _activeIndex;
+    final dirty = _dirty[id] == true;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 3),
+      child: Material(
+        color: selected
+            ? theme.colorScheme.surface
+            : Colors.transparent,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+        child: InkWell(
+          onTap: () => setState(() => _activeIndex = index),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+          child: Container(
+            constraints: const BoxConstraints(minWidth: 92, maxWidth: 180),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+            decoration: BoxDecoration(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+              border: Border.all(
+                color: selected
+                    ? theme.colorScheme.primary.withValues(alpha: 0.35)
+                    : Colors.transparent,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (dirty) ...[
+                  Icon(Icons.circle, size: 6, color: theme.colorScheme.primary),
+                  const SizedBox(width: 6),
+                ],
+                Flexible(
+                  child: Text(
+                    'فاتورة ${index + 1}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                      color: selected ? theme.colorScheme.primary : null,
+                    ),
+                  ),
+                ),
+                if (_tabIds.length > 1) ...[
+                  const SizedBox(width: 4),
+                  InkWell(
+                    onTap: () => _closeTab(index),
+                    borderRadius: BorderRadius.circular(999),
+                    child: Icon(Icons.close, size: 14, color: theme.hintColor),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 /// A small numeric prompt dialog that owns its controller — returns the parsed
 /// value on save, or null on cancel/dismiss (no mutation on cancel).
@@ -1042,53 +1517,117 @@ class _SetPriceDialogState extends State<_SetPriceDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return AlertDialog(
-      title: const Text('تحديد سعر المبيع'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(widget.medicineName,
-              style: theme.textTheme.titleSmall,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis),
-          const SizedBox(height: AppSpacing.md),
-          AppNumberField(
-            controller: _controller,
-            label: 'سعر المبيع (${widget.currencyName})',
-            enabled: !_saving,
-          ),
-          if (_saving) ...[
-            const SizedBox(height: AppSpacing.md),
-            Row(
-              children: [
-                const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2)),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Text('جارٍ حفظ السعر وتحديث الدواء…',
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: theme.hintColor)),
+    return Dialog(
+      backgroundColor: theme.colorScheme.surface,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 400),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 14, 12, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.price_change_outlined,
+                      color: theme.colorScheme.primary, size: 24),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text('تحديد سعر المبيع',
+                          style: theme.textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 28,
+                    height: 28,
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      visualDensity: VisualDensity.compact,
+                      iconSize: 16,
+                      tooltip: AppStrings.close,
+                      icon: const Icon(Icons.close),
+                      onPressed: _saving ? null : () => Navigator.of(context).pop(false),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Text(widget.medicineName,
+                  style: theme.textTheme.titleSmall,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis),
+              const SizedBox(height: AppSpacing.md),
+              AppNumberField(
+                controller: _controller,
+                label: 'سعر المبيع (${widget.currencyName})',
+                enabled: !_saving,
+              ),
+              if (_saving) ...[
+                const SizedBox(height: AppSpacing.md),
+                Row(
+                  children: [
+                    const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2)),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text('جارٍ حفظ السعر وتحديث الدواء…',
+                          style: theme.textTheme.bodySmall
+                              ?.copyWith(color: theme.hintColor)),
+                    ),
+                  ],
                 ),
               ],
-            ),
-          ],
-        ],
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  SizedBox(
+                    width: 96,
+                    height: 32,
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        textStyle: theme.textTheme.bodyMedium,
+                      ),
+                      onPressed:
+                          _saving ? null : () => Navigator.of(context).pop(false),
+                      child: const Text(AppStrings.cancel),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 96,
+                    height: 32,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        textStyle: theme.textTheme.bodyMedium,
+                      ),
+                      onPressed: _saving ? null : _save,
+                      child: _saving
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Text(AppStrings.save),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
-      actions: [
-        AppButton.text(
-          label: AppStrings.cancel,
-          onPressed: _saving ? null : () => Navigator.of(context).pop(false),
-        ),
-        AppButton.primary(
-          label: AppStrings.save,
-          fullWidth: false,
-          isLoading: _saving,
-          onPressed: _saving ? null : _save,
-        ),
-      ],
     );
   }
 }
@@ -1152,14 +1691,54 @@ class _AddStockDialogState extends State<_AddStockDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return AlertDialog(
-      title: const Text('إضافة مخزون'),
-      // Scrollable so the fields + warning + date picker never overflow on small
-      // screens or when the keyboard is open.
-      content: SizedBox(
-        width: double.maxFinite,
-        child: SingleChildScrollView(
+    return Dialog(
+      backgroundColor: theme.colorScheme.surface,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 14, 12, 16),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.warehouse_outlined,
+                      color: theme.colorScheme.primary, size: 24),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text('إضافة مخزون',
+                          style: theme.textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 28,
+                    height: 28,
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      visualDensity: VisualDensity.compact,
+                      iconSize: 16,
+                      tooltip: AppStrings.close,
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              // Scrollable so the fields + warning + date picker never overflow.
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.sizeOf(context).height * 0.6,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1218,14 +1797,44 @@ class _AddStockDialogState extends State<_AddStockDialog> {
             onChanged: (d) => setState(() => _expiry = d),
           ),
         ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  SizedBox(
+                    width: 96,
+                    height: 32,
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        textStyle: theme.textTheme.bodyMedium,
+                      ),
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text(AppStrings.cancel),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 96,
+                    height: 32,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        textStyle: theme.textTheme.bodyMedium,
+                      ),
+                      onPressed: _save,
+                      child: const Text(AppStrings.save),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
-      actions: [
-        AppButton.text(
-            label: AppStrings.cancel, onPressed: () => Navigator.of(context).pop()),
-        AppButton.primary(label: AppStrings.save, fullWidth: false, onPressed: _save),
-      ],
     );
   }
 }
