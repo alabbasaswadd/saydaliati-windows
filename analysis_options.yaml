@@ -1,0 +1,43 @@
+# Static analysis configuration for the صيدليتي (saydaliati) app.
+#
+# Starts from the recommended Flutter lints and tightens a few rules that pay off
+# in a layered / Clean Architecture codebase. Generated files are excluded from
+# analysis (they are validated by their generators, not by us).
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+  errors:
+    # Missing awaits and dangling futures are bugs in async-heavy code.
+    unawaited_futures: warning
+    # Keep the dependency direction honest: a violated relative import stands out.
+    always_use_package_imports: warning
+  exclude:
+    - build/**
+    - lib/**/*.g.dart
+    - lib/**/*.freezed.dart
+    - test/**/*.g.dart
+    - test/**/*.mocks.dart
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**
+    - macos/**
+    - linux/**
+
+linter:
+  rules:
+    # Consistency
+    prefer_single_quotes: true
+    directives_ordering: true
+    always_declare_return_types: true
+    prefer_final_locals: true
+    prefer_const_constructors: true
+    prefer_const_declarations: true
+    # Safety
+    avoid_dynamic_calls: true
+    cancel_subscriptions: true
+    close_sinks: true

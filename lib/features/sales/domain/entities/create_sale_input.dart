@@ -1,0 +1,81 @@
+import 'package:saydaliati/core/enums/payment_method.dart';
+
+/// The request payload for `POST pharmacy-api/Sale`. Built in-memory by the POS
+/// (there is no cart) and serialized straight to the API / offline outbox.
+class CreateSaleInput {
+  const CreateSaleInput({
+    required this.currencyId,
+    required this.warehouseId,
+    required this.saleDate,
+    required this.totalAmount,
+    required this.paymentMethod,
+    required this.lines,
+    this.customerId,
+    this.note,
+    this.originalCurrencyId,
+    this.exchangeRate = 1,
+    this.isPrescription = false,
+  });
+
+  final String currencyId;
+  final String warehouseId;
+  final DateTime saleDate;
+  final double totalAmount;
+  final PaymentMethod paymentMethod;
+  final List<CreateSaleLineInput> lines;
+  final String? customerId;
+  final String? note;
+
+  /// The currency the cashier actually transacted in (for audit); amounts above
+  /// are stored in the base currency. Null when the sale was in the base.
+  final String? originalCurrencyId;
+
+  /// Snapshot of that currency's rate at sale time (units of original per 1
+  /// base). Original amount = baseAmount × exchangeRate.
+  final double exchangeRate;
+
+  /// Whether this sale is a medical prescription (requires a customer).
+  final bool isPrescription;
+
+  Map<String, dynamic> toJson() => {
+        'customerId': customerId,
+        'userId': null,
+        'currencyId': currencyId,
+        'warehouseId': warehouseId,
+        'saleDate': saleDate.toIso8601String(),
+        'note': note,
+        'totalAmount': totalAmount,
+        'paymentMethod': paymentMethod.wire,
+        'originalCurrencyId': originalCurrencyId,
+        'exchangeRate': exchangeRate,
+        'isPrescription': isPrescription,
+        'items': lines.map((l) => l.toJson(currencyId, warehouseId)).toList(),
+      };
+}
+
+/// One line in a [CreateSaleInput].
+class CreateSaleLineInput {
+  const CreateSaleLineInput({
+    required this.medicineId,
+    required this.unitId,
+    required this.individual,
+    required this.quantity,
+    this.stockId,
+  });
+
+  final String medicineId;
+  final String unitId;
+  final double individual; // unit price
+  final double quantity;
+  final String? stockId; // chosen expiry batch (optional)
+
+  Map<String, dynamic> toJson(String currencyId, String warehouseId) => {
+        'medicineId': medicineId,
+        'unitId': unitId,
+        'warehouseId': warehouseId,
+        'currencyId': currencyId,
+        'individual': individual,
+        'quantity': quantity,
+        'stockId': stockId,
+      };
+}
