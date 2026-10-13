@@ -6,7 +6,9 @@ import 'package:saydaliati/features/reports/domain/entities/expiry_report.dart';
 import 'package:saydaliati/features/reports/domain/entities/inventory_report.dart';
 import 'package:saydaliati/features/reports/domain/entities/medicine_report.dart';
 import 'package:saydaliati/features/reports/domain/entities/profit_report.dart';
+import 'package:saydaliati/features/reports/domain/entities/purchases_grid.dart';
 import 'package:saydaliati/features/reports/domain/entities/purchases_summary.dart';
+import 'package:saydaliati/features/reports/domain/entities/sales_grid.dart';
 import 'package:saydaliati/features/reports/domain/entities/sales_summary.dart';
 import 'package:saydaliati/features/reports/domain/entities/stocktake.dart';
 import 'package:saydaliati/features/reports/domain/repositories/report_repository.dart';
@@ -36,6 +38,25 @@ Future<SalesSummary> salesSummary(Ref ref, String startIso, String endIso) async
       .watch(reportRepositoryProvider)
       .getSalesSummary(startIso, endIso);
   return result.fold((summary) => summary, (failure) => throw failure);
+}
+
+/// Sales tree-grid for a period (keyed by UTC ISO start/end). Online.
+@riverpod
+Future<List<SalesGridInvoice>> salesGrid(
+    Ref ref, String startIso, String endIso) async {
+  final result =
+      await ref.watch(reportRepositoryProvider).getSalesGrid(startIso, endIso);
+  return result.fold((rows) => rows, (failure) => throw failure);
+}
+
+/// Purchases tree-grid for a period (keyed by UTC ISO start/end). Online.
+@riverpod
+Future<List<PurchasesGridInvoice>> purchasesGrid(
+    Ref ref, String startIso, String endIso) async {
+  final result = await ref
+      .watch(reportRepositoryProvider)
+      .getPurchasesGrid(startIso, endIso);
+  return result.fold((rows) => rows, (failure) => throw failure);
 }
 
 /// Profit report for a period + optional currency (keyed). Online.

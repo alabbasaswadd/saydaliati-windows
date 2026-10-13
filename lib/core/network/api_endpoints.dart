@@ -123,6 +123,9 @@ abstract final class ApiEndpoints {
   static String medicineReport(String medicineId) =>
       '$_base/Report/medicine-report/$medicineId';
   static const String salesSummary = '$_base/Report/sales-summary';
+  // Tree-grid reports (invoice + line items + profit). Return bare JSON arrays.
+  static const String salesGrid = '$_base/Report/sales-grid';
+  static const String purchasesGrid = '$_base/Report/purchases-grid';
   static const String profitReport = '$_base/Report/profit';
   static const String expiryReport = '$_base/Report/expiry';
   static const String purchasesSummary = '$_base/Report/purchases-summary';

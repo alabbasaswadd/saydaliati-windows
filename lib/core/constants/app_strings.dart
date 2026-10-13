@@ -74,6 +74,12 @@ abstract final class AppStrings {
   static const String windowAll = 'الكل';
   static const String costOfGoods = 'تكلفة المبيعات';
   static const String grossProfit = 'الربح الإجمالي';
+  // Tree-grid reports (sales/purchases)
+  static const String discountShort = 'الحسم';
+  static const String marginLabel = 'الهامش';
+  static const String estimatedCost = 'كلفة تقديرية';
+  static const String cashSale = 'نقدي';
+  static const String batchLabel = 'الدفعة';
   static const String stockValue = 'قيمة المخزون';
   static const String medicinesInStock = 'أصناف لها رصيد';
   static const String lowStockCount = 'أصناف منخفضة';

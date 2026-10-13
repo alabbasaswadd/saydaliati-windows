@@ -271,6 +271,186 @@ final class SalesSummaryFamily extends $Family
   String toString() => r'salesSummaryProvider';
 }
 
+/// Sales tree-grid for a period (keyed by UTC ISO start/end). Online.
+
+@ProviderFor(salesGrid)
+final salesGridProvider = SalesGridFamily._();
+
+/// Sales tree-grid for a period (keyed by UTC ISO start/end). Online.
+
+final class SalesGridProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<SalesGridInvoice>>,
+          List<SalesGridInvoice>,
+          FutureOr<List<SalesGridInvoice>>
+        >
+    with
+        $FutureModifier<List<SalesGridInvoice>>,
+        $FutureProvider<List<SalesGridInvoice>> {
+  /// Sales tree-grid for a period (keyed by UTC ISO start/end). Online.
+  SalesGridProvider._({
+    required SalesGridFamily super.from,
+    required (String, String) super.argument,
+  }) : super(
+         retry: null,
+         name: r'salesGridProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$salesGridHash();
+
+  @override
+  String toString() {
+    return r'salesGridProvider'
+        ''
+        '$argument';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<List<SalesGridInvoice>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<SalesGridInvoice>> create(Ref ref) {
+    final argument = this.argument as (String, String);
+    return salesGrid(ref, argument.$1, argument.$2);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is SalesGridProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$salesGridHash() => r'4357417412eb75ff406c3e9918d9be9fed1ef935';
+
+/// Sales tree-grid for a period (keyed by UTC ISO start/end). Online.
+
+final class SalesGridFamily extends $Family
+    with
+        $FunctionalFamilyOverride<
+          FutureOr<List<SalesGridInvoice>>,
+          (String, String)
+        > {
+  SalesGridFamily._()
+    : super(
+        retry: null,
+        name: r'salesGridProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Sales tree-grid for a period (keyed by UTC ISO start/end). Online.
+
+  SalesGridProvider call(String startIso, String endIso) =>
+      SalesGridProvider._(argument: (startIso, endIso), from: this);
+
+  @override
+  String toString() => r'salesGridProvider';
+}
+
+/// Purchases tree-grid for a period (keyed by UTC ISO start/end). Online.
+
+@ProviderFor(purchasesGrid)
+final purchasesGridProvider = PurchasesGridFamily._();
+
+/// Purchases tree-grid for a period (keyed by UTC ISO start/end). Online.
+
+final class PurchasesGridProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<PurchasesGridInvoice>>,
+          List<PurchasesGridInvoice>,
+          FutureOr<List<PurchasesGridInvoice>>
+        >
+    with
+        $FutureModifier<List<PurchasesGridInvoice>>,
+        $FutureProvider<List<PurchasesGridInvoice>> {
+  /// Purchases tree-grid for a period (keyed by UTC ISO start/end). Online.
+  PurchasesGridProvider._({
+    required PurchasesGridFamily super.from,
+    required (String, String) super.argument,
+  }) : super(
+         retry: null,
+         name: r'purchasesGridProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$purchasesGridHash();
+
+  @override
+  String toString() {
+    return r'purchasesGridProvider'
+        ''
+        '$argument';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<List<PurchasesGridInvoice>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<PurchasesGridInvoice>> create(Ref ref) {
+    final argument = this.argument as (String, String);
+    return purchasesGrid(ref, argument.$1, argument.$2);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is PurchasesGridProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$purchasesGridHash() => r'662d88cbdb9891c36728252e80a1314676b60de1';
+
+/// Purchases tree-grid for a period (keyed by UTC ISO start/end). Online.
+
+final class PurchasesGridFamily extends $Family
+    with
+        $FunctionalFamilyOverride<
+          FutureOr<List<PurchasesGridInvoice>>,
+          (String, String)
+        > {
+  PurchasesGridFamily._()
+    : super(
+        retry: null,
+        name: r'purchasesGridProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Purchases tree-grid for a period (keyed by UTC ISO start/end). Online.
+
+  PurchasesGridProvider call(String startIso, String endIso) =>
+      PurchasesGridProvider._(argument: (startIso, endIso), from: this);
+
+  @override
+  String toString() => r'purchasesGridProvider';
+}
+
 /// Profit report for a period + optional currency (keyed). Online.
 
 @ProviderFor(profitReport)

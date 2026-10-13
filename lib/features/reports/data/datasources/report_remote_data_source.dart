@@ -33,6 +33,32 @@ class ReportRemoteDataSource {
     return (data as Map).cast<String, dynamic>();
   }
 
+  /// Sales tree-grid for a period (bare JSON array of invoices, each with its
+  /// line items + profit). All filters optional.
+  Future<List<Map<String, dynamic>>> salesGrid(
+      String from, String to) async {
+    final data = await _api.get(
+      ApiEndpoints.salesGrid,
+      queryParameters: {'from': from, 'to': to},
+    );
+    return (data as List)
+        .map((e) => (e as Map).cast<String, dynamic>())
+        .toList();
+  }
+
+  /// Purchases tree-grid for a period (bare JSON array of invoices, each with
+  /// its line items). All filters optional.
+  Future<List<Map<String, dynamic>>> purchasesGrid(
+      String from, String to) async {
+    final data = await _api.get(
+      ApiEndpoints.purchasesGrid,
+      queryParameters: {'from': from, 'to': to},
+    );
+    return (data as List)
+        .map((e) => (e as Map).cast<String, dynamic>())
+        .toList();
+  }
+
   Future<Map<String, dynamic>> expiryReport(int daysWindow) async {
     final data = await _api.get(
       ApiEndpoints.expiryReport,
