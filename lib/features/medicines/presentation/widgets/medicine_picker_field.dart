@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/features/medicines/domain/entities/medicine.dart';
+import 'package:saydaliati/features/medicines/presentation/providers/medicines_provider.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
+import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_search_field.dart';
 import 'package:saydaliati/shared/widgets/states/app_states.dart';
 
@@ -59,25 +62,44 @@ Future<Medicine?> showMedicinePicker(
   );
 }
 
-class _MedicinePickerDialog extends StatefulWidget {
+class _MedicinePickerDialog extends ConsumerStatefulWidget {
   const _MedicinePickerDialog({required this.medicines});
 
   final List<Medicine> medicines;
 
   @override
-  State<_MedicinePickerDialog> createState() => _MedicinePickerDialogState();
+  ConsumerState<_MedicinePickerDialog> createState() => _MedicinePickerDialogState();
 }
 
-class _MedicinePickerDialogState extends State<_MedicinePickerDialog> {
+class _MedicinePickerDialogState extends ConsumerState<_MedicinePickerDialog> {
   String _query = '';
+  late List<Medicine> _medicines = widget.medicines;
+  bool _refreshing = false;
+
+  /// جلب الكتالوغ كاملاً من الخادم الآن (تخطّياً للنسخة المحلية المخزَّنة)
+  /// وتحديث القائمة المعروضة فوراً — لحالة إضافة/تعديل دواء من جهاز آخر لم
+  /// يصل بعد لهذا الجهاز.
+  Future<void> _refresh() async {
+    setState(() => _refreshing = true);
+    try {
+      final fresh = await ref.read(medicineCatalogProvider.notifier).forceRefresh();
+      if (!mounted) return;
+      setState(() => _medicines = fresh);
+    } catch (_) {
+      if (!mounted) return;
+      AppSnackbar.error(context, AppStrings.errorDefault);
+    } finally {
+      if (mounted) setState(() => _refreshing = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final q = _query.trim().toLowerCase();
     final items = q.isEmpty
-        ? widget.medicines
-        : widget.medicines
+        ? _medicines
+        : _medicines
             .where((m) =>
                 m.brandName.toLowerCase().contains(q) ||
                 m.brandNameArabic.contains(q) ||
@@ -110,6 +132,21 @@ class _MedicinePickerDialogState extends State<_MedicinePickerDialog> {
                       style: theme.textTheme.titleMedium
                           ?.copyWith(fontWeight: FontWeight.bold),
                     ),
+                  ),
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: _refreshing
+                        ? const Padding(
+                            padding: EdgeInsets.all(2),
+                            child: CircularProgressIndicator(strokeWidth: 2))
+                        : IconButton(
+                            icon: const Icon(Icons.refresh, size: 20),
+                            tooltip: 'تحديث من الخادم',
+                            padding: EdgeInsets.zero,
+                            visualDensity: VisualDensity.compact,
+                            onPressed: _refresh,
+                          ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.close, size: 20),

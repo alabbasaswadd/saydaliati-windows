@@ -21,6 +21,7 @@ SaleDto _$SaleDtoFromJson(Map<String, dynamic> json) => SaleDto(
   originalCurrencyId: json['originalCurrencyId'] as String?,
   exchangeRate: json['exchangeRate'] as num?,
   isPrescription: json['isPrescription'] as bool?,
+  paymentAccountId: json['paymentAccountId'] as String?,
   items: (json['items'] as List<dynamic>?)
       ?.map((e) => SaleItemDto.fromJson(e as Map<String, dynamic>))
       .toList(),

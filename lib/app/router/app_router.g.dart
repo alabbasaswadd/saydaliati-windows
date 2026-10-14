@@ -30,10 +30,12 @@ part of 'app_router.dart';
 ///  12  /more/units            – Units
 ///  13  /more/currencies       – Currencies
 ///  14  /more/reports          – Reports hub
-///  15  /more/notifications    – Notifications
-///  16  /more/tutorials        – Tutorials
-///  17  /more/settings         – Settings
-///  18  /more/profile          – Account / profile
+///  15  /more/expenses         – Expense categories/log (sibling routes)
+///  16  /more/accounts         – Chart of accounts
+///  17  /more/notifications    – Notifications
+///  18  /more/tutorials        – Tutorials
+///  19  /more/settings         – Settings
+///  20  /more/profile          – Account / profile
 
 @ProviderFor(goRouter)
 final goRouterProvider = GoRouterProvider._();
@@ -60,10 +62,12 @@ final goRouterProvider = GoRouterProvider._();
 ///  12  /more/units            – Units
 ///  13  /more/currencies       – Currencies
 ///  14  /more/reports          – Reports hub
-///  15  /more/notifications    – Notifications
-///  16  /more/tutorials        – Tutorials
-///  17  /more/settings         – Settings
-///  18  /more/profile          – Account / profile
+///  15  /more/expenses         – Expense categories/log (sibling routes)
+///  16  /more/accounts         – Chart of accounts
+///  17  /more/notifications    – Notifications
+///  18  /more/tutorials        – Tutorials
+///  19  /more/settings         – Settings
+///  20  /more/profile          – Account / profile
 
 final class GoRouterProvider
     extends $FunctionalProvider<GoRouter, GoRouter, GoRouter>
@@ -90,10 +94,12 @@ final class GoRouterProvider
   ///  12  /more/units            – Units
   ///  13  /more/currencies       – Currencies
   ///  14  /more/reports          – Reports hub
-  ///  15  /more/notifications    – Notifications
-  ///  16  /more/tutorials        – Tutorials
-  ///  17  /more/settings         – Settings
-  ///  18  /more/profile          – Account / profile
+  ///  15  /more/expenses         – Expense categories/log (sibling routes)
+  ///  16  /more/accounts         – Chart of accounts
+  ///  17  /more/notifications    – Notifications
+  ///  18  /more/tutorials        – Tutorials
+  ///  19  /more/settings         – Settings
+  ///  20  /more/profile          – Account / profile
   GoRouterProvider._()
     : super(
         from: null,
@@ -127,4 +133,4 @@ final class GoRouterProvider
   }
 }
 
-String _$goRouterHash() => r'77ee814febc9fae6785e7ca7362503660f971ddf';
+String _$goRouterHash() => r'1e89fb84511a2b82734daaa6749e26c459165c5a';

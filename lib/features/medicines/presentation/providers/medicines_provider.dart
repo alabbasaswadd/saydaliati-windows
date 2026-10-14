@@ -84,4 +84,16 @@ class MedicineCatalog extends _$MedicineCatalog {
 
   List<Medicine> _sorted(List<Medicine> list) =>
       list..sort((a, b) => a.displayName.compareTo(b.displayName));
+
+  /// فرض جلب الكتالوغ كاملاً من الخادم الآن (لا يُرضى بالنسخة المحلية
+  /// المخزَّنة كما يفعل [build] عادة) ثم كتابته محلياً — زرّ "تحديث" اليدوي
+  /// ببوب أب اختيار الدواء، لحالات تغيّر فعلي بمكان آخر لم يصل بعد لهذا الجهاز.
+  Future<List<Medicine>> forceRefresh() async {
+    final result = await ref.read(medicineRepositoryProvider).getCatalog();
+    return result.fold((list) {
+      final sorted = _sorted(list);
+      state = AsyncData(sorted);
+      return sorted;
+    }, (failure) => throw failure);
+  }
 }

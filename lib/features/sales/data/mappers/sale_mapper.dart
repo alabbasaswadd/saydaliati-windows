@@ -14,6 +14,7 @@ extension SaleDtoMapper on SaleDto {
         originalCurrencyId: originalCurrencyId ?? '',
         exchangeRate: (exchangeRate ?? 1).toDouble(),
         isPrescription: isPrescription ?? false,
+        paymentAccountId: paymentAccountId ?? '',
         items: (items ?? const []).map((i) => i.toEntity()).toList(),
       );
 }

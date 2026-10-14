@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:saydaliati/features/notifications/presentation/widgets/notification_bell.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:saydaliati/features/accounts/account_providers.dart';
+import 'package:saydaliati/features/accounts/domain/entities/account.dart';
+import 'package:saydaliati/features/accounts/presentation/widgets/account_picker_field.dart';
+import 'package:saydaliati/features/currencies/presentation/widgets/currency_picker_field.dart';
+import 'package:saydaliati/features/customers/presentation/widgets/customer_picker_field.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/core/enums/payment_method.dart';
 import 'package:saydaliati/core/offline/connectivity/work_mode.dart';
@@ -120,6 +125,8 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
   String? _currencyId;
   String? _customerId;
   PaymentMethod _payMethod = PaymentMethod.cash;
+  String? _paymentAccountId;
+  String? _lastSuggestedPaymentAccountId;
   bool _isPrescription = false;
   bool _submitting = false;
   bool _prefilled = false;
@@ -133,6 +140,24 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
 
   Currency? _selectedCurrency(Currency? base, List<Currency> currencies) =>
       currencies.where((c) => c.id == _effectiveCurrencyId(base)).firstOrNull;
+
+  /// يقترح صندوق العملة المختارة (الحساب المرتبط بها)، أو صندوق العملة
+  /// الأساسية إن لم يوجد صندوق مخصَّص لها. لا يلمس اختياراً صريحاً للمستخدم.
+  void _suggestPaymentAccountForCurrency(
+      String? currencyId, List<Account> accounts, String? baseCurrencyId) {
+    if (accounts.isEmpty) return;
+    final untouched = _paymentAccountId == null ||
+        _paymentAccountId == _lastSuggestedPaymentAccountId;
+    if (!untouched) return;
+
+    final matching = accounts.where((a) => a.currencyId == currencyId).firstOrNull;
+    final fallbackCash = accounts.where((a) => a.currencyId == baseCurrencyId).firstOrNull;
+    final suggested = matching ?? fallbackCash;
+    if (suggested == null) return;
+
+    _lastSuggestedPaymentAccountId = suggested.id;
+    _paymentAccountId = suggested.id;
+  }
 
   /// True when this line's sale price (converted to base) is below the
   /// medicine's purchase cost — i.e. selling this line at a loss.
@@ -287,6 +312,11 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
       AppSnackbar.error(context, AppStrings.selectCurrency);
       return;
     }
+    if (_payMethod != PaymentMethod.credit &&
+        (_paymentAccountId == null || _paymentAccountId!.isEmpty)) {
+      AppSnackbar.error(context, AppStrings.selectAccount);
+      return;
+    }
     if (_lines.isEmpty) {
       AppSnackbar.error(context, AppStrings.saleEmptyHint);
       return;
@@ -365,6 +395,7 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
       saleDate: _saleDate,
       totalAmount: toBase(_total),
       paymentMethod: _payMethod,
+      paymentAccountId: _payMethod == PaymentMethod.credit ? null : _paymentAccountId,
       isPrescription: _isPrescription,
       lines: [
         for (final l in _lines)
@@ -565,6 +596,9 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
     _customerId = sale.customerId.isNotEmpty ? sale.customerId : null;
     _currencyId = null; // base
     _payMethod = sale.paymentMethod;
+    _paymentAccountId =
+        sale.paymentAccountId.isNotEmpty ? sale.paymentAccountId : null;
+    _lastSuggestedPaymentAccountId = null;
     _isPrescription = sale.isPrescription;
     _lines.clear();
     for (final line in sale.items) {
@@ -587,6 +621,9 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
     _customerId = (cust != null && cust.isNotEmpty) ? cust : null;
     _currencyId = null; // amounts are stored in base
     _payMethod = PaymentMethod.fromWire((payload['paymentMethod'] as num?)?.toInt());
+    final payAccId = payload['paymentAccountId'] as String?;
+    _paymentAccountId = (payAccId != null && payAccId.isNotEmpty) ? payAccId : null;
+    _lastSuggestedPaymentAccountId = null;
     _isPrescription = payload['isPrescription'] == true;
     _lines.clear();
     for (final raw in (payload['items'] as List?) ?? const []) {
@@ -712,6 +749,8 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
             .map((c) => c.code)
             .firstOrNull ??
         '';
+    final accounts = ref.watch(accountsListProvider).value ?? const <Account>[];
+    _suggestPaymentAccountForCurrency(_effectiveCurrencyId(base), accounts, base?.id);
 
     return BarcodeScannerListener(
       onScan: (code) {
@@ -733,29 +772,6 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
                 ),
                 const SizedBox(height: AppSpacing.sm),
               ],
-              // USB scanner ready indicator (replaces embedded camera).
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.07),
-                  borderRadius: AppRadius.brMd,
-                  border: Border.all(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.3)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.barcode_reader,
-                        color: theme.colorScheme.primary, size: 20),
-                    const SizedBox(width: AppSpacing.sm),
-                    Text(AppStrings.readyToScan,
-                        style: theme.textTheme.bodySmall
-                            ?.copyWith(color: theme.colorScheme.primary)),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
               // شريط أدوات مدمج بدل القوائم الكبيرة: التاريخ، العملة، العميل،
               // وصفة طبية، وطريقة الدفع — إضافة الدواء صارت من خلية الجدول
               // نفسها. الإجمالي ظاهر دوماً في نهاية هذا الشريط (لا في الأسفل
@@ -770,45 +786,38 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         _dateChip(theme),
-                        _toolbarMenu<String>(
-                          icon: Icons.payments_outlined,
-                      tooltip: AppStrings.selectCurrency,
-                      label: currencyCode.isEmpty
-                          ? AppStrings.selectCurrency
-                          : currencyCode,
-                      // عملات قابلة للاختيار فقط: الأساسية + أي عملة سعر صرفها
-                      // موجب (عملة بلا سعر صرف تُخفى لأن التحويل لا يعمل معها).
-                      items: [
-                        for (final c in currencies.where(
-                            (c) => c.isBaseCurrency || c.exchangeRate > 0))
-                          PopupMenuItem(value: c.id, child: Text(c.code)),
-                      ],
-                      onSelected: (v) => setState(() {
-                        _currencyId = v;
-                        _repriceLines(base, currencies);
-                      }),
-                    ),
-                    _toolbarMenu<String>(
-                      icon: Icons.person_outline,
-                      tooltip: AppStrings.customer,
-                      label: (ref.watch(customersProvider).value ??
-                                  const <Customer>[])
-                              .where((c) => c.id == _customerId)
-                              .map((c) => c.fullName)
-                              .firstOrNull ??
-                          AppStrings.noCustomer,
-                      // PopupMenuButton لا يستدعي onSelected مع null —
-                      // نستخدم '' كقيمة "بدون عميل".
-                      items: [
-                        const PopupMenuItem(
-                            value: '', child: Text(AppStrings.noCustomer)),
-                        for (final c in ref.watch(customersProvider).value ??
-                            const <Customer>[])
-                          PopupMenuItem(value: c.id, child: Text(c.fullName)),
-                      ],
-                      onSelected: (v) =>
-                          setState(() => _customerId = v.isEmpty ? null : v),
-                    ),
+                        SizedBox(
+                          width: 170,
+                          child: CurrencyPickerField(
+                            label: AppStrings.selectCurrency,
+                            // عملات قابلة للاختيار فقط: الأساسية + أي عملة سعر
+                            // صرفها موجب (عملة بلا سعر صرف تُخفى لأن التحويل
+                            // لا يعمل معها).
+                            currencies: currencies
+                                .where((c) => c.isBaseCurrency || c.exchangeRate > 0)
+                                .toList(),
+                            selectedId: _effectiveCurrencyId(base).isEmpty
+                                ? null
+                                : _effectiveCurrencyId(base),
+                            onSelected: (c) => setState(() {
+                              _currencyId = c.id;
+                              _repriceLines(base, currencies);
+                            }),
+                          ),
+                        ),
+                        SizedBox(
+                          width: 220,
+                          child: CustomerPickerField(
+                            label: AppStrings.customer,
+                            hint: AppStrings.noCustomer,
+                            customers: ref.watch(customersProvider).value ??
+                                const <Customer>[],
+                            selectedId: _customerId,
+                            allowClear: true,
+                            onCleared: () => setState(() => _customerId = null),
+                            onSelected: (c) => setState(() => _customerId = c.id),
+                          ),
+                        ),
                     _toolbarMenu<PaymentMethod>(
                       icon: Icons.account_balance_wallet_outlined,
                       tooltip: AppStrings.paymentMethod,
@@ -819,6 +828,17 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
                       ],
                       onSelected: (m) => setState(() => _payMethod = m),
                     ),
+                    if (_payMethod != PaymentMethod.credit)
+                      SizedBox(
+                        width: 220,
+                        child: AccountPickerField(
+                          label: AppStrings.selectAccount,
+                          accounts: accounts,
+                          selectedId: _paymentAccountId,
+                          onSelected: (a) =>
+                              setState(() => _paymentAccountId = a.id),
+                        ),
+                      ),
                     // وصفة طبية؟ عند التفعيل يصبح اختيار العميل إجبارياً.
                     FilterChip(
                       label: const Text(AppStrings.prescriptionLabel),

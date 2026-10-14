@@ -15,6 +15,7 @@ class CreateSaleInput {
     this.originalCurrencyId,
     this.exchangeRate = 1,
     this.isPrescription = false,
+    this.paymentAccountId,
   });
 
   final String currencyId;
@@ -37,6 +38,10 @@ class CreateSaleInput {
   /// Whether this sale is a medical prescription (requires a customer).
   final bool isPrescription;
 
+  /// Actual receiving account (cash/bank); required unless [paymentMethod] is
+  /// Credit — defaults in the UI to the cash box matching the sale's currency.
+  final String? paymentAccountId;
+
   Map<String, dynamic> toJson() => {
         'customerId': customerId,
         'userId': null,
@@ -49,6 +54,7 @@ class CreateSaleInput {
         'originalCurrencyId': originalCurrencyId,
         'exchangeRate': exchangeRate,
         'isPrescription': isPrescription,
+        'paymentAccountId': paymentAccountId,
         'items': lines.map((l) => l.toJson(currencyId, warehouseId)).toList(),
       };
 }

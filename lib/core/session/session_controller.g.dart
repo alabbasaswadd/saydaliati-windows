@@ -54,7 +54,7 @@ final class SessionControllerProvider
   SessionController create() => SessionController();
 }
 
-String _$sessionControllerHash() => r'4944fddd385018b2791dabc1aba6737e3ac746b8';
+String _$sessionControllerHash() => r'91c4ac46b27a5b194ba9c79a523d2d739d90ee84';
 
 /// Owns the auth session: on startup it decides authenticated-or-not *fast*
 /// (from [_kHasSessionPref]), then loads the real bearer token from secure

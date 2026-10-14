@@ -9,6 +9,7 @@ class PurchaseDto {
     this.invoiceNumber,
     this.purchaseDate,
     this.totalAmount,
+    this.paymentAccountId,
     this.items,
   });
 
@@ -16,6 +17,7 @@ class PurchaseDto {
   final int? invoiceNumber;
   final DateTime? purchaseDate;
   final num? totalAmount;
+  final String? paymentAccountId;
   final List<PurchaseItemDto>? items;
 
   factory PurchaseDto.fromJson(Map<String, dynamic> json) =>

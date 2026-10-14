@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:saydaliati/core/constants/app_constants.dart';
@@ -121,15 +122,23 @@ class SessionController extends _$SessionController {
     await prefs.setBool(_kHasSessionPref, false);
     _tokenLoad = Future.value(null);
 
-    // On logout, wipe the ENTIRE local cache — every cached catalog (medicines,
-    // global catalog, customers, categories, units, currencies, stock…) and all
-    // sync timestamps — so no data leaks across accounts and everything re-syncs
-    // fresh after the next login. The outbox (unsynced offline writes) is kept
-    // deliberately, to avoid silently dropping pending sales. Best-effort.
+    // On logout, wipe the per-tenant local cache (medicines, customers,
+    // categories, units, currencies, stock…) and its sync timestamps — so no
+    // data leaks across accounts and everything re-syncs fresh after the next
+    // login. The GLOBAL catalog mirror (tenantId 'global') is deliberately
+    // excluded: it is tenant-independent and meant to survive logout — wiping
+    // it here forced a full ~22.5k-item re-download on every login, which is
+    // what made the catalog look "stuck loading" right after registering.
+    // The outbox (unsynced offline writes) is kept too, to avoid silently
+    // dropping pending sales. Best-effort.
     try {
       final db = ref.read(appDatabaseProvider);
-      await db.delete(db.cacheEntries).go();
-      await db.delete(db.syncMetaEntries).go();
+      await (db.delete(db.cacheEntries)
+            ..where((t) => t.tenantId.equals('global').not()))
+          .go();
+      await (db.delete(db.syncMetaEntries)
+            ..where((t) => t.tenantId.equals('global').not()))
+          .go();
     } catch (_) {
       // never block logout on a cache-clear failure
     }

@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:saydaliati/features/tutorials/presentation/tutorial_help.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:saydaliati/features/accounts/account_providers.dart';
+import 'package:saydaliati/features/accounts/domain/entities/account.dart';
+import 'package:saydaliati/features/accounts/presentation/widgets/account_picker_field.dart';
+import 'package:saydaliati/features/currencies/presentation/widgets/currency_picker_field.dart';
+import 'package:saydaliati/features/suppliers/presentation/widgets/supplier_picker_field.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/core/enums/payment_method.dart';
 import 'package:saydaliati/core/theme/app_semantic_colors.dart';
@@ -16,6 +21,7 @@ import 'package:saydaliati/features/medicines/presentation/providers/medicines_p
 import 'package:saydaliati/features/medicines/presentation/widgets/medicine_picker_field.dart';
 import 'package:saydaliati/features/purchases/domain/entities/create_purchase_input.dart';
 import 'package:saydaliati/features/purchases/domain/entities/purchase.dart';
+import 'package:saydaliati/features/purchases/presentation/pages/purchases_page.dart';
 import 'package:saydaliati/features/purchases/purchase_providers.dart';
 import 'package:saydaliati/features/settings/settings_providers.dart';
 import 'package:saydaliati/features/suppliers/domain/entities/supplier.dart';
@@ -80,6 +86,8 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
   String? _currencyId;
   String? _supplierId; // المورّد (اختياري)
   PaymentMethod _payMethod = PaymentMethod.cash;
+  String? _paymentAccountId;
+  String? _lastSuggestedPaymentAccountId;
   bool _saving = false;
   bool _prefilled = false;
   bool _prefillStarted = false;
@@ -108,6 +116,9 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
   void _prefillFromPurchase(Purchase p, List<Medicine> catalog) {
     _prefilled = true;
     _currencyId = null; // base
+    _paymentAccountId =
+        p.paymentAccountId.isNotEmpty ? p.paymentAccountId : null;
+    _lastSuggestedPaymentAccountId = null;
     for (final it in p.items) {
       final med = catalog.where((m) => m.id == it.medicineId).firstOrNull;
       if (med == null || med.units.isEmpty) continue;
@@ -133,6 +144,24 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
   String _effectiveCurrencyId(Currency? base) => _currencyId ?? base?.id ?? '';
 
   double get _total => _lines.fold(0, (s, l) => s + l.lineTotal);
+
+  /// يقترح صندوق العملة المختارة (الحساب المرتبط بها)، أو صندوق العملة
+  /// الأساسية إن لم يوجد صندوق مخصَّص لها. لا يلمس اختياراً صريحاً للمستخدم.
+  void _suggestPaymentAccountForCurrency(
+      String? currencyId, List<Account> accounts, String? baseCurrencyId) {
+    if (accounts.isEmpty) return;
+    final untouched = _paymentAccountId == null ||
+        _paymentAccountId == _lastSuggestedPaymentAccountId;
+    if (!untouched) return;
+
+    final matching = accounts.where((a) => a.currencyId == currencyId).firstOrNull;
+    final fallbackCash = accounts.where((a) => a.currencyId == baseCurrencyId).firstOrNull;
+    final suggested = matching ?? fallbackCash;
+    if (suggested == null) return;
+
+    _lastSuggestedPaymentAccountId = suggested.id;
+    _paymentAccountId = suggested.id;
+  }
 
   void _add(Medicine m, {bool mergeWithLast = true}) {
     // نفس المادة مباشرة بعد بعضها (آخر سطر هو نفسها) → زيادة الكمية بدل سطر
@@ -177,6 +206,11 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
       AppSnackbar.error(context, AppStrings.selectCurrency);
       return;
     }
+    if (_payMethod != PaymentMethod.credit &&
+        (_paymentAccountId == null || _paymentAccountId!.isEmpty)) {
+      AppSnackbar.error(context, AppStrings.selectAccount);
+      return;
+    }
     if (_lines.isEmpty) {
       AppSnackbar.error(context, AppStrings.purchaseEmptyHint);
       return;
@@ -201,6 +235,7 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
       purchaseDate: DateTime.now(),
       totalAmount: toBase(_total),
       paymentMethod: _payMethod,
+      paymentAccountId: _payMethod == PaymentMethod.credit ? null : _paymentAccountId,
       lines: [
         for (final l in _lines)
           CreatePurchaseLineInput(
@@ -251,6 +286,8 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
     final selectedCurrency = currencies
         .where((c) => c.id == _effectiveCurrencyId(base))
         .firstOrNull;
+    final accounts = ref.watch(accountsListProvider).value ?? const <Account>[];
+    _suggestPaymentAccountForCurrency(_effectiveCurrencyId(base), accounts, base?.id);
 
     if (_isEdit && !_prefilled && catalog.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _ensurePrefill(catalog));
@@ -267,7 +304,16 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
       child: Scaffold(
       appBar: AppBar(
           title: Text(_isEdit ? AppStrings.editPurchase : AppStrings.newPurchase),
-          actions: const [TutorialHelpButton(TutorialTopic.firstPurchase)]),
+          actions: [
+            if (!_isEdit)
+              IconButton(
+                tooltip: 'سجلّ المشتريات',
+                icon: const Icon(Icons.history),
+                onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(builder: (_) => const PurchasesPage())),
+              ),
+            const TutorialHelpButton(TutorialTopic.firstPurchase),
+          ]),
       body: Column(
         children: [
           Padding(
@@ -287,19 +333,17 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Expanded(
-                      child: AppDropdown<String>(
+                      child: CurrencyPickerField(
                         label: AppStrings.selectCurrency,
-                        value: _effectiveCurrencyId(base).isEmpty
-                            ? null
-                            : _effectiveCurrencyId(base),
                         // عملات قابلة للاختيار فقط: الأساسية + أي عملة سعر صرفها موجب
                         // (عملة بلا سعر صرف تُخفى لأن التحويل يُرجِع المبلغ دون تحويل).
-                        items: [
-                          for (final c in currencies.where(
-                              (c) => c.isBaseCurrency || c.exchangeRate > 0))
-                            AppDropdownItem(value: c.id, label: c.code),
-                        ],
-                        onChanged: (v) => setState(() => _currencyId = v),
+                        currencies: currencies
+                            .where((c) => c.isBaseCurrency || c.exchangeRate > 0)
+                            .toList(),
+                        selectedId: _effectiveCurrencyId(base).isEmpty
+                            ? null
+                            : _effectiveCurrencyId(base),
+                        onSelected: (c) => setState(() => _currencyId = c.id),
                       ),
                     ),
                     const SizedBox(width: AppSpacing.sm),
@@ -315,6 +359,18 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
                             setState(() => _payMethod = v ?? PaymentMethod.cash),
                       ),
                     ),
+                    if (_payMethod != PaymentMethod.credit) ...[
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: AccountPickerField(
+                          label: AppStrings.selectAccount,
+                          accounts: accounts,
+                          selectedId: _paymentAccountId,
+                          onSelected: (a) =>
+                              setState(() => _paymentAccountId = a.id),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
                 // المورّد (اختياري) — يظهر فقط إن وُجد موردون.
@@ -324,15 +380,14 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
                   if (suppliers.isEmpty) return const SizedBox.shrink();
                   return Padding(
                     padding: const EdgeInsets.only(top: AppSpacing.md),
-                    child: AppDropdown<String?>(
+                    child: SupplierPickerField(
                       label: 'المورّد (اختياري)',
-                      value: _supplierId,
-                      items: [
-                        const AppDropdownItem<String?>(value: null, label: '— بلا مورّد —'),
-                        for (final s in suppliers)
-                          AppDropdownItem<String?>(value: s.id, label: s.name),
-                      ],
-                      onChanged: (v) => setState(() => _supplierId = v),
+                      hint: '— بلا مورّد —',
+                      suppliers: suppliers,
+                      selectedId: _supplierId,
+                      allowClear: true,
+                      onCleared: () => setState(() => _supplierId = null),
+                      onSelected: (s) => setState(() => _supplierId = s.id),
                     ),
                   );
                 }),

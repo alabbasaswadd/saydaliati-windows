@@ -19,9 +19,12 @@ abstract final class AppDate {
   static String ymd(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
+  /// `14:30`.
+  static String hm(DateTime d) =>
+      '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+
   /// `2026-09-09 14:30`.
-  static String ymdHm(DateTime d) =>
-      '${ymd(d)} ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+  static String ymdHm(DateTime d) => '${ymd(d)} ${hm(d)}';
 
   /// Arabic weekday name, e.g. `الأحد`.
   static String weekdayAr(DateTime d) => _weekdaysAr[d.weekday - 1];

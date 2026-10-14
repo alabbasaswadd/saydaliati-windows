@@ -13,6 +13,7 @@ PurchaseDto _$PurchaseDtoFromJson(Map<String, dynamic> json) => PurchaseDto(
       ? null
       : DateTime.parse(json['purchaseDate'] as String),
   totalAmount: json['totalAmount'] as num?,
+  paymentAccountId: json['paymentAccountId'] as String?,
   items: (json['items'] as List<dynamic>?)
       ?.map((e) => PurchaseItemDto.fromJson(e as Map<String, dynamic>))
       .toList(),

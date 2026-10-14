@@ -6,6 +6,8 @@ import 'package:saydaliati/app/shell/desktop_shell.dart';
 import 'package:saydaliati/core/session/session_controller.dart';
 import 'package:saydaliati/core/session/session_state.dart';
 import 'package:saydaliati/features/about/presentation/pages/about_page.dart';
+import 'package:saydaliati/features/accounts/presentation/pages/accounts_page.dart';
+import 'package:saydaliati/features/vouchers/presentation/pages/vouchers_list_page.dart';
 import 'package:saydaliati/features/auth/presentation/pages/account_page.dart';
 import 'package:saydaliati/features/auth/presentation/pages/login_page.dart';
 import 'package:saydaliati/features/auth/presentation/pages/register_page.dart';
@@ -13,6 +15,8 @@ import 'package:saydaliati/features/catalog/presentation/pages/catalog_page.dart
 import 'package:saydaliati/features/categories/presentation/pages/categories_page.dart';
 import 'package:saydaliati/features/currencies/presentation/pages/currencies_page.dart';
 import 'package:saydaliati/features/customers/presentation/pages/customers_page.dart';
+import 'package:saydaliati/features/expenses/presentation/pages/expense_categories_page.dart';
+import 'package:saydaliati/features/expenses/presentation/pages/expenses_list_page.dart';
 import 'package:saydaliati/features/home/presentation/pages/home_page.dart';
 import 'package:saydaliati/features/intro/intro_providers.dart';
 import 'package:saydaliati/features/intro/presentation/intro_page.dart';
@@ -20,8 +24,8 @@ import 'package:saydaliati/features/manufacturers/presentation/pages/manufacture
 import 'package:saydaliati/features/medicine_units/presentation/pages/units_page.dart';
 import 'package:saydaliati/features/medicines/presentation/pages/medicines_page.dart';
 import 'package:saydaliati/features/notifications/presentation/pages/notifications_page.dart';
+import 'package:saydaliati/features/purchases/presentation/pages/purchase_create_page.dart';
 import 'package:saydaliati/features/purchases/presentation/pages/purchase_returns_list_page.dart';
-import 'package:saydaliati/features/purchases/presentation/pages/purchases_page.dart';
 import 'package:saydaliati/features/reports/domain/report_period.dart';
 import 'package:saydaliati/features/reports/presentation/pages/expiry_report_page.dart';
 import 'package:saydaliati/features/reports/presentation/pages/inventory_report_page.dart';
@@ -65,10 +69,12 @@ final _rootKey = GlobalKey<NavigatorState>();
 ///  12  /more/units            – Units
 ///  13  /more/currencies       – Currencies
 ///  14  /more/reports          – Reports hub
-///  15  /more/notifications    – Notifications
-///  16  /more/tutorials        – Tutorials
-///  17  /more/settings         – Settings
-///  18  /more/profile          – Account / profile
+///  15  /more/expenses         – Expense categories/log (sibling routes)
+///  16  /more/accounts         – Chart of accounts
+///  17  /more/notifications    – Notifications
+///  18  /more/tutorials        – Tutorials
+///  19  /more/settings         – Settings
+///  20  /more/profile          – Account / profile
 @Riverpod(keepAlive: true)
 GoRouter goRouter(Ref ref) {
   GoRoute rootRoute(String path, Widget Function(GoRouterState) build) =>
@@ -135,7 +141,7 @@ GoRouter goRouter(Ref ref) {
           // ── Inventory & purchasing (indices 4-6) ──────────────────────
           branch(AppRoutes.inventory, const StockPage()),
           branch(AppRoutes.stockMovements, const StockMovementsPage()),
-          branch(AppRoutes.purchases, const PurchasesPage()),
+          branch(AppRoutes.purchases, const PurchaseCreatePage()),
 
           // ── Returns (index 7) ───────────────────────────────────────────
           // مسارات شقيقة (نفس أسلوب التقارير): `go` بينها يستبدل الصفحة بلا
@@ -200,7 +206,39 @@ GoRouter goRouter(Ref ref) {
             ],
           ),
 
-          // ── System (indices 14-17) ─────────────────────────────────────
+          // ── Expenses (index 15) ─────────────────────────────────────────
+          // مسارات شقيقة (نفس أسلوب المرتجعات/التقارير): `go` بينها يستبدل
+          // الصفحة بلا مكدس، والشريط الجانبي يظلّل القسم المفتوح.
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.expenseCategories,
+                builder: (c, s) => const ExpenseCategoriesPage(),
+              ),
+              GoRoute(
+                path: AppRoutes.expenses,
+                builder: (c, s) => const ExpensesListPage(),
+              ),
+            ],
+          ),
+
+          // ── Accounts + Vouchers (index 16) ──────────────────────────────
+          // مسارات شقيقة (نفس أسلوب المصاريف/المرتجعات): `go` بينها يستبدل
+          // الصفحة بلا مكدس، والشريط الجانبي يظلّل القسم المفتوح.
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.accounts,
+                builder: (c, s) => const AccountsPage(),
+              ),
+              GoRoute(
+                path: AppRoutes.vouchers,
+                builder: (c, s) => const VouchersListPage(),
+              ),
+            ],
+          ),
+
+          // ── System (indices 17-20) ─────────────────────────────────────
           branch(AppRoutes.notifications, const NotificationsPage()),
           branch(AppRoutes.tutorials, const TutorialsPage()),
           branch(AppRoutes.settings, const SettingsPage()),

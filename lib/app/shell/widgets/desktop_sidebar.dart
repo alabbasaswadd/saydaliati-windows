@@ -43,7 +43,9 @@ class _NavSection {
 // Keep these two lists in sync.
 
 const _mainSections = <_NavSection>[
-  _NavSection('الرئيسية', [
+  // الفواتير والمرتجعات: المبيعات/المشتريات (فروع مباشرة) + مرتجعاتهما
+  // (مسارات متداخلة داخل فرع واحد، index 7 — التظليل يطابق المسار لا رقم الفرع).
+  _NavSection('الفواتير والمرتجعات', [
     _NavItem(
       index: 0,
       label: 'المبيعات',
@@ -51,41 +53,11 @@ const _mainSections = <_NavSection>[
       selectedIcon: Icons.point_of_sale,
     ),
     _NavItem(
-      index: 1,
-      label: 'الأدوية',
-      icon: Icons.medication_outlined,
-      selectedIcon: Icons.medication,
-    ),
-    _NavItem(
-      index: 2,
-      label: 'الكتالوغ',
-      icon: Icons.menu_book_outlined,
-      selectedIcon: Icons.menu_book,
-    ),
-  ]),
-  _NavSection('المخزون والمشتريات', [
-    _NavItem(
-      index: 4,
-      label: 'المخزون',
-      icon: Icons.inventory_2_outlined,
-      selectedIcon: Icons.inventory_2,
-    ),
-    _NavItem(
-      index: 5,
-      label: 'حركات المخزون',
-      icon: Icons.swap_vert_outlined,
-      selectedIcon: Icons.swap_vert,
-    ),
-    _NavItem(
       index: 6,
       label: 'المشتريات',
       icon: Icons.local_shipping_outlined,
       selectedIcon: Icons.local_shipping,
     ),
-  ]),
-  // المرتجعات: عناصر بمسارات متداخلة داخل فرع واحد (index 7) — نفس أسلوب
-  // التقارير أدناه (التظليل يطابق المسار الحالي لا رقم الفرع).
-  _NavSection('المرتجعات', [
     _NavItem(
       index: 7,
       label: 'مرتجع مبيعات',
@@ -101,18 +73,31 @@ const _mainSections = <_NavSection>[
       route: AppRoutes.purchaseReturns,
     ),
   ]),
-  _NavSection('إدارة البيانات', [
+  // الأدوية وتوابعها: الدواء نفسه + كل ما يصنّفه أو يتتبّع مخزونه.
+  _NavSection('الأدوية وتوابعها', [
     _NavItem(
-      index: 8,
-      label: 'الموردون',
-      icon: Icons.store_outlined,
-      selectedIcon: Icons.store,
+      index: 1,
+      label: 'الأدوية',
+      icon: Icons.medication_outlined,
+      selectedIcon: Icons.medication,
     ),
     _NavItem(
-      index: 9,
-      label: 'الزبائن',
-      icon: Icons.people_outline,
-      selectedIcon: Icons.people,
+      index: 2,
+      label: 'الكتالوغ',
+      icon: Icons.menu_book_outlined,
+      selectedIcon: Icons.menu_book,
+    ),
+    _NavItem(
+      index: 4,
+      label: 'المخزون',
+      icon: Icons.inventory_2_outlined,
+      selectedIcon: Icons.inventory_2,
+    ),
+    _NavItem(
+      index: 5,
+      label: 'حركات المخزون',
+      icon: Icons.swap_vert_outlined,
+      selectedIcon: Icons.swap_vert,
     ),
     _NavItem(
       index: 10,
@@ -131,6 +116,20 @@ const _mainSections = <_NavSection>[
       label: 'الوحدات',
       icon: Icons.straighten_outlined,
       selectedIcon: Icons.straighten,
+    ),
+  ]),
+  _NavSection('إدارة البيانات', [
+    _NavItem(
+      index: 8,
+      label: 'الموردون',
+      icon: Icons.store_outlined,
+      selectedIcon: Icons.store,
+    ),
+    _NavItem(
+      index: 9,
+      label: 'الزبائن',
+      icon: Icons.people_outline,
+      selectedIcon: Icons.people,
     ),
     _NavItem(
       index: 13,
@@ -192,25 +191,57 @@ const _mainSections = <_NavSection>[
       route: AppRoutes.prescriptionsReport,
     ),
   ]),
+  // الحسابات والسندات والمصاريف: كلها قيود/تدفقات مالية — مسارات متداخلة
+  // داخل فرعين (index 15 للمصاريف، 16 للحسابات) — نفس أسلوب المرتجعات/التقارير.
+  _NavSection('الحسابات والمصاريف', [
+    _NavItem(
+      index: 16,
+      label: 'الحسابات',
+      icon: Icons.account_balance_outlined,
+      selectedIcon: Icons.account_balance,
+      route: AppRoutes.accounts,
+    ),
+    _NavItem(
+      index: 16,
+      label: 'السندات',
+      icon: Icons.description_outlined,
+      selectedIcon: Icons.description,
+      route: AppRoutes.vouchers,
+    ),
+    _NavItem(
+      index: 15,
+      label: 'تصنيفات المصاريف',
+      icon: Icons.category_outlined,
+      selectedIcon: Icons.category,
+      route: AppRoutes.expenseCategories,
+    ),
+    _NavItem(
+      index: 15,
+      label: 'المصاريف',
+      icon: Icons.receipt_long_outlined,
+      selectedIcon: Icons.receipt_long,
+      route: AppRoutes.expenses,
+    ),
+  ]),
 ];
 
 // عناصر النظام السفلية — قسمان منفصلان بحدّ بينهما: البقية أولاً، والإشعارات
 // أخيراً وحدها في قسمها الخاص (واجهة أنظف).
 const _bottomItems = <_NavItem>[
   _NavItem(
-    index: 16,
+    index: 18,
     label: 'الشروحات',
     icon: Icons.school_outlined,
     selectedIcon: Icons.school,
   ),
   _NavItem(
-    index: 17,
+    index: 19,
     label: 'الإعدادات',
     icon: Icons.settings_outlined,
     selectedIcon: Icons.settings,
   ),
   _NavItem(
-    index: 18,
+    index: 20,
     label: 'الحساب الشخصي',
     icon: Icons.person_outline,
     selectedIcon: Icons.person,
@@ -218,7 +249,7 @@ const _bottomItems = <_NavItem>[
 ];
 
 const _notificationsItem = _NavItem(
-  index: 15,
+  index: 17,
   label: 'الإشعارات',
   icon: Icons.notifications_outlined,
   selectedIcon: Icons.notifications,

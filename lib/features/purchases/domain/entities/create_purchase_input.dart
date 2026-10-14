@@ -12,6 +12,7 @@ class CreatePurchaseInput {
     required this.lines,
     this.supplierId,
     this.note,
+    this.paymentAccountId,
   });
 
   final String currencyId;
@@ -23,6 +24,10 @@ class CreatePurchaseInput {
   final String? supplierId;
   final String? note;
 
+  /// Actual payment account (cash/bank); required unless [paymentMethod] is
+  /// Credit — defaults in the UI to the cash box matching the purchase's currency.
+  final String? paymentAccountId;
+
   Map<String, dynamic> toJson() => {
         'supplierId': supplierId,
         'userId': null,
@@ -32,16 +37,19 @@ class CreatePurchaseInput {
         'note': note,
         'purchaseDate': purchaseDate.toIso8601String(),
         'totalAmount': totalAmount,
+        'paymentAccountId': paymentAccountId,
         'items': lines.map((l) => l.toJson(warehouseId)).toList(),
       };
 
   /// Body for `PUT pharmacy-api/Purchase/{id}` (UpdatePurchaseRequest). The
-  /// backend keeps the original currency/payment; amounts are already in base.
+  /// backend keeps the original currency/payment method; amounts are already
+  /// in base. paymentAccountId CAN change (kept as-is on the server if null).
   Map<String, dynamic> toUpdateJson(String id) => {
         'supplierId': supplierId,
         'userId': null,
         'purchaseDate': purchaseDate.toIso8601String(),
         'totalAmount': totalAmount,
+        'paymentAccountId': paymentAccountId,
         'items': [
           for (final l in lines)
             {

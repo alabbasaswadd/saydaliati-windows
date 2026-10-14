@@ -10,6 +10,7 @@ abstract class Purchase with _$Purchase {
     required DateTime purchaseDate,
     required double totalAmount,
     @Default(0) int invoiceNumber,
+    @Default('') String paymentAccountId,
     @Default(<PurchaseLine>[]) List<PurchaseLine> items,
   }) = _Purchase;
 }

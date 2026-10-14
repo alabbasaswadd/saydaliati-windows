@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:saydaliati/app/shell/widgets/exchange_rate_header.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/core/offline/sync/sync_service.dart';
 import 'package:saydaliati/core/theme/app_semantic_colors.dart';
@@ -101,6 +102,9 @@ class _DesktopTitleBarState extends ConsumerState<DesktopTitleBar>
             const Expanded(
               child: DragToMoveArea(child: SizedBox.expand()),
             ),
+
+            const ExchangeRateHeader(),
+            const SizedBox(width: AppSpacing.xs),
 
             // Pending sync badge
             if (pending > 0)

@@ -16,6 +16,7 @@ class SaleDto {
     this.originalCurrencyId,
     this.exchangeRate,
     this.isPrescription,
+    this.paymentAccountId,
     this.items,
   });
 
@@ -29,6 +30,7 @@ class SaleDto {
   final String? originalCurrencyId;
   final num? exchangeRate;
   final bool? isPrescription;
+  final String? paymentAccountId;
   final List<SaleItemDto>? items;
 
   factory SaleDto.fromJson(Map<String, dynamic> json) =>

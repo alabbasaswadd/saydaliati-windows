@@ -5,9 +5,9 @@ import 'package:saydaliati/features/currencies/domain/currency_conversion.dart';
 import 'package:saydaliati/features/currencies/domain/entities/currency.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
 
-/// بطاقة إجمالي الفاتورة — **دوماً** بعملتين: عملة الفاتورة المختارة (الأعلى،
-/// بارزة)، ومعادِلها بالعملة الأساسية (الأسفل، أخفّ)، مع سعر الصرف الحالي بينهما
-/// حين تختلف العملتان. تُستخدم بشاشتي المبيعات والمشتريات بنفس المكان والتصميم.
+/// بطاقة إجمالي الفاتورة — أيقونة + الإجمالي بعملة الفاتورة المختارة (بارزاً
+/// وكبيراً)، ومعادِلها بالعملة الأساسية وسعر الصرف أسفله حين تختلف العملتان.
+/// تُستخدم بشاشتي المبيعات والمشتريات بنفس المكان والتصميم.
 class InvoiceTotalBadge extends StatelessWidget {
   const InvoiceTotalBadge({
     required this.total,
@@ -24,54 +24,51 @@ class InvoiceTotalBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final primary = theme.colorScheme.primary;
     final code = selected?.code ?? '';
     final sameCurrency =
         selected != null && base != null && selected!.id == base!.id;
+    final hasEquivalent = base != null && !sameCurrency;
 
     return Container(
-      padding:
-          const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 8),
+      constraints: const BoxConstraints(minHeight: 56),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 6),
       decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withValues(alpha: 0.08),
+        color: primary.withValues(alpha: 0.08),
         borderRadius: AppRadius.brMd,
-        border:
-            Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.25)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
+          CircleAvatar(
+            radius: 16,
+            backgroundColor: primary.withValues(alpha: 0.15),
+            child: Icon(Icons.payments_outlined, size: 17, color: primary),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(AppStrings.total,
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: theme.colorScheme.primary)),
-              const SizedBox(width: AppSpacing.xs),
+                  style: theme.textTheme.labelSmall
+                      ?.copyWith(color: Colors.black)),
               Text(
                 Formatters.money(total, code),
-                style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold, color: theme.colorScheme.primary),
+                style: theme.textTheme.titleLarge
+                    ?.copyWith(fontWeight: FontWeight.bold, color: Colors.black, height: 1.1),
               ),
             ],
           ),
-          if (base != null) ...[
-            const SizedBox(height: 2),
+          if (hasEquivalent) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+              child: Container(width: 1, height: 28, color: primary.withValues(alpha: 0.2)),
+            ),
             Text(
               '≈ ${Formatters.money(convertToBase(total, base, selected), base!.code)}',
-              style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.65)),
-            ),
-          ],
-          // سعر الصرف الحالي — فقط حين توجد فعلاً عملتان مختلفتان للمقارنة.
-          if (base != null && selected != null && !sameCurrency) ...[
-            const SizedBox(height: 1),
-            Text(
-              '${AppStrings.exchangeRateLabel}: 1 $code = '
-              '${Formatters.money(convertToBase(1, base, selected), base!.code)}',
-              style: theme.textTheme.labelSmall?.copyWith(
-                  fontSize: 10,
-                  color: theme.colorScheme.primary.withValues(alpha: 0.5)),
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: Colors.black, fontWeight: FontWeight.w600),
             ),
           ],
         ],

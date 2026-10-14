@@ -402,6 +402,23 @@ abstract final class AppStrings {
   static const String periodYear = 'هذه السنة';
   static const String periodAll = 'كل الفترات';
 
+  // Expenses
+  static const String expenses = 'المصاريف';
+  static const String expenseCategories = 'تصنيفات المصاريف';
+  static const String addExpense = 'مصروف جديد';
+  static const String editExpense = 'تعديل مصروف';
+  static const String noExpenses = 'لا توجد مصاريف بعد';
+  static const String addExpenseCategory = 'إضافة تصنيف';
+  static const String editExpenseCategory = 'تعديل تصنيف';
+  static const String noExpenseCategories = 'لا توجد تصنيفات مصاريف';
+  static const String expenseCategoryName = 'اسم التصنيف';
+  static const String expenseCategoryColumn = 'التصنيف';
+  static const String expenseAmount = 'المبلغ';
+  static const String expenseDate = 'التاريخ';
+  static const String expenseNote = 'ملاحظة';
+  static const String expensePaymentSource = 'مصدر الدفع';
+  static const String selectAccount = 'اختر الحساب';
+
   // Purchases
   static const String purchasesTitle = 'المشتريات';
   static const String newPurchase = 'فاتورة شراء';

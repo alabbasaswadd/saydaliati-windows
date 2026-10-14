@@ -122,9 +122,19 @@ abstract final class ApiEndpoints {
   static String purchaseReturnsByPurchase(String purchaseId) =>
       '$_base/PurchaseReturn/by-purchase/$purchaseId';
 
+  // ---- Expense categories ----
+  static const String expenseCategories = '$_base/ExpenseCategory';
+  static String expenseCategoryById(String id) => '$_base/ExpenseCategory/$id';
+
+  // ---- Expenses ----
+  static const String expenses = '$_base/Expense';
+  static String expenseById(String id) => '$_base/Expense/$id';
+  static const String expensesSummary = '$_base/Expense/summary';
+
   // ---- Accounts (chart of accounts) ----
   static const String accounts = '$_base/Account';
   static String accountById(String id) => '$_base/Account/$id';
+  static String accountStatement(String id) => '$_base/Account/$id/statement';
 
   // ---- Journal entries ----
   static const String journalEntries = '$_base/JournalEntry';

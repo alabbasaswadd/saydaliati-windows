@@ -17,6 +17,7 @@ abstract class Sale with _$Sale {
     @Default('') String originalCurrencyId,
     @Default(1) double exchangeRate,
     @Default(false) bool isPrescription,
+    @Default('') String paymentAccountId,
     @Default(<SaleLine>[]) List<SaleLine> items,
   }) = _Sale;
 }

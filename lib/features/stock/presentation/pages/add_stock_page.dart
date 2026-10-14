@@ -104,6 +104,9 @@ class _AddStockPageState extends ConsumerState<AddStockPage> {
     }
 
     ref.invalidate(stockListProvider);
+    // استلام المخزون قد يُغيّر كلفة الدواء (متوسط مرجَّح) وسعره التلقائي —
+    // حدِّث نسخته بكتالوغ المبيعات فوراً، لا بعد إعادة تشغيل التطبيق.
+    await ref.read(medicineCatalogProvider.notifier).refreshOne(_medicine!.id);
     if (!mounted) return;
     AppSnackbar.success(context, AppStrings.stockSavedSuccess);
     Navigator.of(context).pop();

@@ -44,6 +44,16 @@ abstract final class AppRoutes {
   static const String currencies = '/more/currencies';
   static const String reports = '/more/reports';
 
+  // Expenses → category management + expense log (sibling routes under one
+  // branch, same pattern as returns/reports).
+  static const String expenseCategories = '/more/expenses/categories';
+  static const String expenses = '/more/expenses/list';
+
+  // Accounts → chart of accounts (balances + statement drill-down pushed from
+  // it) + vouchers (sibling routes under one branch).
+  static const String accounts = '/more/accounts';
+  static const String vouchers = '/more/vouchers';
+
   // Reports → individual reports (nested under the reports branch so they
   // render INSIDE the desktop shell and keep the sidebar highlight in sync).
   static const String salesReport = '/more/reports/sales';
