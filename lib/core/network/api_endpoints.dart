@@ -104,9 +104,23 @@ abstract final class ApiEndpoints {
   static const String sales = '$_base/Sale';
   static String saleById(String id) => '$_base/Sale/$id';
 
+  // ---- Sale returns ----
+  static const String saleReturns = '$_base/SaleReturn';
+  static String saleReturnableLines(String saleId) =>
+      '$_base/SaleReturn/returnable-lines/$saleId';
+  static String saleReturnsBySale(String saleId) =>
+      '$_base/SaleReturn/by-sale/$saleId';
+
   // ---- Purchases ----
   static const String purchases = '$_base/Purchase';
   static String purchaseById(String id) => '$_base/Purchase/$id';
+
+  // ---- Purchase returns ----
+  static const String purchaseReturns = '$_base/PurchaseReturn';
+  static String purchaseReturnableLines(String purchaseId) =>
+      '$_base/PurchaseReturn/returnable-lines/$purchaseId';
+  static String purchaseReturnsByPurchase(String purchaseId) =>
+      '$_base/PurchaseReturn/by-purchase/$purchaseId';
 
   // ---- Accounts (chart of accounts) ----
   static const String accounts = '$_base/Account';

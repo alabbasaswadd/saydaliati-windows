@@ -22,17 +22,18 @@ part of 'app_router.dart';
 ///   4  /more/inventory        – Stock
 ///   5  /more/stock-movements  – Stock movements
 ///   6  /more/purchases        – Purchases
-///   7  /more/suppliers        – Suppliers
-///   8  /more/customers        – Customers
-///   9  /more/categories       – Categories
-///  10  /more/manufacturers    – Manufacturers
-///  11  /more/units            – Units
-///  12  /more/currencies       – Currencies
-///  13  /more/reports          – Reports hub
-///  14  /more/notifications    – Notifications
-///  15  /more/tutorials        – Tutorials
-///  16  /more/settings         – Settings
-///  17  /more/profile          – Account / profile
+///   7  /more/returns          – Sales/purchases returns (sibling routes)
+///   8  /more/suppliers        – Suppliers
+///   9  /more/customers        – Customers
+///  10  /more/categories       – Categories
+///  11  /more/manufacturers    – Manufacturers
+///  12  /more/units            – Units
+///  13  /more/currencies       – Currencies
+///  14  /more/reports          – Reports hub
+///  15  /more/notifications    – Notifications
+///  16  /more/tutorials        – Tutorials
+///  17  /more/settings         – Settings
+///  18  /more/profile          – Account / profile
 
 @ProviderFor(goRouter)
 final goRouterProvider = GoRouterProvider._();
@@ -51,17 +52,18 @@ final goRouterProvider = GoRouterProvider._();
 ///   4  /more/inventory        – Stock
 ///   5  /more/stock-movements  – Stock movements
 ///   6  /more/purchases        – Purchases
-///   7  /more/suppliers        – Suppliers
-///   8  /more/customers        – Customers
-///   9  /more/categories       – Categories
-///  10  /more/manufacturers    – Manufacturers
-///  11  /more/units            – Units
-///  12  /more/currencies       – Currencies
-///  13  /more/reports          – Reports hub
-///  14  /more/notifications    – Notifications
-///  15  /more/tutorials        – Tutorials
-///  16  /more/settings         – Settings
-///  17  /more/profile          – Account / profile
+///   7  /more/returns          – Sales/purchases returns (sibling routes)
+///   8  /more/suppliers        – Suppliers
+///   9  /more/customers        – Customers
+///  10  /more/categories       – Categories
+///  11  /more/manufacturers    – Manufacturers
+///  12  /more/units            – Units
+///  13  /more/currencies       – Currencies
+///  14  /more/reports          – Reports hub
+///  15  /more/notifications    – Notifications
+///  16  /more/tutorials        – Tutorials
+///  17  /more/settings         – Settings
+///  18  /more/profile          – Account / profile
 
 final class GoRouterProvider
     extends $FunctionalProvider<GoRouter, GoRouter, GoRouter>
@@ -80,17 +82,18 @@ final class GoRouterProvider
   ///   4  /more/inventory        – Stock
   ///   5  /more/stock-movements  – Stock movements
   ///   6  /more/purchases        – Purchases
-  ///   7  /more/suppliers        – Suppliers
-  ///   8  /more/customers        – Customers
-  ///   9  /more/categories       – Categories
-  ///  10  /more/manufacturers    – Manufacturers
-  ///  11  /more/units            – Units
-  ///  12  /more/currencies       – Currencies
-  ///  13  /more/reports          – Reports hub
-  ///  14  /more/notifications    – Notifications
-  ///  15  /more/tutorials        – Tutorials
-  ///  16  /more/settings         – Settings
-  ///  17  /more/profile          – Account / profile
+  ///   7  /more/returns          – Sales/purchases returns (sibling routes)
+  ///   8  /more/suppliers        – Suppliers
+  ///   9  /more/customers        – Customers
+  ///  10  /more/categories       – Categories
+  ///  11  /more/manufacturers    – Manufacturers
+  ///  12  /more/units            – Units
+  ///  13  /more/currencies       – Currencies
+  ///  14  /more/reports          – Reports hub
+  ///  15  /more/notifications    – Notifications
+  ///  16  /more/tutorials        – Tutorials
+  ///  17  /more/settings         – Settings
+  ///  18  /more/profile          – Account / profile
   GoRouterProvider._()
     : super(
         from: null,
@@ -124,4 +127,4 @@ final class GoRouterProvider
   }
 }
 
-String _$goRouterHash() => r'2fe936823c89fd5f02a1aa8fa8faa076bab620c8';
+String _$goRouterHash() => r'77ee814febc9fae6785e7ca7362503660f971ddf';

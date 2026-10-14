@@ -461,6 +461,11 @@ abstract final class AppStrings {
   // نقطة البيع: وصفة طبية / ربح سالب / بيع في السالب
   static const String prescriptionLabel = 'وصفة طبية';
   static const String prescriptionNeedsCustomer = 'الوصفة الطبية تتطلب اختيار عميل';
+  static const String creditSaleNeedsCustomer = 'البيع الآجل يتطلب اختيار عميل';
+  static const String creditPurchaseNeedsSupplier = 'الشراء الآجل يتطلب اختيار مورّد';
+  static const String actionsColumn = 'الإجراءات';
+  static const String saleReturnAction = 'مرتجع مبيعات';
+  static const String purchaseReturnAction = 'مرتجع مشتريات';
   static const String negativeProfitTitle = 'ربح سالب';
   static const String negativeProfitBody =
       'سعر البيع أقل من الكلفة لبعض الأصناف وسيصبح الربح سالباً. هل تريد المتابعة؟';

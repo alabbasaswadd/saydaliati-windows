@@ -8,6 +8,7 @@ part 'purchases_grid.freezed.dart';
 @freezed
 abstract class PurchasesGridInvoice with _$PurchasesGridInvoice {
   const factory PurchasesGridInvoice({
+    @Default('') String purchaseId,
     required int invoiceNumber,
     required DateTime purchaseDate,
     @Default('') String supplierName,

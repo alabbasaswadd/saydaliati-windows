@@ -24,8 +24,13 @@ InventoryItemDto _$InventoryItemDtoFromJson(Map<String, dynamic> json) =>
       quantity: json['quantity'] as num?,
       stockValue: json['stockValue'] as num?,
       isLowStock: json['isLowStock'] as bool?,
+      baseUnitSalePrice: json['baseUnitSalePrice'] as num?,
+      baseUnitCost: json['baseUnitCost'] as num?,
       units: (json['units'] as List<dynamic>?)
           ?.map((e) => InventoryUnitDto.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      batches: (json['batches'] as List<dynamic>?)
+          ?.map((e) => InventoryBatchDto.fromJson(e as Map<String, dynamic>))
           .toList(),
     );
 
@@ -36,4 +41,17 @@ InventoryUnitDto _$InventoryUnitDtoFromJson(Map<String, dynamic> json) =>
       isBaseUnit: json['isBaseUnit'] as bool?,
       salePrice: json['salePrice'] as num?,
       purchaseCost: json['purchaseCost'] as num?,
+    );
+
+InventoryBatchDto _$InventoryBatchDtoFromJson(Map<String, dynamic> json) =>
+    InventoryBatchDto(
+      expiryDate: json['expiryDate'] == null
+          ? null
+          : DateTime.parse(json['expiryDate'] as String),
+      warehouseId: json['warehouseId'] as String?,
+      warehouseName: json['warehouseName'] as String?,
+      quantity: json['quantity'] as num?,
+      purchasePrice: json['purchasePrice'] as num?,
+      batchValue: json['batchValue'] as num?,
+      daysLeft: (json['daysLeft'] as num?)?.toInt(),
     );

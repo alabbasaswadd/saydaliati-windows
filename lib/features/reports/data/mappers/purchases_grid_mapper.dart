@@ -3,6 +3,7 @@ import 'package:saydaliati/features/reports/domain/entities/purchases_grid.dart'
 
 extension PurchasesGridInvoiceDtoMapper on PurchasesGridInvoiceDto {
   PurchasesGridInvoice toEntity() => PurchasesGridInvoice(
+        purchaseId: purchaseId ?? '',
         invoiceNumber: invoiceNumber ?? 0,
         purchaseDate: purchaseDate ?? DateTime(1970),
         supplierName: supplierName ?? '',

@@ -22,7 +22,10 @@ abstract class InventoryItem with _$InventoryItem {
     required double quantity,
     required double stockValue,
     required bool isLowStock,
+    @Default(0) double baseUnitSalePrice,
+    @Default(0) double baseUnitCost,
     @Default(<InventoryUnit>[]) List<InventoryUnit> units,
+    @Default(<InventoryBatch>[]) List<InventoryBatch> batches,
   }) = _InventoryItem;
 }
 
@@ -35,4 +38,20 @@ abstract class InventoryUnit with _$InventoryUnit {
     required double salePrice,
     required double purchaseCost,
   }) = _InventoryUnit;
+}
+
+/// One expiry batch of a medicine — the inventory tree's second level
+/// (`GET pharmacy-api/Report/inventory`). `daysLeft` is negative once expired,
+/// null when the batch has no expiry date at all.
+@freezed
+abstract class InventoryBatch with _$InventoryBatch {
+  const factory InventoryBatch({
+    DateTime? expiryDate,
+    @Default('') String warehouseId,
+    @Default('') String warehouseName,
+    @Default(0) double quantity,
+    @Default(0) double purchasePrice,
+    @Default(0) double batchValue,
+    int? daysLeft,
+  }) = _InventoryBatch;
 }

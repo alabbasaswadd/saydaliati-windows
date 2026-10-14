@@ -206,6 +206,232 @@ final class SaleRepositoryProvider
 
 String _$saleRepositoryHash() => r'bbfd2206bccd33dbd88bd24f3f6453232c3f2e23';
 
+@ProviderFor(saleReturnRemoteDataSource)
+final saleReturnRemoteDataSourceProvider =
+    SaleReturnRemoteDataSourceProvider._();
+
+final class SaleReturnRemoteDataSourceProvider
+    extends
+        $FunctionalProvider<
+          SaleReturnRemoteDataSource,
+          SaleReturnRemoteDataSource,
+          SaleReturnRemoteDataSource
+        >
+    with $Provider<SaleReturnRemoteDataSource> {
+  SaleReturnRemoteDataSourceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'saleReturnRemoteDataSourceProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$saleReturnRemoteDataSourceHash();
+
+  @$internal
+  @override
+  $ProviderElement<SaleReturnRemoteDataSource> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  SaleReturnRemoteDataSource create(Ref ref) {
+    return saleReturnRemoteDataSource(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(SaleReturnRemoteDataSource value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<SaleReturnRemoteDataSource>(value),
+    );
+  }
+}
+
+String _$saleReturnRemoteDataSourceHash() =>
+    r'367c597041f7d93117654a920ab41b51c6150431';
+
+/// Sale returns — online-only (see SaleReturnRepository doc).
+
+@ProviderFor(saleReturnRepository)
+final saleReturnRepositoryProvider = SaleReturnRepositoryProvider._();
+
+/// Sale returns — online-only (see SaleReturnRepository doc).
+
+final class SaleReturnRepositoryProvider
+    extends
+        $FunctionalProvider<
+          SaleReturnRepository,
+          SaleReturnRepository,
+          SaleReturnRepository
+        >
+    with $Provider<SaleReturnRepository> {
+  /// Sale returns — online-only (see SaleReturnRepository doc).
+  SaleReturnRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'saleReturnRepositoryProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$saleReturnRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<SaleReturnRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  SaleReturnRepository create(Ref ref) {
+    return saleReturnRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(SaleReturnRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<SaleReturnRepository>(value),
+    );
+  }
+}
+
+String _$saleReturnRepositoryHash() =>
+    r'91b2ac0eec5315f7eebe7d7205ba365a5ec3c43b';
+
+@ProviderFor(saleReturnableLines)
+final saleReturnableLinesProvider = SaleReturnableLinesFamily._();
+
+final class SaleReturnableLinesProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<SaleReturnableLine>>,
+          List<SaleReturnableLine>,
+          FutureOr<List<SaleReturnableLine>>
+        >
+    with
+        $FutureModifier<List<SaleReturnableLine>>,
+        $FutureProvider<List<SaleReturnableLine>> {
+  SaleReturnableLinesProvider._({
+    required SaleReturnableLinesFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'saleReturnableLinesProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$saleReturnableLinesHash();
+
+  @override
+  String toString() {
+    return r'saleReturnableLinesProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<List<SaleReturnableLine>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<SaleReturnableLine>> create(Ref ref) {
+    final argument = this.argument as String;
+    return saleReturnableLines(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is SaleReturnableLinesProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$saleReturnableLinesHash() =>
+    r'498804b363b9ba3a5fe01ca85a7e21d7aeaa972b';
+
+final class SaleReturnableLinesFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<List<SaleReturnableLine>>, String> {
+  SaleReturnableLinesFamily._()
+    : super(
+        retry: null,
+        name: r'saleReturnableLinesProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  SaleReturnableLinesProvider call(String saleId) =>
+      SaleReturnableLinesProvider._(argument: saleId, from: this);
+
+  @override
+  String toString() => r'saleReturnableLinesProvider';
+}
+
+/// Saved sale return documents — drives the «مرتجع مبيعات» sidebar section.
+
+@ProviderFor(saleReturnsList)
+final saleReturnsListProvider = SaleReturnsListProvider._();
+
+/// Saved sale return documents — drives the «مرتجع مبيعات» sidebar section.
+
+final class SaleReturnsListProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<SaleReturnSummary>>,
+          List<SaleReturnSummary>,
+          FutureOr<List<SaleReturnSummary>>
+        >
+    with
+        $FutureModifier<List<SaleReturnSummary>>,
+        $FutureProvider<List<SaleReturnSummary>> {
+  /// Saved sale return documents — drives the «مرتجع مبيعات» sidebar section.
+  SaleReturnsListProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'saleReturnsListProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$saleReturnsListHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<List<SaleReturnSummary>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<SaleReturnSummary>> create(Ref ref) {
+    return saleReturnsList(ref);
+  }
+}
+
+String _$saleReturnsListHash() => r'bdbd4b8fa469a32e7b7a7a83b96519ce433479d2';
+
 /// The still-queued (un-synced) sales for the current tenant — reactive, oldest
 /// first — driving the POS "unsynced invoices" (cloud) screen.
 

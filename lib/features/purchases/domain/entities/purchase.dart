@@ -9,6 +9,7 @@ abstract class Purchase with _$Purchase {
     required String id,
     required DateTime purchaseDate,
     required double totalAmount,
+    @Default(0) int invoiceNumber,
     @Default(<PurchaseLine>[]) List<PurchaseLine> items,
   }) = _Purchase;
 }

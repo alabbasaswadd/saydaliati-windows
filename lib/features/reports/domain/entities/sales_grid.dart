@@ -8,6 +8,7 @@ part 'sales_grid.freezed.dart';
 @freezed
 abstract class SalesGridInvoice with _$SalesGridInvoice {
   const factory SalesGridInvoice({
+    @Default('') String saleId,
     required int invoiceNumber,
     required DateTime saleDate,
     @Default('') String customerName,

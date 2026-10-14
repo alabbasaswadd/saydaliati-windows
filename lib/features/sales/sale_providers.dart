@@ -6,10 +6,14 @@ import 'package:saydaliati/core/offline/offline_providers.dart';
 import 'package:saydaliati/core/providers/core_providers.dart';
 import 'package:saydaliati/features/sales/data/datasources/batch_remote_data_source.dart';
 import 'package:saydaliati/features/sales/data/datasources/sale_remote_data_source.dart';
+import 'package:saydaliati/features/sales/data/datasources/sale_return_remote_data_source.dart';
 import 'package:saydaliati/features/sales/data/repositories/batch_repository_impl.dart';
 import 'package:saydaliati/features/sales/data/repositories/sale_repository_impl.dart';
+import 'package:saydaliati/features/sales/data/repositories/sale_return_repository_impl.dart';
 import 'package:saydaliati/features/sales/domain/entities/pending_sale.dart';
+import 'package:saydaliati/features/sales/domain/entities/sale_return.dart';
 import 'package:saydaliati/features/sales/domain/repositories/sale_repository.dart';
+import 'package:saydaliati/features/sales/domain/repositories/sale_return_repository.dart';
 import 'package:saydaliati/features/stock/stock_providers.dart';
 
 part 'sale_providers.g.dart';
@@ -43,6 +47,28 @@ SaleRepository saleRepository(Ref ref) => SaleRepositoryImpl(
       tenantId: ref.watch(currentTenantKeyProvider),
       isOnline: () => ref.read(effectiveOnlineProvider),
     );
+
+@riverpod
+SaleReturnRemoteDataSource saleReturnRemoteDataSource(Ref ref) =>
+    SaleReturnRemoteDataSource(ref.watch(apiClientProvider));
+
+/// Sale returns — online-only (see SaleReturnRepository doc).
+@riverpod
+SaleReturnRepository saleReturnRepository(Ref ref) =>
+    SaleReturnRepositoryImpl(ref.watch(saleReturnRemoteDataSourceProvider));
+
+@riverpod
+Future<List<SaleReturnableLine>> saleReturnableLines(Ref ref, String saleId) async {
+  final result = await ref.watch(saleReturnRepositoryProvider).getReturnableLines(saleId);
+  return result.fold((lines) => lines, (failure) => throw failure);
+}
+
+/// Saved sale return documents — drives the «مرتجع مبيعات» sidebar section.
+@riverpod
+Future<List<SaleReturnSummary>> saleReturnsList(Ref ref) async {
+  final result = await ref.watch(saleReturnRepositoryProvider).getReturns();
+  return result.fold((list) => list, (failure) => throw failure);
+}
 
 /// The still-queued (un-synced) sales for the current tenant — reactive, oldest
 /// first — driving the POS "unsynced invoices" (cloud) screen.

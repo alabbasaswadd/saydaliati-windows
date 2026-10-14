@@ -4,6 +4,7 @@ import 'package:saydaliati/features/purchases/domain/entities/purchase.dart';
 extension PurchaseDtoMapper on PurchaseDto {
   Purchase toEntity() => Purchase(
         id: id ?? '',
+        invoiceNumber: invoiceNumber ?? 0,
         purchaseDate: purchaseDate ?? DateTime.now(),
         totalAmount: (totalAmount ?? 0).toDouble(),
         items: (items ?? const []).map((i) => i.toEntity()).toList(),

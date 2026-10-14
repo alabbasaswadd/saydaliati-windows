@@ -83,91 +83,109 @@ const _mainSections = <_NavSection>[
       selectedIcon: Icons.local_shipping,
     ),
   ]),
-  _NavSection('إدارة البيانات', [
+  // المرتجعات: عناصر بمسارات متداخلة داخل فرع واحد (index 7) — نفس أسلوب
+  // التقارير أدناه (التظليل يطابق المسار الحالي لا رقم الفرع).
+  _NavSection('المرتجعات', [
     _NavItem(
       index: 7,
+      label: 'مرتجع مبيعات',
+      icon: Icons.assignment_return_outlined,
+      selectedIcon: Icons.assignment_return,
+      route: AppRoutes.salesReturns,
+    ),
+    _NavItem(
+      index: 7,
+      label: 'مرتجع مشتريات',
+      icon: Icons.assignment_return_outlined,
+      selectedIcon: Icons.assignment_return,
+      route: AppRoutes.purchaseReturns,
+    ),
+  ]),
+  _NavSection('إدارة البيانات', [
+    _NavItem(
+      index: 8,
       label: 'الموردون',
       icon: Icons.store_outlined,
       selectedIcon: Icons.store,
     ),
     _NavItem(
-      index: 8,
+      index: 9,
       label: 'الزبائن',
       icon: Icons.people_outline,
       selectedIcon: Icons.people,
     ),
     _NavItem(
-      index: 9,
+      index: 10,
       label: 'الأصناف',
       icon: Icons.category_outlined,
       selectedIcon: Icons.category,
     ),
     _NavItem(
-      index: 10,
+      index: 11,
       label: 'الشركات المصنعة',
       icon: Icons.factory_outlined,
       selectedIcon: Icons.factory,
     ),
     _NavItem(
-      index: 11,
+      index: 12,
       label: 'الوحدات',
       icon: Icons.straighten_outlined,
       selectedIcon: Icons.straighten,
     ),
     _NavItem(
-      index: 12,
+      index: 13,
       label: 'العملات',
       icon: Icons.currency_exchange_outlined,
       selectedIcon: Icons.currency_exchange,
     ),
   ]),
-  // التقارير: عناصر بمسارات متداخلة داخل فرع التقارير (index 13) — التظليل
+  // التقارير: عناصر بمسارات متداخلة داخل فرع التقارير (index 14) — التظليل
   // يطابق المسار الحالي لا رقم الفرع.
   _NavSection('التقارير', [
     _NavItem(
-      index: 13,
+      index: 14,
       label: 'تقرير المبيعات',
       icon: Icons.point_of_sale_outlined,
       selectedIcon: Icons.point_of_sale,
       route: AppRoutes.salesReport,
     ),
     _NavItem(
-      index: 13,
+      index: 14,
       label: 'تقرير الأرباح',
       icon: Icons.trending_up_outlined,
       selectedIcon: Icons.trending_up,
       route: AppRoutes.profitReport,
     ),
     _NavItem(
-      index: 13,
+      index: 14,
       label: 'تقرير المشتريات',
       icon: Icons.shopping_cart_outlined,
       selectedIcon: Icons.shopping_cart,
       route: AppRoutes.purchasesReport,
     ),
     _NavItem(
-      index: 13,
+      index: 14,
       label: 'تقرير المخزون',
       icon: Icons.inventory_outlined,
       selectedIcon: Icons.inventory,
       route: AppRoutes.inventoryReport,
     ),
     _NavItem(
-      index: 13,
+      index: 14,
       label: 'تقرير الصلاحية',
       icon: Icons.event_busy_outlined,
       selectedIcon: Icons.event_busy,
       route: AppRoutes.expiryReport,
     ),
     _NavItem(
-      index: 13,
+      index: 14,
       label: 'الجرد',
       icon: Icons.fact_check_outlined,
       selectedIcon: Icons.fact_check,
       route: AppRoutes.stocktakeReport,
     ),
     _NavItem(
-      index: 13,
+      index: 14,
       label: 'تقرير الوصفات',
       icon: Icons.medical_services_outlined,
       selectedIcon: Icons.medical_services,
@@ -180,19 +198,19 @@ const _mainSections = <_NavSection>[
 // أخيراً وحدها في قسمها الخاص (واجهة أنظف).
 const _bottomItems = <_NavItem>[
   _NavItem(
-    index: 15,
+    index: 16,
     label: 'الشروحات',
     icon: Icons.school_outlined,
     selectedIcon: Icons.school,
   ),
   _NavItem(
-    index: 16,
+    index: 17,
     label: 'الإعدادات',
     icon: Icons.settings_outlined,
     selectedIcon: Icons.settings,
   ),
   _NavItem(
-    index: 17,
+    index: 18,
     label: 'الحساب الشخصي',
     icon: Icons.person_outline,
     selectedIcon: Icons.person,
@@ -200,7 +218,7 @@ const _bottomItems = <_NavItem>[
 ];
 
 const _notificationsItem = _NavItem(
-  index: 14,
+  index: 15,
   label: 'الإشعارات',
   icon: Icons.notifications_outlined,
   selectedIcon: Icons.notifications,

@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$PurchasesGridInvoice {
 
- int get invoiceNumber; DateTime get purchaseDate; String get supplierName; int get paymentMethod; String get warehouseName; String get currencyCode; String get currencySymbol; double get discountAmount; double get totalAmount; int get itemsCount; List<PurchasesGridItem> get items;
+ String get purchaseId; int get invoiceNumber; DateTime get purchaseDate; String get supplierName; int get paymentMethod; String get warehouseName; String get currencyCode; String get currencySymbol; double get discountAmount; double get totalAmount; int get itemsCount; List<PurchasesGridItem> get items;
 /// Create a copy of PurchasesGridInvoice
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -27,20 +27,20 @@ $PurchasesGridInvoiceCopyWith<PurchasesGridInvoice> get copyWith => _$PurchasesG
 @override
 bool operator ==(Object other) {
   final _this = this as PurchasesGridInvoice;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PurchasesGridInvoice&&(identical(other.invoiceNumber, _this.invoiceNumber) || other.invoiceNumber == _this.invoiceNumber)&&(identical(other.purchaseDate, _this.purchaseDate) || other.purchaseDate == _this.purchaseDate)&&(identical(other.supplierName, _this.supplierName) || other.supplierName == _this.supplierName)&&(identical(other.paymentMethod, _this.paymentMethod) || other.paymentMethod == _this.paymentMethod)&&(identical(other.warehouseName, _this.warehouseName) || other.warehouseName == _this.warehouseName)&&(identical(other.currencyCode, _this.currencyCode) || other.currencyCode == _this.currencyCode)&&(identical(other.currencySymbol, _this.currencySymbol) || other.currencySymbol == _this.currencySymbol)&&(identical(other.discountAmount, _this.discountAmount) || other.discountAmount == _this.discountAmount)&&(identical(other.totalAmount, _this.totalAmount) || other.totalAmount == _this.totalAmount)&&(identical(other.itemsCount, _this.itemsCount) || other.itemsCount == _this.itemsCount)&&const DeepCollectionEquality().equals(other.items, _this.items));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PurchasesGridInvoice&&(identical(other.purchaseId, _this.purchaseId) || other.purchaseId == _this.purchaseId)&&(identical(other.invoiceNumber, _this.invoiceNumber) || other.invoiceNumber == _this.invoiceNumber)&&(identical(other.purchaseDate, _this.purchaseDate) || other.purchaseDate == _this.purchaseDate)&&(identical(other.supplierName, _this.supplierName) || other.supplierName == _this.supplierName)&&(identical(other.paymentMethod, _this.paymentMethod) || other.paymentMethod == _this.paymentMethod)&&(identical(other.warehouseName, _this.warehouseName) || other.warehouseName == _this.warehouseName)&&(identical(other.currencyCode, _this.currencyCode) || other.currencyCode == _this.currencyCode)&&(identical(other.currencySymbol, _this.currencySymbol) || other.currencySymbol == _this.currencySymbol)&&(identical(other.discountAmount, _this.discountAmount) || other.discountAmount == _this.discountAmount)&&(identical(other.totalAmount, _this.totalAmount) || other.totalAmount == _this.totalAmount)&&(identical(other.itemsCount, _this.itemsCount) || other.itemsCount == _this.itemsCount)&&const DeepCollectionEquality().equals(other.items, _this.items));
 }
 
 
 @override
 int get hashCode {
   final _this = this as PurchasesGridInvoice;
-  return Object.hash(runtimeType,_this.invoiceNumber,_this.purchaseDate,_this.supplierName,_this.paymentMethod,_this.warehouseName,_this.currencyCode,_this.currencySymbol,_this.discountAmount,_this.totalAmount,_this.itemsCount,const DeepCollectionEquality().hash(_this.items));
+  return Object.hash(runtimeType,_this.purchaseId,_this.invoiceNumber,_this.purchaseDate,_this.supplierName,_this.paymentMethod,_this.warehouseName,_this.currencyCode,_this.currencySymbol,_this.discountAmount,_this.totalAmount,_this.itemsCount,const DeepCollectionEquality().hash(_this.items));
 }
 
 @override
 String toString() {
   final _this = this as PurchasesGridInvoice;
-  return 'PurchasesGridInvoice(invoiceNumber: ${_this.invoiceNumber}, purchaseDate: ${_this.purchaseDate}, supplierName: ${_this.supplierName}, paymentMethod: ${_this.paymentMethod}, warehouseName: ${_this.warehouseName}, currencyCode: ${_this.currencyCode}, currencySymbol: ${_this.currencySymbol}, discountAmount: ${_this.discountAmount}, totalAmount: ${_this.totalAmount}, itemsCount: ${_this.itemsCount}, items: ${_this.items})';
+  return 'PurchasesGridInvoice(purchaseId: ${_this.purchaseId}, invoiceNumber: ${_this.invoiceNumber}, purchaseDate: ${_this.purchaseDate}, supplierName: ${_this.supplierName}, paymentMethod: ${_this.paymentMethod}, warehouseName: ${_this.warehouseName}, currencyCode: ${_this.currencyCode}, currencySymbol: ${_this.currencySymbol}, discountAmount: ${_this.discountAmount}, totalAmount: ${_this.totalAmount}, itemsCount: ${_this.itemsCount}, items: ${_this.items})';
 }
 
 
@@ -51,7 +51,7 @@ abstract mixin class $PurchasesGridInvoiceCopyWith<$Res>  {
   factory $PurchasesGridInvoiceCopyWith(PurchasesGridInvoice value, $Res Function(PurchasesGridInvoice) _then) = _$PurchasesGridInvoiceCopyWithImpl;
 @useResult
 $Res call({
- int invoiceNumber, DateTime purchaseDate, String supplierName, int paymentMethod, String warehouseName, String currencyCode, String currencySymbol, double discountAmount, double totalAmount, int itemsCount, List<PurchasesGridItem> items
+ String purchaseId, int invoiceNumber, DateTime purchaseDate, String supplierName, int paymentMethod, String warehouseName, String currencyCode, String currencySymbol, double discountAmount, double totalAmount, int itemsCount, List<PurchasesGridItem> items
 });
 
 
@@ -68,9 +68,10 @@ class _$PurchasesGridInvoiceCopyWithImpl<$Res>
 
 /// Create a copy of PurchasesGridInvoice
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? invoiceNumber = null,Object? purchaseDate = null,Object? supplierName = null,Object? paymentMethod = null,Object? warehouseName = null,Object? currencyCode = null,Object? currencySymbol = null,Object? discountAmount = null,Object? totalAmount = null,Object? itemsCount = null,Object? items = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? purchaseId = null,Object? invoiceNumber = null,Object? purchaseDate = null,Object? supplierName = null,Object? paymentMethod = null,Object? warehouseName = null,Object? currencyCode = null,Object? currencySymbol = null,Object? discountAmount = null,Object? totalAmount = null,Object? itemsCount = null,Object? items = null,}) {
   return _then(PurchasesGridInvoice(
-invoiceNumber: null == invoiceNumber ? _self.invoiceNumber : invoiceNumber // ignore: cast_nullable_to_non_nullable
+purchaseId: null == purchaseId ? _self.purchaseId : purchaseId // ignore: cast_nullable_to_non_nullable
+as String,invoiceNumber: null == invoiceNumber ? _self.invoiceNumber : invoiceNumber // ignore: cast_nullable_to_non_nullable
 as int,purchaseDate: null == purchaseDate ? _self.purchaseDate : purchaseDate // ignore: cast_nullable_to_non_nullable
 as DateTime,supplierName: null == supplierName ? _self.supplierName : supplierName // ignore: cast_nullable_to_non_nullable
 as String,paymentMethod: null == paymentMethod ? _self.paymentMethod : paymentMethod // ignore: cast_nullable_to_non_nullable
@@ -166,10 +167,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int invoiceNumber,  DateTime purchaseDate,  String supplierName,  int paymentMethod,  String warehouseName,  String currencyCode,  String currencySymbol,  double discountAmount,  double totalAmount,  int itemsCount,  List<PurchasesGridItem> items)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String purchaseId,  int invoiceNumber,  DateTime purchaseDate,  String supplierName,  int paymentMethod,  String warehouseName,  String currencyCode,  String currencySymbol,  double discountAmount,  double totalAmount,  int itemsCount,  List<PurchasesGridItem> items)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _PurchasesGridInvoice() when $default != null:
-return $default(_that.invoiceNumber,_that.purchaseDate,_that.supplierName,_that.paymentMethod,_that.warehouseName,_that.currencyCode,_that.currencySymbol,_that.discountAmount,_that.totalAmount,_that.itemsCount,_that.items);case _:
+return $default(_that.purchaseId,_that.invoiceNumber,_that.purchaseDate,_that.supplierName,_that.paymentMethod,_that.warehouseName,_that.currencyCode,_that.currencySymbol,_that.discountAmount,_that.totalAmount,_that.itemsCount,_that.items);case _:
   return orElse();
 
 }
@@ -187,10 +188,10 @@ return $default(_that.invoiceNumber,_that.purchaseDate,_that.supplierName,_that.
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int invoiceNumber,  DateTime purchaseDate,  String supplierName,  int paymentMethod,  String warehouseName,  String currencyCode,  String currencySymbol,  double discountAmount,  double totalAmount,  int itemsCount,  List<PurchasesGridItem> items)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String purchaseId,  int invoiceNumber,  DateTime purchaseDate,  String supplierName,  int paymentMethod,  String warehouseName,  String currencyCode,  String currencySymbol,  double discountAmount,  double totalAmount,  int itemsCount,  List<PurchasesGridItem> items)  $default,) {final _that = this;
 switch (_that) {
 case _PurchasesGridInvoice():
-return $default(_that.invoiceNumber,_that.purchaseDate,_that.supplierName,_that.paymentMethod,_that.warehouseName,_that.currencyCode,_that.currencySymbol,_that.discountAmount,_that.totalAmount,_that.itemsCount,_that.items);case _:
+return $default(_that.purchaseId,_that.invoiceNumber,_that.purchaseDate,_that.supplierName,_that.paymentMethod,_that.warehouseName,_that.currencyCode,_that.currencySymbol,_that.discountAmount,_that.totalAmount,_that.itemsCount,_that.items);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -207,10 +208,10 @@ return $default(_that.invoiceNumber,_that.purchaseDate,_that.supplierName,_that.
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int invoiceNumber,  DateTime purchaseDate,  String supplierName,  int paymentMethod,  String warehouseName,  String currencyCode,  String currencySymbol,  double discountAmount,  double totalAmount,  int itemsCount,  List<PurchasesGridItem> items)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String purchaseId,  int invoiceNumber,  DateTime purchaseDate,  String supplierName,  int paymentMethod,  String warehouseName,  String currencyCode,  String currencySymbol,  double discountAmount,  double totalAmount,  int itemsCount,  List<PurchasesGridItem> items)?  $default,) {final _that = this;
 switch (_that) {
 case _PurchasesGridInvoice() when $default != null:
-return $default(_that.invoiceNumber,_that.purchaseDate,_that.supplierName,_that.paymentMethod,_that.warehouseName,_that.currencyCode,_that.currencySymbol,_that.discountAmount,_that.totalAmount,_that.itemsCount,_that.items);case _:
+return $default(_that.purchaseId,_that.invoiceNumber,_that.purchaseDate,_that.supplierName,_that.paymentMethod,_that.warehouseName,_that.currencyCode,_that.currencySymbol,_that.discountAmount,_that.totalAmount,_that.itemsCount,_that.items);case _:
   return null;
 
 }
@@ -222,9 +223,10 @@ return $default(_that.invoiceNumber,_that.purchaseDate,_that.supplierName,_that.
 
 
 class _PurchasesGridInvoice implements PurchasesGridInvoice {
-  const _PurchasesGridInvoice({required this.invoiceNumber, required this.purchaseDate, this.supplierName = '', this.paymentMethod = 0, this.warehouseName = '', this.currencyCode = '', this.currencySymbol = '', this.discountAmount = 0, this.totalAmount = 0, this.itemsCount = 0,  List<PurchasesGridItem> items = const <PurchasesGridItem>[]}): _items = items;
+  const _PurchasesGridInvoice({this.purchaseId = '', required this.invoiceNumber, required this.purchaseDate, this.supplierName = '', this.paymentMethod = 0, this.warehouseName = '', this.currencyCode = '', this.currencySymbol = '', this.discountAmount = 0, this.totalAmount = 0, this.itemsCount = 0,  List<PurchasesGridItem> items = const <PurchasesGridItem>[]}): _items = items;
   
 
+@override@JsonKey() final  String purchaseId;
 @override final  int invoiceNumber;
 @override final  DateTime purchaseDate;
 @override@JsonKey() final  String supplierName;
@@ -253,18 +255,18 @@ _$PurchasesGridInvoiceCopyWith<_PurchasesGridInvoice> get copyWith => __$Purchas
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PurchasesGridInvoice&&(identical(other.invoiceNumber, invoiceNumber) || other.invoiceNumber == invoiceNumber)&&(identical(other.purchaseDate, purchaseDate) || other.purchaseDate == purchaseDate)&&(identical(other.supplierName, supplierName) || other.supplierName == supplierName)&&(identical(other.paymentMethod, paymentMethod) || other.paymentMethod == paymentMethod)&&(identical(other.warehouseName, warehouseName) || other.warehouseName == warehouseName)&&(identical(other.currencyCode, currencyCode) || other.currencyCode == currencyCode)&&(identical(other.currencySymbol, currencySymbol) || other.currencySymbol == currencySymbol)&&(identical(other.discountAmount, discountAmount) || other.discountAmount == discountAmount)&&(identical(other.totalAmount, totalAmount) || other.totalAmount == totalAmount)&&(identical(other.itemsCount, itemsCount) || other.itemsCount == itemsCount)&&const DeepCollectionEquality().equals(other.items, _items));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PurchasesGridInvoice&&(identical(other.purchaseId, purchaseId) || other.purchaseId == purchaseId)&&(identical(other.invoiceNumber, invoiceNumber) || other.invoiceNumber == invoiceNumber)&&(identical(other.purchaseDate, purchaseDate) || other.purchaseDate == purchaseDate)&&(identical(other.supplierName, supplierName) || other.supplierName == supplierName)&&(identical(other.paymentMethod, paymentMethod) || other.paymentMethod == paymentMethod)&&(identical(other.warehouseName, warehouseName) || other.warehouseName == warehouseName)&&(identical(other.currencyCode, currencyCode) || other.currencyCode == currencyCode)&&(identical(other.currencySymbol, currencySymbol) || other.currencySymbol == currencySymbol)&&(identical(other.discountAmount, discountAmount) || other.discountAmount == discountAmount)&&(identical(other.totalAmount, totalAmount) || other.totalAmount == totalAmount)&&(identical(other.itemsCount, itemsCount) || other.itemsCount == itemsCount)&&const DeepCollectionEquality().equals(other.items, _items));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,invoiceNumber,purchaseDate,supplierName,paymentMethod,warehouseName,currencyCode,currencySymbol,discountAmount,totalAmount,itemsCount,const DeepCollectionEquality().hash(_items));
+    return Object.hash(runtimeType,purchaseId,invoiceNumber,purchaseDate,supplierName,paymentMethod,warehouseName,currencyCode,currencySymbol,discountAmount,totalAmount,itemsCount,const DeepCollectionEquality().hash(_items));
 }
 
 @override
 String toString() {
-    return 'PurchasesGridInvoice(invoiceNumber: $invoiceNumber, purchaseDate: $purchaseDate, supplierName: $supplierName, paymentMethod: $paymentMethod, warehouseName: $warehouseName, currencyCode: $currencyCode, currencySymbol: $currencySymbol, discountAmount: $discountAmount, totalAmount: $totalAmount, itemsCount: $itemsCount, items: $items)';
+    return 'PurchasesGridInvoice(purchaseId: $purchaseId, invoiceNumber: $invoiceNumber, purchaseDate: $purchaseDate, supplierName: $supplierName, paymentMethod: $paymentMethod, warehouseName: $warehouseName, currencyCode: $currencyCode, currencySymbol: $currencySymbol, discountAmount: $discountAmount, totalAmount: $totalAmount, itemsCount: $itemsCount, items: $items)';
 }
 
 
@@ -275,7 +277,7 @@ abstract mixin class _$PurchasesGridInvoiceCopyWith<$Res> implements $PurchasesG
   factory _$PurchasesGridInvoiceCopyWith(_PurchasesGridInvoice value, $Res Function(_PurchasesGridInvoice) _then) = __$PurchasesGridInvoiceCopyWithImpl;
 @override @useResult
 $Res call({
- int invoiceNumber, DateTime purchaseDate, String supplierName, int paymentMethod, String warehouseName, String currencyCode, String currencySymbol, double discountAmount, double totalAmount, int itemsCount, List<PurchasesGridItem> items
+ String purchaseId, int invoiceNumber, DateTime purchaseDate, String supplierName, int paymentMethod, String warehouseName, String currencyCode, String currencySymbol, double discountAmount, double totalAmount, int itemsCount, List<PurchasesGridItem> items
 });
 
 
@@ -292,9 +294,10 @@ class __$PurchasesGridInvoiceCopyWithImpl<$Res>
 
 /// Create a copy of PurchasesGridInvoice
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? invoiceNumber = null,Object? purchaseDate = null,Object? supplierName = null,Object? paymentMethod = null,Object? warehouseName = null,Object? currencyCode = null,Object? currencySymbol = null,Object? discountAmount = null,Object? totalAmount = null,Object? itemsCount = null,Object? items = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? purchaseId = null,Object? invoiceNumber = null,Object? purchaseDate = null,Object? supplierName = null,Object? paymentMethod = null,Object? warehouseName = null,Object? currencyCode = null,Object? currencySymbol = null,Object? discountAmount = null,Object? totalAmount = null,Object? itemsCount = null,Object? items = null,}) {
   return _then(_PurchasesGridInvoice(
-invoiceNumber: null == invoiceNumber ? _self.invoiceNumber : invoiceNumber // ignore: cast_nullable_to_non_nullable
+purchaseId: null == purchaseId ? _self.purchaseId : purchaseId // ignore: cast_nullable_to_non_nullable
+as String,invoiceNumber: null == invoiceNumber ? _self.invoiceNumber : invoiceNumber // ignore: cast_nullable_to_non_nullable
 as int,purchaseDate: null == purchaseDate ? _self.purchaseDate : purchaseDate // ignore: cast_nullable_to_non_nullable
 as DateTime,supplierName: null == supplierName ? _self.supplierName : supplierName // ignore: cast_nullable_to_non_nullable
 as String,paymentMethod: null == paymentMethod ? _self.paymentMethod : paymentMethod // ignore: cast_nullable_to_non_nullable

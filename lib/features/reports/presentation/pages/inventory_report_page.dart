@@ -5,6 +5,7 @@ import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/features/currencies/domain/currency_conversion.dart';
 import 'package:saydaliati/features/currencies/domain/entities/currency.dart';
 import 'package:saydaliati/features/currencies/presentation/providers/currencies_provider.dart';
+import 'package:saydaliati/features/reports/domain/entities/inventory_report.dart';
 import 'package:saydaliati/features/reports/presentation/widgets/report_scaffold.dart';
 import 'package:saydaliati/features/reports/report_providers.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
@@ -16,7 +17,8 @@ import 'package:trina_grid/trina_grid.dart';
 
 /// Inventory report — the project-standard tree grid: a stat-chips strip
 /// (stock value / in-stock / low-stock) + a currency menu chip, over a tree
-/// grid (medicine → its units with sale/cost prices). Low-stock rows tinted.
+/// grid (medicine → its expiry batches, only when it has more than one).
+/// Low-stock rows tinted orange; near/past-expiry batch rows tinted too.
 class InventoryReportPage extends ConsumerStatefulWidget {
   const InventoryReportPage({super.key});
 
@@ -26,6 +28,10 @@ class InventoryReportPage extends ConsumerStatefulWidget {
 }
 
 class _InventoryReportPageState extends ConsumerState<InventoryReportPage> {
+  // نفس نافذة «قريب الانتهاء» الافتراضية المعتمدة بتقرير الصلاحية المخصّص
+  // (60 يوماً) — اتساق الألوان بين التقريرين.
+  static const _soonWindowDays = 60;
+
   String? _currencyId; // null => base currency
 
   TrinaGridStateManager? _gridManager;
@@ -36,6 +42,9 @@ class _InventoryReportPageState extends ConsumerState<InventoryReportPage> {
   static const _fCost = 'cost';
   static const _fValue = 'value';
   static const _fLow = 'low';
+  static const _fWarehouse = 'warehouse';
+  static const _fExpiry = 'expiry';
+  static const _fDaysLeft = 'daysLeft';
 
   @override
   Widget build(BuildContext context) {
@@ -61,6 +70,8 @@ class _InventoryReportPageState extends ConsumerState<InventoryReportPage> {
         data: (r) {
           double conv(double v) => convertFromBase(v, base, target);
           final lowColor = Colors.orange.shade800;
+          final soonColor = Colors.orange.shade800;
+          final expiredColor = Colors.red.shade700;
 
           if (r.items.isEmpty) {
             return const EmptyState(
@@ -119,9 +130,51 @@ class _InventoryReportPageState extends ConsumerState<InventoryReportPage> {
                       appGridNumberColumn(AppStrings.qtyLabel, _fQty,
                           width: 100),
                       appGridNumberColumn(AppStrings.priceColumn, _fSale,
-                          width: 120),
+                          width: 120, renderer: (ctx) {
+                        final v = ctx.cell.value;
+                        final n = v is num ? v.toDouble() : 0.0;
+                        if (n == 0) return const SizedBox.shrink();
+                        return Directionality(
+                          textDirection: TextDirection.ltr,
+                          child: Text(Formatters.number(n),
+                              textAlign: TextAlign.center),
+                        );
+                      }),
                       appGridNumberColumn(AppStrings.costPriceLabel, _fCost,
-                          width: 120, hide: true),
+                          width: 120, hide: true, renderer: (ctx) {
+                        final v = ctx.cell.value;
+                        final n = v is num ? v.toDouble() : 0.0;
+                        if (n == 0) return const SizedBox.shrink();
+                        return Directionality(
+                          textDirection: TextDirection.ltr,
+                          child: Text(Formatters.number(n),
+                              textAlign: TextAlign.center),
+                        );
+                      }),
+                      appGridTextColumn('المستودع', _fWarehouse,
+                          width: 130, hide: true),
+                      appGridTextColumn(AppStrings.expiryColumn, _fExpiry,
+                          width: 110, textAlign: TrinaColumnTextAlign.center),
+                      appGridNumberColumn('الأيام المتبقية', _fDaysLeft,
+                          width: 90, renderer: (ctx) {
+                        final v = ctx.cell.value;
+                        if (v == null || v == '') return const SizedBox.shrink();
+                        final n = v is num ? v.toInt() : int.tryParse('$v');
+                        if (n == null) return const SizedBox.shrink();
+                        final color = n < 0
+                            ? expiredColor
+                            : (n <= _soonWindowDays ? soonColor : null);
+                        return Directionality(
+                          textDirection: TextDirection.ltr,
+                          child: Text(
+                            '$n',
+                            textAlign: TextAlign.center,
+                            style: color == null
+                                ? null
+                                : TextStyle(color: color, fontWeight: FontWeight.w600),
+                          ),
+                        );
+                      }),
                       appGridNumberColumn(AppStrings.stockValue, _fValue,
                           width: 130, renderer: (ctx) {
                         final v = ctx.cell.value;
@@ -141,7 +194,7 @@ class _InventoryReportPageState extends ConsumerState<InventoryReportPage> {
                           ),
                         );
                       }),
-                      // الحالة: شريحة «منخفض» برتقالية.
+                      // الحالة: شريحة «منخفض» برتقالية (صف الدواء فقط).
                       TrinaColumn(
                         title: AppStrings.stockStatus,
                         field: _fLow,
@@ -171,43 +224,23 @@ class _InventoryReportPageState extends ConsumerState<InventoryReportPage> {
                         },
                       ),
                     ],
-                    rows: [
-                      for (final it in r.items)
-                        TrinaRow(
-                          cells: {
-                            _fName: TrinaCell(value: it.brandName),
-                            _fQty: TrinaCell(value: it.quantity),
-                            _fSale: TrinaCell(value: ''),
-                            _fCost: TrinaCell(value: ''),
-                            _fValue: TrinaCell(value: conv(it.stockValue)),
-                            _fLow: TrinaCell(value: it.isLowStock.toString()),
-                          },
-                          type: TrinaRowType.group(
-                            children: FilteredList(initialList: [
-                              for (final u in it.units)
-                                TrinaRow(cells: {
-                                  _fName: TrinaCell(
-                                      value: u.isBaseUnit
-                                          ? '${u.unitName} (${AppStrings.baseBadge})'
-                                          : u.unitName),
-                                  _fQty: TrinaCell(value: ''),
-                                  _fSale:
-                                      TrinaCell(value: conv(u.salePrice)),
-                                  _fCost:
-                                      TrinaCell(value: conv(u.purchaseCost)),
-                                  _fValue: TrinaCell(value: ''),
-                                  _fLow: TrinaCell(value: ''),
-                                }),
-                            ]),
-                          ),
-                        ),
-                    ],
+                    rows: [for (final it in r.items) _itemRow(it, conv)],
                     onLoaded: (m) => _gridManager = m,
-                    // صنف منخفض المخزون → تظليل برتقالي خفيف.
-                    rowColorCallback: (ctx) =>
-                        ctx.row.cells[_fLow]?.value == 'true'
-                            ? lowColor.withValues(alpha: 0.06)
-                            : Colors.transparent,
+                    // صنف منخفض المخزون أو دفعة منتهية/قريبة الانتهاء → تظليل خفيف.
+                    rowColorCallback: (ctx) {
+                      if (ctx.row.cells[_fLow]?.value == 'true') {
+                        return lowColor.withValues(alpha: 0.06);
+                      }
+                      final days = ctx.row.cells[_fDaysLeft]?.value;
+                      final n = days is num ? days.toInt() : int.tryParse('$days');
+                      if (n != null) {
+                        if (n < 0) return expiredColor.withValues(alpha: 0.06);
+                        if (n <= _soonWindowDays) {
+                          return soonColor.withValues(alpha: 0.05);
+                        }
+                      }
+                      return Colors.transparent;
+                    },
                   ),
                 ),
               ],
@@ -217,4 +250,63 @@ class _InventoryReportPageState extends ConsumerState<InventoryReportPage> {
       ),
     );
   }
+
+  /// صف الدواء (الأب): الكمية والقيمة الإجمالية + سعر البيع/التكلفة بالوحدة
+  /// الأساسية مباشرة. الأسطر الفرعية (دفعات الصلاحية) تظهر فقط حين يملك
+  /// الدواء أكثر من دفعة/تاريخ صلاحية — دواء بدفعة واحدة لا فائدة من توسيعه،
+  /// فيبقى صفاً مسطّحاً، لكن **صلاحيته وأيامه المتبقية تُعرَض على نفس الصف**
+  /// (لا تُفقَد فقط لأنه بلا أبناء).
+  TrinaRow<dynamic> _itemRow(InventoryItem it, double Function(double) conv) {
+    // دواء بدفعة واحدة بالضبط: فلا شجرة، لكن تفاصيل تلك الدفعة الوحيدة تُعرَض
+    // مباشرة على صف الدواء نفسه بدل أن تختفي.
+    final onlyBatch = it.batches.length == 1 ? it.batches.first : null;
+
+    final parentCells = {
+      _fName: TrinaCell(value: it.brandName),
+      _fQty: TrinaCell(value: it.quantity),
+      _fSale: TrinaCell(value: conv(it.baseUnitSalePrice)),
+      _fCost: TrinaCell(value: conv(it.baseUnitCost)),
+      _fWarehouse: TrinaCell(value: onlyBatch?.warehouseName ?? ''),
+      _fExpiry: TrinaCell(
+          value: onlyBatch == null
+              ? ''
+              : (onlyBatch.expiryDate != null
+                  ? _ymd(onlyBatch.expiryDate!)
+                  : AppStrings.notSet)),
+      _fDaysLeft: TrinaCell(value: onlyBatch?.daysLeft ?? ''),
+      _fValue: TrinaCell(value: conv(it.stockValue)),
+      _fLow: TrinaCell(value: it.isLowStock.toString()),
+    };
+
+    if (it.batches.length <= 1) {
+      return TrinaRow(cells: parentCells);
+    }
+
+    return TrinaRow(
+      cells: parentCells,
+      type: TrinaRowType.group(
+        children: FilteredList(initialList: [
+          for (final b in it.batches) _batchRow(b, conv),
+        ]),
+      ),
+    );
+  }
+
+  TrinaRow<dynamic> _batchRow(InventoryBatch b, double Function(double) conv) {
+    return TrinaRow(cells: {
+      _fName: TrinaCell(value: ''),
+      _fQty: TrinaCell(value: b.quantity),
+      _fSale: TrinaCell(value: ''),
+      _fCost: TrinaCell(value: conv(b.purchasePrice)),
+      _fWarehouse: TrinaCell(value: b.warehouseName),
+      _fExpiry: TrinaCell(
+          value: b.expiryDate != null ? _ymd(b.expiryDate!) : AppStrings.notSet),
+      _fDaysLeft: TrinaCell(value: b.daysLeft ?? ''),
+      _fValue: TrinaCell(value: conv(b.batchValue)),
+      _fLow: TrinaCell(value: ''),
+    });
+  }
+
+  static String _ymd(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 }

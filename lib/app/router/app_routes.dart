@@ -30,6 +30,12 @@ abstract final class AppRoutes {
   static const String inventory = '/more/inventory';
   static const String stockMovements = '/more/stock-movements';
   static const String purchases = '/more/purchases';
+
+  // Returns → sales/purchases return documents (sibling routes under one
+  // branch, same pattern as reports below — sidebar section of their own).
+  static const String salesReturns = '/more/returns/sales';
+  static const String purchaseReturns = '/more/returns/purchases';
+
   static const String suppliers = '/more/suppliers';
   static const String customers = '/more/customers';
   static const String categories = '/more/categories';

@@ -162,28 +162,47 @@ class AppGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TrinaGrid(
-      columns: columns,
-      rows: rows,
-      configuration: appGridConfiguration(context),
-      columnMenuDelegate: const _AppColumnMenuDelegate(),
-      rowColorCallback: rowColorCallback,
-      onRowDoubleTap: onRowDoubleTap,
-      onChanged: onChanged,
-      onLoaded: (TrinaGridOnLoadedEvent event) {
-        final m = event.stateManager;
-        m.setShowColumnFilter(showColumnFilter);
-        if (tree) {
-          m.setRowGroup(
-            TrinaRowGroupTreeDelegate(
-              resolveColumnDepth: (column) => m.columnIndex(column),
-              showText: (cell) => true,
-              showFirstExpandableIcon: true,
-            ),
-          );
-        }
-        onLoaded?.call(m);
-      },
+    // خلايا التحرير داخل الغريد تستخدم TextField عادي (بلا Decoration خاصة من
+    // الحزمة)، فيرث شكل حقول الإدخال العام للتطبيق (خلفية مملوءة وحواف دائرية
+    // بيضوية بدل خط مستقيم رفيع) فيبرز كخلية غريبة وسط الجدول. نلغي هذا
+    // الوراثة هنا فقط (الثيم العام للتطبيق يبقى كما هو خارج الغريد) حتى تبقى
+    // كل خلايا كل الغريدات بنفس التنسيق المسطّح الموحّد.
+    final theme = Theme.of(context);
+    return Theme(
+      data: theme.copyWith(
+        inputDecorationTheme: const InputDecorationTheme(
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          disabledBorder: InputBorder.none,
+          filled: false,
+          isDense: true,
+          contentPadding: EdgeInsets.zero,
+        ),
+      ),
+      child: TrinaGrid(
+        columns: columns,
+        rows: rows,
+        configuration: appGridConfiguration(context),
+        columnMenuDelegate: const _AppColumnMenuDelegate(),
+        rowColorCallback: rowColorCallback,
+        onRowDoubleTap: onRowDoubleTap,
+        onChanged: onChanged,
+        onLoaded: (TrinaGridOnLoadedEvent event) {
+          final m = event.stateManager;
+          m.setShowColumnFilter(showColumnFilter);
+          if (tree) {
+            m.setRowGroup(
+              TrinaRowGroupTreeDelegate(
+                resolveColumnDepth: (column) => m.columnIndex(column),
+                showText: (cell) => true,
+                showFirstExpandableIcon: true,
+              ),
+            );
+          }
+          onLoaded?.call(m);
+        },
+      ),
     );
   }
 }

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
+import 'package:saydaliati/core/enums/payment_method.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
+import 'package:saydaliati/features/purchases/presentation/pages/purchase_return_page.dart';
 import 'package:saydaliati/features/reports/domain/entities/purchases_grid.dart';
 import 'package:saydaliati/features/reports/domain/report_period.dart';
 import 'package:saydaliati/features/reports/presentation/widgets/report_scaffold.dart';
@@ -44,6 +46,7 @@ class _PurchasesReportPageState extends ConsumerState<PurchasesReportPage> {
   static const _fBatch = 'batch';
   static const _fExpiry = 'expiry';
   static const _fTotal = 'total';
+  static const _fActions = 'actions';
 
   @override
   Widget build(BuildContext context) {
@@ -131,6 +134,19 @@ class _PurchasesReportPageState extends ConsumerState<PurchasesReportPage> {
 
   List<TrinaColumn> _columns(BuildContext context) {
     return [
+      // الإجراءات أولاً (الأبرز) — مرتجع لفاتورة الأب فقط، لا لأسطر الدواء.
+      TrinaColumn(
+        title: AppStrings.actionsColumn,
+        field: _fActions,
+        type: TrinaColumnType.text(),
+        width: 70,
+        enableEditingMode: false,
+        enableSorting: false,
+        enableColumnDrag: false,
+        enableContextMenu: false,
+        textAlign: TrinaColumnTextAlign.center,
+        renderer: (ctx) => _actionsCell(context, ctx),
+      ),
       // فاتورة/الدواء، ثم الإفرادي وعدد القطع والإجمالي متتالية بعده مباشرة.
       appGridTextColumn(AppStrings.invoiceLabel, _fInvoice, width: 170),
       appGridNumberColumn(AppStrings.unitPriceColumn, _fUnitPrice, width: 100),
@@ -173,6 +189,8 @@ class _PurchasesReportPageState extends ConsumerState<PurchasesReportPage> {
   TrinaRow<dynamic> _invoiceRow(PurchasesGridInvoice inv) {
     return TrinaRow(
       cells: {
+        // قيمة الخلية هي الفاتورة الكاملة — نفس نمط سجلّ المبيعات الشجري.
+        _fActions: TrinaCell(value: inv),
         _fInvoice: TrinaCell(
             value: '${AppStrings.invoiceLabel} #${inv.invoiceNumber}'),
         _fDate: TrinaCell(value: _ymd(inv.purchaseDate)),
@@ -203,6 +221,7 @@ class _PurchasesReportPageState extends ConsumerState<PurchasesReportPage> {
   TrinaRow<dynamic> _itemRow(PurchasesGridItem it) {
     return TrinaRow(
       cells: {
+        _fActions: TrinaCell(value: null),
         _fInvoice: TrinaCell(value: it.brandName),
         _fDate: TrinaCell(value: ''),
         // البيان: اسم الوحدة (الإفرادي والعدد عمودان مستقلّان).
@@ -220,23 +239,35 @@ class _PurchasesReportPageState extends ConsumerState<PurchasesReportPage> {
     );
   }
 
+  /// أيقونة «مرتجع مشتريات» — تظهر فقط على صف الفاتورة (الأب). التأكيد الفعلي
+  /// بشاشة المرتجع المستقلة (كميات لكل سطر ثم «تأكيد المرتجع»)، لا ببوب أب عابر.
+  Widget _actionsCell(BuildContext context, TrinaColumnRendererContext ctx) {
+    final inv = ctx.cell.value;
+    if (inv is! PurchasesGridInvoice || inv.purchaseId.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return IconButton(
+      icon: const Icon(Icons.assignment_return_outlined, size: 20),
+      tooltip: AppStrings.purchaseReturnAction,
+      visualDensity: VisualDensity.compact,
+      onPressed: () async {
+        final changed = await Navigator.of(context).push<bool>(
+          MaterialPageRoute(
+            builder: (_) => PurchaseReturnPage(
+                purchaseId: inv.purchaseId, invoiceNumber: inv.invoiceNumber),
+          ),
+        );
+        if (changed == true && mounted) {
+          ref.invalidate(
+              purchasesGridProvider(_period.startUtcIso, _period.endUtcIso));
+        }
+      },
+    );
+  }
+
   static String _ymd(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-  static String _payLabel(int method) {
-    switch (method) {
-      case 1:
-        return AppStrings.payCash;
-      case 2:
-        return AppStrings.payCreditCard;
-      case 3:
-        return AppStrings.payDebitCard;
-      case 4:
-        return AppStrings.payBankTransfer;
-      case 5:
-        return AppStrings.payMobileWallet;
-      default:
-        return '—';
-    }
-  }
+  static String _payLabel(int method) =>
+      method >= 1 && method <= 6 ? PaymentMethod.fromWire(method).label : '—';
 }

@@ -3,6 +3,7 @@ import 'package:saydaliati/features/reports/domain/entities/sales_grid.dart';
 
 extension SalesGridInvoiceDtoMapper on SalesGridInvoiceDto {
   SalesGridInvoice toEntity() => SalesGridInvoice(
+        saleId: saleId ?? '',
         invoiceNumber: invoiceNumber ?? 0,
         saleDate: saleDate ?? DateTime(1970),
         customerName: customerName ?? '',

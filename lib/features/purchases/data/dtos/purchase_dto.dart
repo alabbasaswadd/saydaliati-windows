@@ -4,9 +4,16 @@ part 'purchase_dto.g.dart';
 
 @JsonSerializable(createToJson: false)
 class PurchaseDto {
-  const PurchaseDto({this.id, this.purchaseDate, this.totalAmount, this.items});
+  const PurchaseDto({
+    this.id,
+    this.invoiceNumber,
+    this.purchaseDate,
+    this.totalAmount,
+    this.items,
+  });
 
   final String? id;
+  final int? invoiceNumber;
   final DateTime? purchaseDate;
   final num? totalAmount;
   final List<PurchaseItemDto>? items;

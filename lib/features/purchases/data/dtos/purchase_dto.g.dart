@@ -8,6 +8,7 @@ part of 'purchase_dto.dart';
 
 PurchaseDto _$PurchaseDtoFromJson(Map<String, dynamic> json) => PurchaseDto(
   id: json['id'] as String?,
+  invoiceNumber: (json['invoiceNumber'] as num?)?.toInt(),
   purchaseDate: json['purchaseDate'] == null
       ? null
       : DateTime.parse(json['purchaseDate'] as String),

@@ -32,6 +32,7 @@ import 'package:saydaliati/services/barcode_scanner.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
 import 'package:saydaliati/shared/widgets/buttons/app_button.dart';
 import 'package:saydaliati/shared/widgets/cards/app_cards.dart';
+import 'package:saydaliati/shared/widgets/cards/invoice_total_badge.dart';
 import 'package:saydaliati/shared/widgets/dialogs/app_dialogs.dart';
 import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
@@ -293,6 +294,11 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
     // الوصفة الطبية تتطلب عميلاً إجبارياً.
     if (_isPrescription && (_customerId == null || _customerId!.isEmpty)) {
       AppSnackbar.error(context, AppStrings.prescriptionNeedsCustomer);
+      return;
+    }
+    // البيع الآجل يتطلب عميلاً إجبارياً (يُنشئ حركة ذمّة بدل قبض فوري بالخادم).
+    if (_payMethod.requiresParty && (_customerId == null || _customerId!.isEmpty)) {
+      AppSnackbar.error(context, AppStrings.creditSaleNeedsCustomer);
       return;
     }
 
@@ -827,7 +833,11 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
                     ),
                   ),
                   const SizedBox(width: AppSpacing.sm),
-                  _totalBadge(theme, currencyCode),
+                  InvoiceTotalBadge(
+                    total: _total,
+                    selected: _selectedCurrency(base, currencies),
+                    base: base,
+                  ),
                 ],
               ),
             ],
@@ -1200,34 +1210,6 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
             Text(AppDate.ymd(_saleDate), style: theme.textTheme.bodyMedium),
           ],
         ),
-      ),
-    );
-  }
-
-  /// بطاقة الإجمالي — ظاهرة دوماً في نهاية شريط الأدوات أعلى الجدول (لا في
-  /// الأسفل فقط)، فتبقى مرئية حتى عند طول قائمة الأسطر.
-  Widget _totalBadge(ThemeData theme, String code) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md, vertical: 8),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withValues(alpha: 0.08),
-        borderRadius: AppRadius.brMd,
-        border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.25)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(AppStrings.total,
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.primary)),
-          const SizedBox(width: AppSpacing.xs),
-          Text(
-            Formatters.money(_total, code),
-            style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold, color: theme.colorScheme.primary),
-          ),
-        ],
       ),
     );
   }

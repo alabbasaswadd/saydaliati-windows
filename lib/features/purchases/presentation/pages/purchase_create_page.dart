@@ -23,6 +23,7 @@ import 'package:saydaliati/features/suppliers/supplier_providers.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
 import 'package:saydaliati/shared/widgets/buttons/app_button.dart';
 import 'package:saydaliati/shared/widgets/cards/app_cards.dart';
+import 'package:saydaliati/shared/widgets/cards/invoice_total_badge.dart';
 import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
 import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
@@ -180,6 +181,11 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
       AppSnackbar.error(context, AppStrings.purchaseEmptyHint);
       return;
     }
+    // الشراء الآجل يتطلب مورّداً إجبارياً (يُنشئ حركة ذمّة بدل دفع فوري بالخادم).
+    if (_payMethod.requiresParty && (_supplierId == null || _supplierId!.isEmpty)) {
+      AppSnackbar.error(context, AppStrings.creditPurchaseNeedsSupplier);
+      return;
+    }
 
     setState(() => _saving = true);
     // Store costs in the BASE currency: convert the prices entered in the
@@ -242,11 +248,9 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
     final currencies = ref.watch(currenciesProvider).value ?? const <Currency>[];
     final base = ref.watch(baseCurrencyProvider);
     final warehouseId = ref.watch(defaultWarehouseIdProvider).value;
-    final code = currencies
-            .where((c) => c.id == _effectiveCurrencyId(base))
-            .map((c) => c.code)
-            .firstOrNull ??
-        '';
+    final selectedCurrency = currencies
+        .where((c) => c.id == _effectiveCurrencyId(base))
+        .firstOrNull;
 
     if (_isEdit && !_prefilled && catalog.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _ensurePrefill(catalog));
@@ -343,7 +347,7 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
               child: _linesGrid(catalog),
             ),
           ),
-          _summaryBar(code, warehouseId, base),
+          _summaryBar(selectedCurrency, warehouseId, base),
         ],
       ),
       ),
@@ -662,7 +666,7 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
   static String _ymd(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-  Widget _summaryBar(String code, String? warehouseId, Currency? base) {
+  Widget _summaryBar(Currency? selected, String? warehouseId, Currency? base) {
     final theme = Theme.of(context);
     return Container(
       // شريط ملخص بأسلوب سطح المكتب (مطابق لفاتورة المبيعات).
@@ -674,13 +678,7 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
       ),
       child: Row(
         children: [
-          Text(AppStrings.total, style: theme.textTheme.bodyMedium),
-          const SizedBox(width: AppSpacing.sm),
-          Text(
-            Formatters.money(_total, code),
-            style: theme.textTheme.titleLarge
-                ?.copyWith(fontWeight: FontWeight.bold),
-          ),
+          InvoiceTotalBadge(total: _total, selected: selected, base: base),
           const Spacer(),
           SizedBox(
             width: 180,

@@ -20,6 +20,7 @@ import 'package:saydaliati/features/manufacturers/presentation/pages/manufacture
 import 'package:saydaliati/features/medicine_units/presentation/pages/units_page.dart';
 import 'package:saydaliati/features/medicines/presentation/pages/medicines_page.dart';
 import 'package:saydaliati/features/notifications/presentation/pages/notifications_page.dart';
+import 'package:saydaliati/features/purchases/presentation/pages/purchase_returns_list_page.dart';
 import 'package:saydaliati/features/purchases/presentation/pages/purchases_page.dart';
 import 'package:saydaliati/features/reports/domain/report_period.dart';
 import 'package:saydaliati/features/reports/presentation/pages/expiry_report_page.dart';
@@ -29,6 +30,7 @@ import 'package:saydaliati/features/reports/presentation/pages/profit_report_pag
 import 'package:saydaliati/features/reports/presentation/pages/purchases_report_page.dart';
 import 'package:saydaliati/features/reports/presentation/pages/sales_report_page.dart';
 import 'package:saydaliati/features/reports/presentation/pages/stocktake_report_page.dart';
+import 'package:saydaliati/features/sales/presentation/pages/sale_returns_list_page.dart';
 import 'package:saydaliati/features/sales/presentation/pages/sales_page.dart';
 import 'package:saydaliati/features/settings/presentation/pages/settings_page.dart';
 import 'package:saydaliati/features/splash/splash_page.dart';
@@ -55,17 +57,18 @@ final _rootKey = GlobalKey<NavigatorState>();
 ///   4  /more/inventory        – Stock
 ///   5  /more/stock-movements  – Stock movements
 ///   6  /more/purchases        – Purchases
-///   7  /more/suppliers        – Suppliers
-///   8  /more/customers        – Customers
-///   9  /more/categories       – Categories
-///  10  /more/manufacturers    – Manufacturers
-///  11  /more/units            – Units
-///  12  /more/currencies       – Currencies
-///  13  /more/reports          – Reports hub
-///  14  /more/notifications    – Notifications
-///  15  /more/tutorials        – Tutorials
-///  16  /more/settings         – Settings
-///  17  /more/profile          – Account / profile
+///   7  /more/returns          – Sales/purchases returns (sibling routes)
+///   8  /more/suppliers        – Suppliers
+///   9  /more/customers        – Customers
+///  10  /more/categories       – Categories
+///  11  /more/manufacturers    – Manufacturers
+///  12  /more/units            – Units
+///  13  /more/currencies       – Currencies
+///  14  /more/reports          – Reports hub
+///  15  /more/notifications    – Notifications
+///  16  /more/tutorials        – Tutorials
+///  17  /more/settings         – Settings
+///  18  /more/profile          – Account / profile
 @Riverpod(keepAlive: true)
 GoRouter goRouter(Ref ref) {
   GoRoute rootRoute(String path, Widget Function(GoRouterState) build) =>
@@ -134,7 +137,23 @@ GoRouter goRouter(Ref ref) {
           branch(AppRoutes.stockMovements, const StockMovementsPage()),
           branch(AppRoutes.purchases, const PurchasesPage()),
 
-          // ── Master data (indices 7-12) ─────────────────────────────────
+          // ── Returns (index 7) ───────────────────────────────────────────
+          // مسارات شقيقة (نفس أسلوب التقارير): `go` بينها يستبدل الصفحة بلا
+          // مكدس، والشريط الجانبي يظلّل القسم المفتوح.
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.salesReturns,
+                builder: (c, s) => const SaleReturnsListPage(),
+              ),
+              GoRoute(
+                path: AppRoutes.purchaseReturns,
+                builder: (c, s) => const PurchaseReturnsListPage(),
+              ),
+            ],
+          ),
+
+          // ── Master data (indices 8-13) ─────────────────────────────────
           branch(AppRoutes.suppliers, const SuppliersPage()),
           branch(AppRoutes.customers, const CustomersPage()),
           branch(AppRoutes.categories, const CategoriesPage()),

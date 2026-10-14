@@ -30,7 +30,10 @@ class InventoryItemDto {
     this.quantity,
     this.stockValue,
     this.isLowStock,
+    this.baseUnitSalePrice,
+    this.baseUnitCost,
     this.units,
+    this.batches,
   });
 
   final String? medicineId;
@@ -38,7 +41,10 @@ class InventoryItemDto {
   final num? quantity;
   final num? stockValue;
   final bool? isLowStock;
+  final num? baseUnitSalePrice;
+  final num? baseUnitCost;
   final List<InventoryUnitDto>? units;
+  final List<InventoryBatchDto>? batches;
 
   factory InventoryItemDto.fromJson(Map<String, dynamic> json) =>
       _$InventoryItemDtoFromJson(json);
@@ -62,4 +68,28 @@ class InventoryUnitDto {
 
   factory InventoryUnitDto.fromJson(Map<String, dynamic> json) =>
       _$InventoryUnitDtoFromJson(json);
+}
+
+@JsonSerializable(createToJson: false)
+class InventoryBatchDto {
+  const InventoryBatchDto({
+    this.expiryDate,
+    this.warehouseId,
+    this.warehouseName,
+    this.quantity,
+    this.purchasePrice,
+    this.batchValue,
+    this.daysLeft,
+  });
+
+  final DateTime? expiryDate;
+  final String? warehouseId;
+  final String? warehouseName;
+  final num? quantity;
+  final num? purchasePrice;
+  final num? batchValue;
+  final int? daysLeft;
+
+  factory InventoryBatchDto.fromJson(Map<String, dynamic> json) =>
+      _$InventoryBatchDtoFromJson(json);
 }

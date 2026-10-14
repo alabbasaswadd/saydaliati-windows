@@ -14,6 +14,8 @@ extension InventoryReportDtoMapper on InventoryReportDto {
                   quantity: (i.quantity ?? 0).toDouble(),
                   stockValue: (i.stockValue ?? 0).toDouble(),
                   isLowStock: i.isLowStock ?? false,
+                  baseUnitSalePrice: (i.baseUnitSalePrice ?? 0).toDouble(),
+                  baseUnitCost: (i.baseUnitCost ?? 0).toDouble(),
                   units: [
                     for (final u in i.units ?? const <InventoryUnitDto>[])
                       InventoryUnit(
@@ -22,6 +24,18 @@ extension InventoryReportDtoMapper on InventoryReportDto {
                         isBaseUnit: u.isBaseUnit ?? false,
                         salePrice: (u.salePrice ?? 0).toDouble(),
                         purchaseCost: (u.purchaseCost ?? 0).toDouble(),
+                      ),
+                  ],
+                  batches: [
+                    for (final b in i.batches ?? const <InventoryBatchDto>[])
+                      InventoryBatch(
+                        expiryDate: b.expiryDate,
+                        warehouseId: b.warehouseId ?? '',
+                        warehouseName: b.warehouseName ?? '',
+                        quantity: (b.quantity ?? 0).toDouble(),
+                        purchasePrice: (b.purchasePrice ?? 0).toDouble(),
+                        batchValue: (b.batchValue ?? 0).toDouble(),
+                        daysLeft: b.daysLeft,
                       ),
                   ],
                 ))
