@@ -15,6 +15,17 @@ import 'package:saydaliati/core/constants/app_constants.dart';
 abstract final class DioFactory {
   const DioFactory._();
 
+  /// منصّة التشغيل كما يفهمها الخادم.
+  static String get _platform {
+    if (kIsWeb) return 'web';
+    if (Platform.isWindows) return 'windows';
+    if (Platform.isAndroid) return 'android';
+    if (Platform.isIOS) return 'ios';
+    if (Platform.isMacOS) return 'macos';
+    if (Platform.isLinux) return 'linux';
+    return 'unknown';
+  }
+
   static Dio create() {
     final dio = Dio(
       BaseOptions(
@@ -24,6 +35,12 @@ abstract final class DioFactory {
         contentType: Headers.jsonContentType,
         responseType: ResponseType.json,
         validateStatus: (status) => status != null && status >= 200 && status < 300,
+        headers: {
+          // يُعرِّف الخادمَ بمصدر الطلب فتظهر أحداث الدخول والتسجيل موسومةً
+          // بمنصّتها. بدونها يستنتج الخادم من User-Agent، و«Dart/x.y
+          // (dart:io)» واحدٌ على ويندوز والأندرويد — فيُقرأ سطح المكتب جوالاً.
+          'X-Client-Platform': _platform,
+        },
       ),
     );
 

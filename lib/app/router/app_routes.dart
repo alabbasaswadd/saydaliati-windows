@@ -72,4 +72,6 @@ abstract final class AppRoutes {
   static const String profile = '/more/profile';
   static const String tutorials = '/more/tutorials';
   static const String notifications = '/more/notifications';
+  static const String debtsCustomers = '/more/debts/customers';
+  static const String debtsSuppliers = '/more/debts/suppliers';
 }

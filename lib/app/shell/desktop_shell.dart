@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:saydaliati/app/shell/tabs/app_tab.dart';
+import 'package:saydaliati/app/shell/tabs/tabs_controller.dart';
+import 'package:saydaliati/app/shell/widgets/bottom_tab_strip.dart';
+import 'package:saydaliati/app/shell/widgets/new_tab_page.dart';
 import 'package:saydaliati/app/shell/widgets/desktop_sidebar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:saydaliati/app/shell/widgets/desktop_title_bar.dart';
@@ -36,6 +40,10 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
   static const _prefKey = 'sidebar_expanded';
 
   bool _sidebarExpanded = true;
+
+  /// آخر مسار سُجِّل تابّاً — يمنع جدولة نداء في كل إعادة بناء للقشرة
+  /// (تُبنى مع كل تغيّر في المزامنة أو الاتصال، لا عند التنقّل فقط).
+  String? _syncedLocation;
 
   @override
   void initState() {
@@ -84,6 +92,120 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
       index,
       initialLocation: index == widget.shell.currentIndex,
     );
+    _fillActiveTab(_locationOfBranch(index), index);
+  }
+
+  /// يُسكِن التابَّ النشِط صفحةً **صراحةً** عند التنقّل من القائمة الجانبية.
+  ///
+  /// الاعتماعلى تغيّر المسار وحده لا يكفي: مَن يفتح تابّاً فارغاً ثم ينقر
+  /// الصفحة التي كان فيها لا يتغيّر مساره، فيبقى التابّ فارغاً إلى الأبد.
+  /// والمسار الفعلي قد يختلف عن المسار الافتراضي للفرع (فرعٌ على مسار شقيق)،
+  /// فيُصوِّبه `_syncTab` في البناء التالي.
+  void _fillActiveTab(String? location, int? branchIndex) {
+    if (location == null) return;
+    _syncedLocation = location;
+    ref
+        .read(openTabsProvider.notifier)
+        .assignToActive(location, branchIndex: branchIndex);
+  }
+
+  /// يُسكِن الصفحة المعروضة **التابَّ النشِط**.
+  ///
+  /// هكذا يبقى التنقّل العادي داخل التابّ الواحد: نقر «المبيعات» ثم
+  /// «التقارير» يُبدّل صفحة التابّ نفسه، ولا يتكاثر تابٌّ بكل نقرة. التابّ
+  /// الجديد يُفتَح بزرّ «+» أو بـCtrl + نقر — بقرار المستخدم لا تلقائياً.
+  ///
+  /// يُنفَّذ بعد اكتمال الإطار: تعديل مزوِّد أثناء البناء ممنوع في Riverpod.
+  void _syncTab(String location) {
+    if (_syncedLocation == location) return;
+    _syncedLocation = location;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(openTabsProvider.notifier).assignToActive(
+            location,
+            branchIndex: widget.shell.currentIndex,
+          );
+    });
+  }
+
+  /// مسار فرعٍ بالرقم — يُقرأ من الراوتر نفسه لا من قائمة موازية.
+  ///
+  /// الشريط الجانبي يعرّف معظم عناصره برقم الفرع لا بمسار، وكتابة المسارات
+  /// مرّة ثانية في قائمة يدوية كانت ستتباعد عن الراوتر عند أول تعديل.
+  String? _locationOfBranch(int index) {
+    final branches = widget.shell.route.branches;
+    if (index < 0 || index >= branches.length) return null;
+
+    final routes = branches[index].routes;
+    if (routes.isEmpty) return null;
+
+    final first = routes.first;
+    return first is GoRoute ? first.path : null;
+  }
+
+  /// Ctrl + نقر على الشريط الجانبي: تابّ في الخلف بلا مغادرة الصفحة.
+  void _openInBackground(int branchIndex, String? route) {
+    final location = route ?? _locationOfBranch(branchIndex);
+    if (location == null) return;
+
+    final tab = ref.read(openTabsProvider.notifier).openWith(
+          location,
+          branchIndex: branchIndex,
+          // لا يُنشَّط: «في الخلف» تعني أن المستخدم يبقى حيث هو.
+          activate: false,
+        );
+
+    // تابٌّ يُفتَح بلا انتقال لا يراه المستخدم إن لم يُقَل له — والشريط
+    // أسفل الشاشة قد يكون خارج بصره وقت النقر.
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      duration: const Duration(milliseconds: 1400),
+      content: Text('فُتح تابّ: ${tab.title}'),
+    ));
+  }
+
+  /// زرّ «+»: تابٌّ فارغ يصبح النشِط، ثم يختار صاحبه صفحته من القائمة
+  /// الجانبية — بلا قائمة اختيار تُكرّرها.
+  void _addTabManually() {
+    ref.read(openTabsProvider.notifier).newTab();
+    // يُحفَظ المسار الحالي لا يُمحى: محوُه يجعل البناء التالي يُسكِن التابّ
+    // الجديد الصفحةَ التي نحن فيها فور فتحه، وهو عكس المقصود. وحفظه يترك
+    // الإسكان لأوّل اختيار حقيقي.
+    _syncedLocation = GoRouterState.of(context).uri.path;
+    setState(() {});
+  }
+
+  /// الانتقال إلى تابّ.
+  ///
+  /// `goBranch` حين يُعرَف الفرع: يُظهر الصفحة المحفوظة **كما تُركت** بلا
+  /// إعادة بناء. و`go` للمسارات المتداخلة داخل فرع واحد (التقارير مثلاً)
+  /// لأن الفرع يحمل مساراً واحداً في وقت واحد.
+  void _openTab(AppTab tab) {
+    ref.read(openTabsProvider.notifier).activate(tab.id);
+
+    // تابٌّ فارغ: لا انتقال — تُعرَض صفحة «تابّ جديد» ويبقى محتوى الفروع
+    // حيّاً خلفها.
+    if (tab.location == null) {
+      // كما في «+»: يُثبَّت المسار الحالي فلا يسكن التابّ الفارغ تلقائياً.
+      setState(() => _syncedLocation = GoRouterState.of(context).uri.path);
+      return;
+    }
+
+    _syncedLocation = tab.location;
+    final sameBranch = tab.branchIndex == widget.shell.currentIndex;
+    if (tab.branchIndex != null && !sameBranch) {
+      widget.shell.goBranch(tab.branchIndex!);
+      // الفرع قد يكون على مسارٍ آخر من مساراته الشقيقة (الحسابات/السندات)،
+      // فيُصوَّب بعد تبديل الفرع لا قبله.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (GoRouterState.of(context).uri.path != tab.location) {
+          context.go(tab.location!);
+        }
+      });
+      return;
+    }
+    context.go(tab.location!);
   }
 
   @override
@@ -93,6 +215,14 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
     // تُقرأ قدرات الخادم عند الإقلاع لا عند أول حفظ: قراءتها كسولةً تعني أن
     // أول فاتورة بعد التشغيل تأخذ المسار القديم دوماً لأن النتيجة لم تصل بعد.
     ref.watch(serverCapabilitiesProvider);
+
+    final location = GoRouterState.of(context).uri.path;
+    final activeTab = ref.watch(openTabsProvider).active;
+
+    // التابّ الفارغ ينتظر اختيار صاحبه — يحميه `_syncedLocation` المُثبَّت
+    // عند فتحه، لا شرطٌ هنا: الشرط كان يمنع إسكانه حتى بعد الاختيار.
+    final showBlank = activeTab != null && activeTab.isBlank;
+    _syncTab(location);
 
     final mirrorEmpty = ref.watch(catalogMirrorEmptyProvider).value ?? false;
     final sync = ref.watch(dataSyncControllerProvider);
@@ -120,8 +250,7 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
                           currentIndex: widget.shell.currentIndex,
                           // المسار الحالي — لتظليل عناصر المسارات المتداخلة
                           // (التقارير) داخل الشريط الجانبي.
-                          currentLocation:
-                              GoRouterState.of(context).uri.path,
+                          currentLocation: location,
                           expanded: _sidebarExpanded,
                           onToggle: () async {
                             final next = !_sidebarExpanded;
@@ -130,13 +259,39 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
                             await prefs.setBool(_prefKey, next);
                           },
                           onNavigate: _navigate,
-                          onNavigateRoute: (route) => context.go(route),
+                          onNavigateRoute: (route) {
+                            context.go(route);
+                            _fillActiveTab(route, widget.shell.currentIndex);
+                          },
+                          onOpenInNewTab: _openInBackground,
                         ),
                         Expanded(
                           child: Column(
                             children: [
                               const OfflineBanner(),
-                              Expanded(child: widget.shell),
+                              // القشرة تبقى **مُركَّبة دوماً** حتى وهي
+                              // مُغطّاة: إزالتها تُسقِط IndexedStack فتضيع
+                              // حالة كل الصفحات — وهو عكس المقصود من
+                              // التابّات. فتُخفى ولا تُحذَف.
+                              Expanded(
+                                child: Stack(
+                                  children: [
+                                    Offstage(
+                                      offstage: showBlank,
+                                      child: widget.shell,
+                                    ),
+                                    if (showBlank)
+                                      const Positioned.fill(
+                                          child: NewTabPage()),
+                                  ],
+                                ),
+                              ),
+                              // شريط التابّات أسفل المحتوى: الصفحات المفتوحة
+                              // والانتقال بينها بحالتها محفوظةً.
+                              BottomTabStrip(
+                                onSelect: _openTab,
+                                onAddTab: _addTabManually,
+                              ),
                             ],
                           ),
                         ),

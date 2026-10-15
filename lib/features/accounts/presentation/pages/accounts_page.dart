@@ -148,6 +148,18 @@ class _AccountsGridState extends State<_AccountsGrid> {
   TrinaGridStateManager? _manager;
   bool _lastHadFilter = false;
 
+  /// البحث والتمدّد محفوظان عبر إعادة بناء الشبكة.
+  ///
+  /// مفتاح الشبكة مشتقّ من البيانات، فزرّ التحديث يبني `TrinaGrid` جديدة —
+  /// فكان البحث يُمحى والشجرة تُطوى، ويعود المستخدم إلى الصفر بعد كل تحديث.
+  /// تُسجَّل الحالة مع كل تغيير وتُعاد بعد البناء.
+  List<TrinaRow<dynamic>>? _savedFilters;
+  final Set<String> _expandedIds = {};
+
+  /// أثناء الاستعادة لا تُسجَّل الحالة: الشبكة الجديدة تبدأ فارغة الفلترة
+  /// مطويّةً، فتسجيلها حينها يمحو ما نحاول استعادته.
+  bool _restoring = false;
+
   /// نتائج "الرصيد الإجمالي" المحسوبة عند الطلب لكل حساب — تُعرض كخط ملوَّن
   /// بجانب اسم الحساب (لا بوب أب)، وتبقى حتى يُعاد حسابها أو تتغيّر البيانات.
   final Map<String, double> _rollupResults = {};
@@ -168,6 +180,50 @@ class _AccountsGridState extends State<_AccountsGrid> {
       _manager?.expandAllRowGroups();
     }
     _lastHadFilter = hasFilter;
+
+    if (!_restoring) _captureState();
+  }
+
+  /// يسجّل فلترة الأعمدة والمجموعات المفتوحة.
+  void _captureState() {
+    final m = _manager;
+    if (m == null) return;
+
+    _savedFilters = List<TrinaRow<dynamic>>.of(m.filterRows);
+
+    _expandedIds.clear();
+    for (final row in m.iterateAllRowGroup) {
+      if (!row.type.group.expanded) continue;
+      final id = row.cells[AccountsPage._fId]?.value?.toString();
+      if (id != null) _expandedIds.add(id);
+    }
+  }
+
+  /// يعيد الفلترة والتمدّد على الشبكة المبنيّة حديثاً.
+  ///
+  /// التمدّد يُطبَّق على **كل** مجموعة لا على الظاهر فقط: الحساب الحفيد لا
+  /// يظهر قبل فتح أبيه، فالمرور على الظاهر وحده يفتح المستوى الأول فقط.
+  void _restoreState(TrinaGridStateManager m) {
+    if (_savedFilters == null && _expandedIds.isEmpty) return;
+
+    _restoring = true;
+    try {
+      final filters = _savedFilters;
+      if (filters != null && filters.isNotEmpty) {
+        m.setFilterWithFilterRows(filters, notify: false);
+      }
+
+      for (final row in m.iterateAllRowGroup) {
+        final id = row.cells[AccountsPage._fId]?.value?.toString();
+        if (id == null || !_expandedIds.contains(id)) continue;
+        m.toggleExpandedRowGroup(rowGroup: row, expanded: true, notify: false);
+      }
+
+      m.notifyListeners();
+      _lastHadFilter = m.hasFilter;
+    } finally {
+      _restoring = false;
+    }
   }
 
   @override
@@ -289,6 +345,11 @@ class _AccountsGridState extends State<_AccountsGrid> {
       onLoaded: (m) {
         _manager = m;
         m.addListener(_onGridChanged);
+        // بعد اكتمال الإطار: الصفوف والمجموعات لم تُركَّب بعد أثناء onLoaded.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || !identical(_manager, m)) return;
+          _restoreState(m);
+        });
       },
       columns: [
         appGridTextColumn('اسم الحساب', AccountsPage._fName, width: 260,

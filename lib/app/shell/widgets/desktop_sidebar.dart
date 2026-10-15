@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:saydaliati/app/router/app_routes.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
@@ -206,6 +207,25 @@ const _mainSections = <_NavSection>[
   ]),
   // الحسابات والسندات والمصاريف: كلها قيود/تدفقات مالية — مسارات متداخلة
   // داخل فرعين (index 15 للمصاريف، 16 للحسابات) — نفس أسلوب المرتجعات/التقارير.
+  // الذمم: كتلة قابلة للطيّ بولدين — العملاء والموردون. كلاهما في الفرع 24
+  // بمسارين شقيقين، فالتظليل يطابق المسار.
+  _NavSection('الذمم والديون', [
+    _NavItem(
+      index: 24,
+      label: 'ديون العملاء',
+      icon: Icons.person_outline,
+      selectedIcon: Icons.person,
+      route: AppRoutes.debtsCustomers,
+    ),
+    _NavItem(
+      index: 24,
+      label: 'ديون الموردين',
+      icon: Icons.local_shipping_outlined,
+      selectedIcon: Icons.local_shipping,
+      route: AppRoutes.debtsSuppliers,
+    ),
+  ]),
+
   _NavSection('الحسابات والمصاريف', [
     _NavItem(
       index: 16,
@@ -277,6 +297,7 @@ class DesktopSidebar extends ConsumerStatefulWidget {
     required this.onToggle,
     required this.onNavigate,
     required this.onNavigateRoute,
+    required this.onOpenInNewTab,
     super.key,
   });
 
@@ -288,6 +309,10 @@ class DesktopSidebar extends ConsumerStatefulWidget {
   final VoidCallback onToggle;
   final ValueChanged<int> onNavigate;
   final ValueChanged<String> onNavigateRoute;
+
+  /// Ctrl + نقر: يفتح تابّاً في الخلف. يُمرَّر رقم الفرع والمسار الصريح إن
+  /// وُجد — القشرة تحلّ مسار الفرع من الراوتر حين لا مسار صريح.
+  final void Function(int branchIndex, String? route) onOpenInNewTab;
 
   // Labels are visible only once the sidebar is within 20 px of fully expanded.
   // This keeps labels in sync with the AnimatedContainer width so they never
@@ -306,7 +331,26 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
       ? widget.currentLocation == item.route
       : widget.currentIndex == item.index;
 
+  /// هل كان Ctrl مضغوطاً **لحظة نزول مؤشّر الفأرة**؟
+  ///
+  /// لا يُسأل `HardwareKeyboard` عند النقر: اختصارُ تنقّلٍ بـCtrl يترك الحالة
+  /// «مضغوطة» لحظات (ورفعُ المفتاح قد يُفقَد أصلاً إن تغيّرت الشاشة تحته)،
+  /// فكانت أوّل نقرة بعد الاختصار تُقرأ Ctrl+نقر فتفتح تابّاً في الخلف
+  /// وتُظهر رسالةً بدل أن تنتقل. الربط بحدث النقر نفسه يُلغي ذلك: مسار
+  /// لوحة المفاتيح لا يمرّ بالمؤشّر أصلاً.
+  bool _ctrlAtPointerDown = false;
+
   void _onTap(_NavItem item) {
+    final withCtrl = _ctrlAtPointerDown;
+    _ctrlAtPointerDown = false;
+
+    // Ctrl + نقر = تابّ جديد في الخلف، بلا مغادرة الصفحة الحالية — عادة
+    // المتصفّحات. النقر المجرَّد ينتقل كما كان.
+    if (withCtrl) {
+      widget.onOpenInNewTab(item.index, item.route);
+      return;
+    }
+
     if (item.route != null) {
       widget.onNavigateRoute(item.route!);
     } else {
@@ -318,8 +362,12 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return ClipRect(
-      child: AnimatedContainer(
+    return Listener(
+      // تُسجَّل حالة Ctrl عند نزول المؤشّر، فيقرأها `_onTap` بعدها.
+      onPointerDown: (_) =>
+          _ctrlAtPointerDown = HardwareKeyboard.instance.isControlPressed,
+      child: ClipRect(
+        child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeInOut,
         width: widget.expanded
@@ -394,6 +442,7 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
               ],
             );
           },
+          ),
         ),
       ),
     );

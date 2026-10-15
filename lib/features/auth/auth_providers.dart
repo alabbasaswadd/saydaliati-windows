@@ -59,3 +59,12 @@ class AuthRemoteDataSource {
 @riverpod
 AuthRemoteDataSource authRemoteDataSource(Ref ref) =>
     AuthRemoteDataSource(ref.watch(apiClientProvider));
+
+/// بيانات المستخدم والصيدلية الحالية.
+///
+/// مزوّد لا `FutureBuilder` في `initState`: الأوّل قابل للتحديث
+/// (`ref.invalidate`) ومشترك بين الشاشات، والثاني يُعيد النداء مع كل إعادة
+/// بناء للحالة ولا سبيل لتحديثه دون `setState`.
+@riverpod
+Future<Map<String, dynamic>> currentUser(Ref ref) =>
+    ref.watch(authRemoteDataSourceProvider).me();

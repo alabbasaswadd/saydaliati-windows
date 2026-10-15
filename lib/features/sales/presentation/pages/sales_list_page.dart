@@ -109,6 +109,13 @@ class _SalesListPageState extends ConsumerState<SalesListPage> {
         title: const Text(AppStrings.salesList),
         actions: [
           IconButton(
+            tooltip: AppStrings.refreshData,
+            icon: const Icon(Icons.refresh),
+            // يُبطَل المزوّد المُعامَل بالفلاتر الحالية نفسها، لا المزوّد
+            // العامّ: إبطال العامّ لا يمسّ النسخة المعروضة فلا يتغيّر شيء.
+            onPressed: () => ref.invalidate(provider),
+          ),
+          IconButton(
             tooltip: _showProfit ? 'إخفاء الأرباح' : 'إظهار الأرباح',
             onPressed: () => setState(() => _showProfit = !_showProfit),
             icon: Icon(_showProfit

@@ -35,6 +35,9 @@ import 'package:saydaliati/shared/widgets/cards/invoice_total_badge.dart';
 import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
 import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
+import 'package:saydaliati/shared/widgets/grids/grid_line_focus.dart';
+import 'package:saydaliati/features/shortcuts/domain/shortcut_action.dart';
+import 'package:saydaliati/features/shortcuts/presentation/shortcuts_scope.dart';
 import 'package:trina_grid/trina_grid.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_dropdown.dart';
 import 'package:saydaliati/services/barcode_scanner.dart';
@@ -144,6 +147,17 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
     _applyPercent(value);
   }
   String? _currencyId;
+  /// تتبُّع السطر النشِط لاختصارات السطر — آخر سطر هو النشِط حين لا تحديد.
+  late final GridLineFocus _focus = GridLineFocus(
+    idField: _fId,
+    qtyField: _fQty,
+    skipRowId: _newRowId,
+    rowIds: () => [for (final l in _lines) _lineId(l)],
+    isMounted: () => mounted,
+  );
+
+  late final ShortcutRegistration _shortcuts = ShortcutRegistration(ref, this);
+
   String? _supplierId; // المورّد (اختياري)
   PaymentMethod _payMethod = PaymentMethod.cash;
   String? _paymentAccountId;
@@ -155,6 +169,11 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
   @override
   void initState() {
     super.initState();
+    // اختصارات السطر — كانت تعمل في المبيعات وحدها.
+    _shortcuts.bind({
+      ShortcutAction.invoiceEditQty: _editCurrentQuantity,
+      ShortcutAction.invoiceDeleteLine: _deleteCurrentLine,
+    });
     // الفاتورة تُسعَّر بسعر الصرف — نُحدِّثه إن قَدُم قبل أن يبدأ الإدخال.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) CurrencyFreshness.refreshIfStale(ref);
@@ -204,6 +223,8 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
 
   @override
   void dispose() {
+    _focus.dispose();
+    _shortcuts.dispose();
     for (final l in _lines) {
       l.dispose();
     }
@@ -241,6 +262,7 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
       final last = _lines.last;
       final q = double.tryParse(last.qty.text.trim()) ?? 0;
       setState(() => last.qty.text = _plainNum(q + 1));
+      _focus.select(_lineId(last));
       return;
     }
     if (m.units.isEmpty) {
@@ -258,8 +280,10 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
     // لعملة الفاتورة. مجرّد اقتراح — التنويه أعلى الفاتورة يشرحه، والمستخدم
     // يغيّر النسبة أو يكتب القيمة مباشرة في خلية السعر.
     final cost = _suggestedCost(unit, base, selected);
-    setState(() =>
-        _lines.add(_PurLine(medicine: m, unitId: unit.unitId, unitPrice: cost)));
+    final line = _PurLine(medicine: m, unitId: unit.unitId, unitPrice: cost);
+    setState(() => _lines.add(line));
+    // السطر الجديد يصبح النشِط فوراً، فلا نقرة قبل اختصار الكمية.
+    _focus.select(_lineId(line));
   }
 
   Future<void> _save(String? warehouseId, Currency? base) async {
@@ -453,7 +477,10 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         child: AccountPickerField(
-                          label: AppStrings.selectAccount,
+                          // «حساب الدفع» لا «الحساب»: هو الصندوق أو البنك
+                          // الذي يخرج منه المال، ويُقيَّد دائناً في القيد.
+                          label: 'حساب الدفع',
+                          hint: 'الصندوق أو البنك',
                           accounts: accounts,
                           selectedId: _paymentAccountId,
                           onSelected: (a) =>
@@ -463,24 +490,45 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
                     ],
                   ],
                 ),
-                // المورّد (اختياري) — يظهر فقط إن وُجد موردون.
-                Builder(builder: (_) {
-                  final suppliers =
-                      ref.watch(suppliersProvider).value ?? const <Supplier>[];
-                  if (suppliers.isEmpty) return const SizedBox.shrink();
-                  return Padding(
-                    padding: const EdgeInsets.only(top: AppSpacing.md),
-                    child: SupplierPickerField(
-                      label: 'المورّد (اختياري)',
+                // المورّد يبقى **ظاهراً دائماً**.
+                //
+                // كان يُخفى كلياً إن لم يكن في الصيدلية موردون
+                // (`if (suppliers.isEmpty) return SizedBox.shrink()`) — فمَن
+                // لم يُضف مورّداً بعد لا يرى الحقل ولا يعرف أن الفاتورة
+                // تقبل مورّداً أصلاً، ولا يُرشده شيء إلى إضافته.
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.md),
+                  child: Builder(builder: (_) {
+                    final suppliers =
+                        ref.watch(suppliersProvider).value ?? const <Supplier>[];
+                    final isCredit = _payMethod == PaymentMethod.credit;
+
+                    if (suppliers.isEmpty) {
+                      return InfoCard(
+                        icon: Icons.local_shipping_outlined,
+                        color: isCredit
+                            ? Theme.of(context).colorScheme.error
+                            : null,
+                        message: isCredit
+                            ? 'الشراء الآجل يتطلّب مورّداً — أضف مورّداً من '
+                                '«إدارة البيانات ← الموردون» أولاً.'
+                            : 'لا موردون مسجَّلون — أضف مورّداً من «إدارة '
+                                'البيانات ← الموردون» لربط الفاتورة به.',
+                      );
+                    }
+
+                    return SupplierPickerField(
+                      // الآجل يُنشئ ذمّة على مورّد بعينه، فلا يصحّ بلا مورّد.
+                      label: isCredit ? 'المورّد (إلزامي للآجل)' : 'المورّد',
                       hint: '— بلا مورّد —',
                       suppliers: suppliers,
                       selectedId: _supplierId,
-                      allowClear: true,
+                      allowClear: !isCredit,
                       onCleared: () => setState(() => _supplierId = null),
                       onSelected: (s) => setState(() => _supplierId = s.id),
-                    ),
-                  );
-                }),
+                    );
+                  }),
+                ),
               ],
             ),
           ),
@@ -540,6 +588,36 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
 
   String _lineId(_PurLine l) => identityHashCode(l).toString();
 
+  _PurLine? get _currentLine {
+    final id = _focus.currentId;
+    if (id == null) return null;
+    return _lines.where((l) => _lineId(l) == id).firstOrNull;
+  }
+
+  /// ينقل التحرير إلى خلية الكمية في السطر النشِط.
+  void _editCurrentQuantity() {
+    if (_lines.isEmpty) {
+      AppSnackbar.info(context, 'لا توجد أسطر في الفاتورة');
+      return;
+    }
+    _focus.focusQty(startEditing: true);
+  }
+
+  void _deleteCurrentLine() {
+    final line = _currentLine;
+    if (line == null) {
+      AppSnackbar.info(context, 'لا توجد أسطر في الفاتورة');
+      return;
+    }
+    final before = [for (final l in _lines) _lineId(l)];
+    final id = _lineId(line);
+    setState(() {
+      _lines.remove(line);
+      line.dispose();
+    });
+    _focus.selectNeighbourOf(id, before);
+  }
+
   /// بصمة بنيوية للأسطر: أي تغيير يعيد بناء الشبكة بقيم محدّثة
   /// (التحرير داخل الخلية يلتزم عند الخروج منها).
   Key _gridKey() => ValueKey(Object.hashAll([
@@ -564,6 +642,7 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
 
     return AppGrid(
       key: _gridKey(),
+      onLoaded: _focus.attach,
       showColumnFilter: false,
       columns: [
         TrinaColumn(

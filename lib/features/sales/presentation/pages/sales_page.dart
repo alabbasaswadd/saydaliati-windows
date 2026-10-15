@@ -368,15 +368,28 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
     _paymentAccountId = suggested.id;
   }
 
-  /// True when this line's sale price (converted to base) is below the
-  /// medicine's purchase cost — i.e. selling this line at a loss.
+  /// كلفة **وحدة السطر** بالعملة الأساسية.
+  ///
+  /// `Medicine.purchaseCost` كلفة الوحدة **الأساسية** (الحبة مثلاً)، وسعر
+  /// السطر سعر الوحدة المختارة (علبة = 20 حبة). فمقارنتهما مباشرةً تقارن
+  /// سعر علبة بكلفة حبة — وكان ذلك يُسكِت التنويه عن خسارة حقيقية: علبة
+  /// بـ6 وكلفة حبّتها 2 خسارةٌ قدرها 34، والفحص القديم يراها ربحاً.
+  double _unitCostInBase(_PosLine line) {
+    final factor =
+        line.unit.conversionFactor > 0 ? line.unit.conversionFactor : 1;
+    return line.medicine.purchaseCost * factor;
+  }
+
+  /// هل سعر هذا السطر أقل من كلفته؟
+  ///
+  /// الهامش يمنع تنويهاً عن فروق التدوير (سعر 20.00 وكلفة 20.0001).
   bool _isNegativeProfit(_PosLine line) {
     if (line.medicine.purchaseCost <= 0) return false;
     final base = ref.read(baseCurrencyProvider);
     final currencies = ref.read(currenciesProvider).value ?? const <Currency>[];
     final selected = _selectedCurrency(base, currencies);
     return convertToBase(line.unitPrice, base, selected) <
-        line.medicine.purchaseCost;
+        _unitCostInBase(line) - 0.005;
   }
 
   /// Removes a line and shows a 2-second SnackBar with an undo action that
@@ -576,11 +589,19 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
       if (!ok || !mounted) return;
     }
 
-    // تحذير الربح السالب: سعر البيع (بالأساس) أقل من كلفة الدواء.
+    // تحذير الربح السالب: سعر البيع (بالأساس) أقل من كلفة **وحدة السطر**.
+    //
+    // تُذكَر الأرقام في الرسالة لا الأسماء وحدها: الكلفة هي **متوسّط كل
+    // المشتريات** لهذا الدواء لكل وحدة أساسية، لا كلفة الدفعة المعروضة في
+    // الشاشة — فشراءٌ قديم غالٍ يرفع المتوسّط فوق سعر اليوم. ورؤية الرقمين
+    // تجعل التنويه قابلاً للمراجعة بدل أن يبدو خطأً.
     final belowCost = _lines
         .where((l) =>
-            l.medicine.purchaseCost > 0 && toBase(l.unitPrice) < l.medicine.purchaseCost)
-        .map((l) => l.medicine.displayName)
+            l.medicine.purchaseCost > 0 &&
+            toBase(l.unitPrice) < _unitCostInBase(l) - 0.005)
+        .map((l) => '${l.medicine.displayName} '
+            '(${Formatters.number(toBase(l.unitPrice))} < '
+            '${Formatters.number(_unitCostInBase(l))})')
         .toList();
     if (belowCost.isNotEmpty) {
       final ok = await showConfirmationDialog(

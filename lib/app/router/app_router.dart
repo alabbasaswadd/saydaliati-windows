@@ -15,6 +15,7 @@ import 'package:saydaliati/features/catalog/presentation/pages/catalog_page.dart
 import 'package:saydaliati/features/categories/presentation/pages/categories_page.dart';
 import 'package:saydaliati/features/currencies/presentation/pages/currencies_page.dart';
 import 'package:saydaliati/features/customers/presentation/pages/customers_page.dart';
+import 'package:saydaliati/features/debts/presentation/pages/debts_page.dart';
 import 'package:saydaliati/features/expenses/presentation/pages/expense_categories_page.dart';
 import 'package:saydaliati/features/expenses/presentation/pages/expenses_list_page.dart';
 import 'package:saydaliati/features/home/presentation/pages/home_page.dart';
@@ -251,6 +252,21 @@ GoRouter goRouter(Ref ref) {
           branch(AppRoutes.shortcuts, const ShortcutsPage()),
           branch(AppRoutes.salesInvoices, const SalesListPage()),
           branch(AppRoutes.purchaseInvoices, const PurchasesListPage()),
+          // ── الذمم (index 24) ───────────────────────────────────────────
+          // مسارات شقيقة داخل فرع واحد: `go` بينها يستبدل الصفحة بلا مكدس،
+          // والشريط الجانبي يظلّل المفتوح بمطابقة المسار لا رقم الفرع.
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.debtsCustomers,
+                builder: (c, s) => const CustomerDebtsPage(),
+              ),
+              GoRoute(
+                path: AppRoutes.debtsSuppliers,
+                builder: (c, s) => const SupplierDebtsPage(),
+              ),
+            ],
+          ),
         ],
       ),
     ],

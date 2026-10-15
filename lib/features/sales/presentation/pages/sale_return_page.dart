@@ -8,7 +8,10 @@ import 'package:saydaliati/shared/utils/formatters.dart';
 import 'package:saydaliati/shared/widgets/buttons/app_button.dart';
 import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
+import 'package:saydaliati/features/shortcuts/domain/shortcut_action.dart';
+import 'package:saydaliati/features/shortcuts/presentation/shortcuts_scope.dart';
 import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
+import 'package:saydaliati/shared/widgets/grids/grid_line_focus.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_text_field.dart';
 import 'package:saydaliati/shared/widgets/states/app_states.dart';
 import 'package:trina_grid/trina_grid.dart';
@@ -42,8 +45,47 @@ class _SaleReturnPageState extends ConsumerState<SaleReturnPage> {
   /// الكمية المدخَلة للإرجاع، مفهرسة بمعرّف سطر الفاتورة الأصلي.
   final Map<String, double> _quantities = {};
 
+  /// مُعرّفات الأسطر المعروضة — تُحدَّث عند بناء الشبكة، فيقرأها
+  /// [GridLineFocus] ليعرف «آخر سطر».
+  List<String> _rowIds = const [];
+
+  /// تتبُّع السطر النشِط: بلا تحديد يكون **آخر سطر** هو النشِط، فيعمل
+  /// اختصار الكمية بلا نقرة — كما في فاتورة المبيعات.
+  late final GridLineFocus _focus = GridLineFocus(
+    idField: _fId,
+    qtyField: _fQty,
+    rowIds: () => _rowIds,
+    isMounted: () => mounted,
+  );
+
+  late final ShortcutRegistration _shortcuts = ShortcutRegistration(ref, this);
+
+  @override
+  void initState() {
+    super.initState();
+    _shortcuts.bind({
+      ShortcutAction.invoiceEditQty: _editCurrentQuantity,
+      // «حذف السطر» في المرتجع = تصفير كميته: الأسطر تأتي من الفاتورة
+      // الأصلية فلا تُحذَف، والمقصود إلغاء إرجاعها.
+      ShortcutAction.invoiceDeleteLine: _clearCurrentQuantity,
+    });
+  }
+
+  void _editCurrentQuantity() {
+    if (_rowIds.isEmpty) return;
+    _focus.focusQty(startEditing: true);
+  }
+
+  void _clearCurrentQuantity() {
+    final id = _focus.currentId;
+    if (id == null) return;
+    setState(() => _quantities.remove(id));
+  }
+
   @override
   void dispose() {
+    _focus.dispose();
+    _shortcuts.dispose();
     _reason.dispose();
     super.dispose();
   }
@@ -137,7 +179,10 @@ class _SaleReturnPageState extends ConsumerState<SaleReturnPage> {
   }
 
   Widget _grid(List<SaleReturnableLine> lines) {
+    _rowIds = [for (final l in lines) l.saleItemId];
+
     return AppGrid(
+      onLoaded: _focus.attach,
       showColumnFilter: false,
       columns: [
         TrinaColumn(title: '', field: _fId, type: TrinaColumnType.text(), hide: true),

@@ -131,6 +131,12 @@ abstract final class ApiEndpoints {
   static String expenseById(String id) => '$_base/Expense/$id';
   static const String expensesSummary = '$_base/Expense/summary';
 
+  // ---- Ledger (ذمم الأطراف: ديون العملاء والموردين) ----
+  static const String ledgerReceivables = '$_base/Ledger/receivables';
+  static const String ledgerPayables = '$_base/Ledger/payables';
+  static const String ledgerStatement = '$_base/Ledger/statement';
+  static const String ledgerSettle = '$_base/Ledger/settle';
+
   // ---- Accounts (chart of accounts) ----
   static const String accounts = '$_base/Account';
   static String accountById(String id) => '$_base/Account/$id';

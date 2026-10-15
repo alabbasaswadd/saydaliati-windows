@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:saydaliati/core/network/api_client.dart';
 import 'package:saydaliati/core/network/api_endpoints.dart';
 import 'package:saydaliati/core/providers/core_providers.dart';
 

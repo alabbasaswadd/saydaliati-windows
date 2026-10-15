@@ -56,3 +56,61 @@ final class AuthRemoteDataSourceProvider
 
 String _$authRemoteDataSourceHash() =>
     r'c422628ad3ddd2cfd86926f22a881b68a524350a';
+
+/// بيانات المستخدم والصيدلية الحالية.
+///
+/// مزوّد لا `FutureBuilder` في `initState`: الأوّل قابل للتحديث
+/// (`ref.invalidate`) ومشترك بين الشاشات، والثاني يُعيد النداء مع كل إعادة
+/// بناء للحالة ولا سبيل لتحديثه دون `setState`.
+
+@ProviderFor(currentUser)
+final currentUserProvider = CurrentUserProvider._();
+
+/// بيانات المستخدم والصيدلية الحالية.
+///
+/// مزوّد لا `FutureBuilder` في `initState`: الأوّل قابل للتحديث
+/// (`ref.invalidate`) ومشترك بين الشاشات، والثاني يُعيد النداء مع كل إعادة
+/// بناء للحالة ولا سبيل لتحديثه دون `setState`.
+
+final class CurrentUserProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<Map<String, dynamic>>,
+          Map<String, dynamic>,
+          FutureOr<Map<String, dynamic>>
+        >
+    with
+        $FutureModifier<Map<String, dynamic>>,
+        $FutureProvider<Map<String, dynamic>> {
+  /// بيانات المستخدم والصيدلية الحالية.
+  ///
+  /// مزوّد لا `FutureBuilder` في `initState`: الأوّل قابل للتحديث
+  /// (`ref.invalidate`) ومشترك بين الشاشات، والثاني يُعيد النداء مع كل إعادة
+  /// بناء للحالة ولا سبيل لتحديثه دون `setState`.
+  CurrentUserProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'currentUserProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$currentUserHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<Map<String, dynamic>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<Map<String, dynamic>> create(Ref ref) {
+    return currentUser(ref);
+  }
+}
+
+String _$currentUserHash() => r'05c517aa7d4240b5e6ba1c814c55262017831f9e';

@@ -78,6 +78,11 @@ class _PurchasesListPageState extends ConsumerState<PurchasesListPage> {
         title: const Text('فواتير المشتريات'),
         actions: [
           IconButton(
+            tooltip: AppStrings.refreshData,
+            icon: const Icon(Icons.refresh),
+            onPressed: () => ref.invalidate(purchasesListProvider),
+          ),
+          IconButton(
             tooltip: AppStrings.filters,
             onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
             icon: Badge(

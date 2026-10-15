@@ -159,8 +159,10 @@ class _PurchasesReportPageState extends ConsumerState<PurchasesReportPage> {
       // مخفيان افتراضياً — يُظهَران من زر «الأعمدة» أو قائمة رأس العمود.
       appGridTextColumn(AppStrings.paymentMethod, _fPayment,
           width: 110, hide: true),
+      // العملة ظاهرة: مبالغ الفاتورة بعملتها هي، وفاتورتان بعملتين في
+      // الجدول نفسه تُقرآن خطأً بلا وسم — والعمود كان مخفيّاً افتراضياً.
       appGridTextColumn(AppStrings.filterByCurrency, _fCurrency,
-          width: 90, hide: true, textAlign: TrinaColumnTextAlign.center),
+          width: 90, textAlign: TrinaColumnTextAlign.center),
       appGridNumberColumn(AppStrings.discountShort, _fDiscount, width: 90),
       appGridTextColumn(AppStrings.batchLabel, _fBatch,
           width: 100, hide: true),
@@ -212,13 +214,23 @@ class _PurchasesReportPageState extends ConsumerState<PurchasesReportPage> {
       },
       type: TrinaRowType.group(
         children: FilteredList(
-          initialList: [for (final it in inv.items) _itemRow(it)],
+          initialList: [
+            for (final it in inv.items)
+              _itemRow(
+                it,
+                // السطر الابن يحمل عملة فاتورته: الأب يغيب عن الشاشة عند
+                // التمرير، فيبقى السعر الإفرادي بلا وحدة.
+                currency: inv.currencySymbol.isNotEmpty
+                    ? inv.currencySymbol
+                    : inv.currencyCode,
+              ),
+          ],
         ),
       ),
     );
   }
 
-  TrinaRow<dynamic> _itemRow(PurchasesGridItem it) {
+  TrinaRow<dynamic> _itemRow(PurchasesGridItem it, {String currency = ''}) {
     return TrinaRow(
       cells: {
         _fActions: TrinaCell(value: null),
@@ -227,7 +239,7 @@ class _PurchasesReportPageState extends ConsumerState<PurchasesReportPage> {
         // البيان: اسم الوحدة (الإفرادي والعدد عمودان مستقلّان).
         _fParty: TrinaCell(value: it.unitName),
         _fPayment: TrinaCell(value: ''),
-        _fCurrency: TrinaCell(value: ''),
+        _fCurrency: TrinaCell(value: currency),
         _fUnitPrice: TrinaCell(value: it.unitPrice),
         _fQty: TrinaCell(value: it.quantity),
         _fDiscount: TrinaCell(value: it.discount),
