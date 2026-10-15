@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
+import 'package:saydaliati/core/theme/app_semantic_colors.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/features/accounts/account_providers.dart';
 import 'package:saydaliati/features/accounts/domain/entities/account.dart';
@@ -54,6 +55,17 @@ class _ExpenseFormDialogState extends ConsumerState<_ExpenseFormDialog> {
       TextEditingController(text: widget.existing?.note ?? '');
 
   String? _categoryId;
+
+  ExpenseCategory? get _selectedCategory =>
+      widget.categories.where((c) => c.id == _categoryId).firstOrNull;
+
+  /// التصنيف المختار بلا حساب مرتبط ⇒ لا قيد محاسبي ولا أثر على الصندوق.
+  bool get _selectedCategoryUnlinked {
+    final c = _selectedCategory;
+    return c != null && (c.accountId == null || c.accountId!.isEmpty);
+  }
+
+  String get _selectedCategoryName => _selectedCategory?.name ?? '';
   DateTime? _spentOn;
   String? _paymentAccountId;
   String? _currencyId;
@@ -234,6 +246,13 @@ class _ExpenseFormDialogState extends ConsumerState<_ExpenseFormDialog> {
                             ],
                             onChanged: (v) => setState(() => _categoryId = v),
                           ),
+                          // تصنيف غير مربوط بحساب ⇒ المصروف لن يحرّك أي رصيد.
+                          // نقولها هنا لا بعد شهر من التسجيل.
+                          if (_selectedCategoryUnlinked) ...[
+                            const SizedBox(height: AppSpacing.sm),
+                            _UnlinkedCategoryWarning(
+                                categoryName: _selectedCategoryName),
+                          ],
                           const SizedBox(height: AppSpacing.md),
                           AppDatePicker(
                             label: AppStrings.expenseDate,
@@ -359,6 +378,45 @@ class _ExpenseFormDialogState extends ConsumerState<_ExpenseFormDialog> {
         ),
       ),
     ),
+    );
+  }
+}
+
+
+/// تنويه داخل نموذج المصروف: التصنيف المختار غير مربوط بحساب، فالمصروف
+/// سيُسجَّل للمتابعة فقط ولن ينقص رصيد الصندوق ولن يظهر له سند قيد.
+class _UnlinkedCategoryWarning extends StatelessWidget {
+  const _UnlinkedCategoryWarning({required this.categoryName});
+
+  final String categoryName;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final accent = context.semantic.warning;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.10),
+        borderRadius: AppRadius.brXs,
+        border: Border.all(color: accent.withValues(alpha: 0.30)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.warning_amber_outlined,
+              size: AppSizes.iconXs, color: accent),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              'تصنيف «$categoryName» غير مربوط بحساب — سيُسجَّل المصروف '
+              'للمتابعة فقط ولن ينقص رصيد الصندوق ولن يظهر له سند قيد. '
+              'اربطه من شاشة «تصنيفات المصاريف».',
+              style: theme.textTheme.bodySmall,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

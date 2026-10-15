@@ -5,10 +5,10 @@ import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/features/accounts/account_providers.dart';
 import 'package:saydaliati/features/accounts/domain/entities/account.dart';
 import 'package:saydaliati/features/currencies/presentation/providers/currencies_provider.dart';
+import 'package:saydaliati/features/shortcuts/presentation/widgets/save_shortcut.dart';
 import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_dropdown.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_text_field.dart';
-import 'package:saydaliati/features/shortcuts/presentation/widgets/save_shortcut.dart';
 
 /// حوار إضافة/تعديل حساب — بأسلوب نوافذ ويندوز، والحفظ داخل الحوار نفسه
 /// (مؤشّر تحميل على زر الحفظ، يُغلَق فقط عند النجاح) — نفس نمط حوار المصروف.

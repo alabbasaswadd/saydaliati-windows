@@ -13,6 +13,8 @@ class CreatePurchaseInput {
     this.supplierId,
     this.note,
     this.paymentAccountId,
+    this.originalCurrencyId,
+    this.amountsInOriginalCurrency = false,
   });
 
   final String currencyId;
@@ -28,6 +30,16 @@ class CreatePurchaseInput {
   /// Credit — defaults in the UI to the cash box matching the purchase's currency.
   final String? paymentAccountId;
 
+  /// العملة التي أصدر بها المستخدم الفاتورة. `null` = الأساسية.
+  final String? originalCurrencyId;
+
+  /// المبالغ مُرسَلة **بالعملة الأصلية** — الخادم يحوّلها بسعره.
+  ///
+  /// سعر الشراء المحوَّل يُخزَّن في `Stock.PurchasePrice` ومنه تُشتقّ تكلفة
+  /// البضاعة المباعة، فتحويله على العميل كان يجعل جهازين بسعرين مخزَّنين
+  /// مختلفين يُنتجان تكلفتين مختلفتين للصنف نفسه.
+  final bool amountsInOriginalCurrency;
+
   Map<String, dynamic> toJson() => {
         'supplierId': supplierId,
         'userId': null,
@@ -38,6 +50,8 @@ class CreatePurchaseInput {
         'purchaseDate': purchaseDate.toIso8601String(),
         'totalAmount': totalAmount,
         'paymentAccountId': paymentAccountId,
+        'originalCurrencyId': originalCurrencyId,
+        'amountsInOriginalCurrency': amountsInOriginalCurrency,
         'items': lines.map((l) => l.toJson(warehouseId)).toList(),
       };
 

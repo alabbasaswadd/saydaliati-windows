@@ -14,6 +14,7 @@ class CreateSaleInput {
     this.note,
     this.originalCurrencyId,
     this.exchangeRate = 1,
+    this.amountsInOriginalCurrency = false,
     this.isPrescription = false,
     this.paymentAccountId,
   });
@@ -35,6 +36,11 @@ class CreateSaleInput {
   /// base). Original amount = baseAmount × exchangeRate.
   final double exchangeRate;
 
+  /// المبالغ مُرسَلة **بالعملة الأصلية** كما كتبها المستخدم — الخادم يحوّلها
+  /// بسعره هو. يغلق تباعد الأسعار بين جهاز وآخر: كاشيران بسعرين مخزَّنين
+  /// مختلفين كانا يُنتجان رقمَي إيراد مختلفين لبيعة واحدة.
+  final bool amountsInOriginalCurrency;
+
   /// Whether this sale is a medical prescription (requires a customer).
   final bool isPrescription;
 
@@ -53,6 +59,7 @@ class CreateSaleInput {
         'paymentMethod': paymentMethod.wire,
         'originalCurrencyId': originalCurrencyId,
         'exchangeRate': exchangeRate,
+        'amountsInOriginalCurrency': amountsInOriginalCurrency,
         'isPrescription': isPrescription,
         'paymentAccountId': paymentAccountId,
         'items': lines.map((l) => l.toJson(currencyId, warehouseId)).toList(),

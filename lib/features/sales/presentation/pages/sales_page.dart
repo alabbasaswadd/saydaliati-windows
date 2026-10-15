@@ -7,6 +7,7 @@ import 'package:saydaliati/features/currencies/presentation/widgets/currency_pic
 import 'package:saydaliati/features/customers/presentation/widgets/customer_picker_field.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/core/enums/payment_method.dart';
+import 'package:saydaliati/core/network/server_capabilities.dart';
 import 'package:saydaliati/core/offline/sync/sync_service.dart';
 import 'package:saydaliati/core/utils/app_date.dart';
 import 'package:saydaliati/core/theme/app_semantic_colors.dart';
@@ -14,6 +15,7 @@ import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/features/currencies/domain/currency_conversion.dart';
 import 'package:saydaliati/features/currencies/domain/entities/currency.dart';
 import 'package:saydaliati/features/currencies/presentation/providers/currencies_provider.dart';
+import 'package:saydaliati/features/currencies/presentation/providers/currency_freshness.dart';
 import 'package:saydaliati/features/customers/customer_providers.dart';
 import 'package:saydaliati/features/customers/domain/entities/customer.dart';
 import 'package:saydaliati/features/dashboard/presentation/providers/dashboard_provider.dart';
@@ -161,6 +163,10 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
   void initState() {
     super.initState();
     _syncShortcuts();
+    // السعر يهمّ هنا أكثر من أي مكان: الفاتورة تُسعَّر به. نُحدِّثه إن قَدُم.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) CurrencyFreshness.refreshIfStale(ref);
+    });
   }
 
   @override
@@ -591,16 +597,26 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
     // Record the original transaction currency + its rate snapshot (for audit)
     // when it differs from the base; amounts are stored in the base currency.
     final isForeign = selected != null && base != null && selected.id != base.id;
+    // لا نرسل بالعملة الأصلية إلا إلى خادم يفهمها: خادم أقدم يتجاهل العلم
+    // فيأخذ 100 دولار على أنها 100 ليرة.
+    final serverConverts =
+        isForeign && ref.read(serverCapabilitiesProvider).value
+                ?.amountsInOriginalCurrency == true;
     final input = CreateSaleInput(
       currencyId: base?.id ?? currencyId,
       customerId: (_customerId != null && _customerId!.isNotEmpty) ? _customerId : null,
       originalCurrencyId: isForeign ? selected.id : null,
+      // السعر يُشتقّ على الخادم ويُتجاهَل ما يُرسَل هنا — نُبقيه للتوافق مع
+      // الخوادم الأقدم فقط.
       exchangeRate: (isForeign && base.exchangeRate > 0)
           ? selected.exchangeRate / base.exchangeRate
           : 1,
+      // المبالغ تُرسَل بعملة الفاتورة كما كتبها المستخدم؛ الخادم يحوّلها
+      // بسعره، فلا يختلف الرقم المُرحَّل باختلاف الجهاز الذي أصدر الفاتورة.
+      amountsInOriginalCurrency: serverConverts,
       warehouseId: warehouseId,
       saleDate: _saleDate,
-      totalAmount: toBase(_total),
+      totalAmount: serverConverts ? _total : toBase(_total),
       paymentMethod: _payMethod,
       paymentAccountId: _payMethod == PaymentMethod.credit ? null : _paymentAccountId,
       isPrescription: _isPrescription,
@@ -609,7 +625,7 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
           CreateSaleLineInput(
             medicineId: l.medicine.id,
             unitId: l.unit.unitId,
-            individual: toBase(l.unitPrice),
+            individual: serverConverts ? l.unitPrice : toBase(l.unitPrice),
             quantity: l.quantity,
             stockId: l.selectedBatch?.stockId,
           ),

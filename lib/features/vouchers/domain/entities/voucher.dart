@@ -74,13 +74,21 @@ class CreateVoucherInput {
     required this.debitAccountId,
     required this.creditAccountId,
     required this.amount,
+    this.currencyId,
   });
 
   final DateTime date;
   final String description;
   final String debitAccountId;
   final String creditAccountId;
+
+  /// المبلغ **كما كتبه المستخدم بعملة [currencyId]** — لا تحويل في الواجهة.
+  /// الخادم يحوّله للعملة الأساسية بسعره هو، فيبقى مصدر السعر واحداً ولا
+  /// يتحرّك رصيد صندوق العملة بمبلغ لم يُكتَب.
   final double amount;
+
+  /// عملة المبلغ. `null` = العملة الأساسية.
+  final String? currencyId;
 
   Map<String, dynamic> toJson() => {
         'date': date.toIso8601String(),
@@ -88,6 +96,7 @@ class CreateVoucherInput {
         'totalDepit': amount,
         'totalCredit': amount,
         'accountId': null,
+        'currencyId': currencyId,
         'journalEntryDetails': [
           {
             'accountId': debitAccountId,

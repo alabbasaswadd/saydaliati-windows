@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
+import 'package:saydaliati/features/accounts/account_providers.dart';
 import 'package:saydaliati/features/accounts/domain/entities/account.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_search_field.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_toolbar_field.dart';
@@ -8,7 +10,7 @@ import 'package:saydaliati/shared/widgets/states/app_states.dart';
 /// حقل اختيار حساب بالبحث: يعرض الحساب المختار، وبالنقر يفتح بوب أب بحث —
 /// كتابة رقم الحساب (أو أوّله) أو اسمه يُصفّي القائمة فوراً. نفس أسلوب
 /// [MedicinePickerField]، يُستخدَم بالسندات وواجهة الفاتورة (مبيعات/مشتريات).
-class AccountPickerField extends StatelessWidget {
+class AccountPickerField extends ConsumerWidget {
   const AccountPickerField({
     required this.accounts,
     required this.selectedId,
@@ -16,6 +18,7 @@ class AccountPickerField extends StatelessWidget {
     this.label,
     this.hint,
     this.compact = false,
+    this.leafOnly = true,
     super.key,
   });
 
@@ -30,14 +33,31 @@ class AccountPickerField extends StatelessWidget {
   /// وبقية الشاشات التي تستخدم الحقل بشكله الكامل.
   final bool compact;
 
+  /// إخفاء الحسابات التي لها فروع — الحركة تقع على حساب ورقة فقط.
+  ///
+  /// «الصندوق» مثلاً أبٌ لفروع العملات، فاستلام الدفع عليه مباشرةً يجعل
+  /// المبلغ يُحتسَب مرّتين: في رصيده المباشر وضمن تجميع فروعه. الباكند يرفض
+  /// ذلك، وهذا يمنع وصول المستخدم إلى الاختيار الخاطئ من أصله.
+  ///
+  /// الافتراضي `true` لأن كل استعمالات هذا الحقل مواضعُ ترحيل.
+  final bool leafOnly;
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final selected = accounts.where((a) => a.id == selectedId).firstOrNull;
     final text = selected != null ? '${selected.code} — ${selected.name}' : null;
 
+    // الأبوّة تُقرَّر من دليل الحسابات الكامل لا من القائمة الممرَّرة: قائمة
+    // مُصفّاة مسبقاً (حسابات المصاريف مثلاً) قد لا تحوي أبناء حسابٍ فيها
+    // فيبدو ورقةً وهو أب.
+    final all = ref.watch(accountsListProvider).value ?? accounts;
+    final options = leafOnly ? _leaves(accounts, all) : accounts;
+    final hiddenParents = accounts.length - options.length;
+
     Future<void> pick() async {
-      final picked = await showAccountPicker(context, accounts);
+      final picked = await showAccountPicker(context, options,
+          hiddenParents: hiddenParents);
       if (picked != null) onSelected(picked);
     }
 
@@ -76,18 +96,36 @@ class AccountPickerField extends StatelessWidget {
   }
 }
 
+/// الحسابات الورقية من [candidates] — أبٌ هو من ظهر مُعرّفه كـ parentId لأي
+/// حساب في [all] (دليل الحسابات الكامل).
+List<Account> _leaves(List<Account> candidates, List<Account> all) {
+  final parentIds = <String>{
+    for (final a in all)
+      if (a.parentId != null && a.parentId!.isNotEmpty) a.parentId!,
+  };
+  return candidates.where((a) => !parentIds.contains(a.id)).toList();
+}
+
 /// بوب أب بحث عن حساب (بالرمز أو الاسم)، يُعاد التركيز للبحث تلقائياً.
-Future<Account?> showAccountPicker(BuildContext context, List<Account> accounts) {
+Future<Account?> showAccountPicker(
+  BuildContext context,
+  List<Account> accounts, {
+  int hiddenParents = 0,
+}) {
   return showDialog<Account>(
     context: context,
-    builder: (_) => _AccountPickerDialog(accounts: accounts),
+    builder: (_) =>
+        _AccountPickerDialog(accounts: accounts, hiddenParents: hiddenParents),
   );
 }
 
 class _AccountPickerDialog extends StatefulWidget {
-  const _AccountPickerDialog({required this.accounts});
+  const _AccountPickerDialog({required this.accounts, this.hiddenParents = 0});
 
   final List<Account> accounts;
+
+  /// عدد الحسابات الأب المُستبعَدة — يُفسَّر للمستخدم بدل الإخفاء الصامت.
+  final int hiddenParents;
 
   @override
   State<_AccountPickerDialog> createState() => _AccountPickerDialogState();
@@ -141,6 +179,24 @@ class _AccountPickerDialogState extends State<_AccountPickerDialog> {
                 autofocus: true,
                 onChanged: (v) => setState(() => _query = v),
               ),
+              if (widget.hiddenParents > 0) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Row(
+                  children: [
+                    Icon(Icons.info_outline,
+                        size: 14, color: theme.hintColor),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'الحسابات التي لها فروع غير معروضة — الحركة تقع على '
+                        'حساب فرعي.',
+                        style: theme.textTheme.bodySmall
+                            ?.copyWith(color: theme.hintColor),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: AppSpacing.sm),
               Expanded(
                 child: items.isEmpty
@@ -152,7 +208,7 @@ class _AccountPickerDialogState extends State<_AccountPickerDialog> {
                           final a = items[i];
                           return ListTile(
                             dense: true,
-                            shape: RoundedRectangleBorder(borderRadius: AppRadius.brSm),
+                            shape: const RoundedRectangleBorder(borderRadius: AppRadius.brSm),
                             leading: CircleAvatar(
                               radius: 16,
                               backgroundColor:

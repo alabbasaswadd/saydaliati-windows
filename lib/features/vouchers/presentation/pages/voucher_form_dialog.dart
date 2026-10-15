@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
+import 'package:saydaliati/core/network/server_capabilities.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
+import 'package:saydaliati/features/currencies/domain/currency_conversion.dart';
+import 'package:saydaliati/features/currencies/domain/entities/currency.dart';
 import 'package:saydaliati/features/accounts/domain/entities/account.dart';
 import 'package:saydaliati/features/accounts/presentation/widgets/account_picker_field.dart';
-import 'package:saydaliati/features/currencies/domain/currency_conversion.dart';
 import 'package:saydaliati/features/currencies/presentation/providers/currencies_provider.dart';
 import 'package:saydaliati/features/vouchers/domain/entities/voucher.dart';
 import 'package:saydaliati/features/vouchers/voucher_providers.dart';
@@ -82,12 +84,18 @@ class _VoucherFormDialogState extends ConsumerState<_VoucherFormDialog> {
       return;
     }
 
-    final base = ref.read(baseCurrencyProvider);
-    final currencies = ref.read(currenciesProvider).value ?? const [];
-    final selectedCurrency =
-        currencies.where((c) => c.id == _currencyId).firstOrNull;
+    // المبلغ يُرسَل كما كُتب بعملته — التحويل صار على الخادم بسعره، فلا
+    // ينحرف رصيد صندوق العملة عمّا كتبه المستخدم حين يختلف سعر العميل.
     final enteredAmount = double.tryParse(_amountController.text.trim()) ?? 0;
-    final amount = convertToBase(enteredAmount, base, selectedCurrency);
+
+    // خادم أقدم لا يحوّل ⇒ نحوّل نحن كما كان، وإلا سُجّل المبلغ بعملة خاطئة.
+    final base = ref.read(baseCurrencyProvider);
+    final currencies = ref.read(currenciesProvider).value ?? const <Currency>[];
+    final selected = currencies.where((c) => c.id == _currencyId).firstOrNull;
+    final serverConverts = ref.read(serverCapabilitiesProvider).value
+            ?.amountsInOriginalCurrency == true;
+    final amount =
+        serverConverts ? enteredAmount : convertToBase(enteredAmount, base, selected);
 
     setState(() => _saving = true);
     final result = await ref.read(voucherRepositoryProvider).create(CreateVoucherInput(
@@ -96,6 +104,7 @@ class _VoucherFormDialogState extends ConsumerState<_VoucherFormDialog> {
           debitAccountId: _debitAccountId!,
           creditAccountId: _creditAccountId!,
           amount: amount,
+          currencyId: serverConverts ? _currencyId : null,
         ));
 
     if (!mounted) return;

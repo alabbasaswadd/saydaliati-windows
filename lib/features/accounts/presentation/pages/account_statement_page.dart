@@ -33,6 +33,9 @@ class _AccountStatementPageState extends ConsumerState<AccountStatementPage> {
   static const _fDebit = 'debit';
   static const _fCredit = 'credit';
   static const _fBalance = 'balance';
+  static const _fCurrency = 'currency';
+  static const _fOrigDebit = 'origDebit';
+  static const _fOrigCredit = 'origCredit';
 
   @override
   Widget build(BuildContext context) {
@@ -100,65 +103,130 @@ class _AccountStatementPageState extends ConsumerState<AccountStatementPage> {
       ),
       child: Row(
         children: [
-          _balanceChip(theme, 'الرصيد الافتتاحي', statement.openingBalance),
+          _balanceChip(theme, 'الرصيد الافتتاحي', statement.openingBalance,
+              statement.baseCurrencyCode),
           const SizedBox(width: AppSpacing.lg),
-          _balanceChip(theme, 'الرصيد الختامي', statement.closingBalance),
+          _balanceChip(theme, 'الرصيد الختامي', statement.closingBalance,
+              statement.baseCurrencyCode),
+          const Spacer(),
+          // وحدة القياس تُقال صريحةً: كل أرقام الكشف بالعملة الأساسية، وعملة
+          // الحساب الخاصة (إن كان صندوق عملة) شيء آخر يُعرض في عمودَيه.
+          if (statement.accountCurrencyCode != null)
+            _currencyNote(theme,
+                'عملة الحساب: ${statement.accountCurrencyCode}'),
         ],
       ),
     );
   }
 
-  Widget _balanceChip(ThemeData theme, String label, double value) {
+  Widget _currencyNote(ThemeData theme, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 4),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primary.withValues(alpha: 0.08),
+        borderRadius: AppRadius.brSm,
+      ),
+      child: Text(text,
+          style: theme.textTheme.labelMedium
+              ?.copyWith(color: theme.colorScheme.primary)),
+    );
+  }
+
+  Widget _balanceChip(
+      ThemeData theme, String label, double value, String? currencyCode) {
     final color = value < 0 ? theme.colorScheme.error : theme.extension<AppSemanticColors>()!.success;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: theme.textTheme.labelMedium),
         const SizedBox(height: 2),
-        Directionality(
-          textDirection: TextDirection.ltr,
-          child: Text(
-            Formatters.number(value),
-            style: theme.textTheme.titleMedium
-                ?.copyWith(color: color, fontWeight: FontWeight.w700),
-          ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Directionality(
+              textDirection: TextDirection.ltr,
+              child: Text(
+                Formatters.number(value),
+                style: theme.textTheme.titleMedium
+                    ?.copyWith(color: color, fontWeight: FontWeight.w700),
+              ),
+            ),
+            if (currencyCode != null) ...[
+              const SizedBox(width: 4),
+              Text(currencyCode,
+                  style: theme.textTheme.labelSmall
+                      ?.copyWith(color: theme.hintColor)),
+            ],
+          ],
         ),
       ],
     );
   }
 
   Widget _grid(BuildContext context, AccountStatement statement) {
+    final base = statement.baseCurrencyCode;
+    final own = statement.accountCurrencyCode;
+    String amountTitle(String label) => base == null ? label : '$label ($base)';
+
     return AppGrid(
       columns: [
         appGridTextColumn('التاريخ', _fDate,
             width: 110, textAlign: TrinaColumnTextAlign.center),
         appGridTextColumn('البيان', _fDesc, width: 260, flexible: true),
-        appGridNumberColumn('مدين', _fDebit, width: 130, renderer: (ctx) {
+        // عملة إدخال السند — تُميّز سنداً كُتب بالدولار عن آخر كُتب بالأساسية
+        // رغم أن كلا المبلغين معروضان بالأساسية.
+        appGridTextColumn('العملة', _fCurrency,
+            width: 90, textAlign: TrinaColumnTextAlign.center),
+        appGridNumberColumn(amountTitle('مدين'), _fDebit, width: 130,
+            renderer: (ctx) {
           final v = ctx.cell.value;
           final n = v is num ? v.toDouble() : 0.0;
           return _amountCell(n == 0 ? '' : Formatters.number(n));
         }),
-        appGridNumberColumn('دائن', _fCredit, width: 130, renderer: (ctx) {
+        appGridNumberColumn(amountTitle('دائن'), _fCredit, width: 130,
+            renderer: (ctx) {
           final v = ctx.cell.value;
           final n = v is num ? v.toDouble() : 0.0;
           return _amountCell(n == 0 ? '' : Formatters.number(n));
         }),
-        appGridNumberColumn('الرصيد المتراكم', _fBalance, width: 150, renderer: (ctx) {
+        appGridNumberColumn(amountTitle('الرصيد المتراكم'), _fBalance,
+            width: 150, renderer: (ctx) {
           final v = ctx.cell.value;
           final n = v is num ? v.toDouble() : 0.0;
           final color =
               n < 0 ? Theme.of(context).colorScheme.error : context.semantic.success;
           return _amountCell(Formatters.number(n), color: color, bold: true);
         }),
+        // صناديق العملات وحدها تحمل مبالغ بعملتها، مجمَّدة لحظة الترحيل.
+        if (own != null) ...[
+          appGridNumberColumn('مدين ($own)', _fOrigDebit, width: 130,
+              renderer: (ctx) {
+            final v = ctx.cell.value;
+            final n = v is num ? v.toDouble() : 0.0;
+            return _amountCell(n == 0 ? '' : Formatters.number(n));
+          }),
+          appGridNumberColumn('دائن ($own)', _fOrigCredit, width: 130,
+              renderer: (ctx) {
+            final v = ctx.cell.value;
+            final n = v is num ? v.toDouble() : 0.0;
+            return _amountCell(n == 0 ? '' : Formatters.number(n));
+          }),
+        ],
       ],
       rows: [
         for (final e in statement.entries)
           TrinaRow(cells: {
             _fDate: TrinaCell(value: AppDate.ymd(e.date)),
             _fDesc: TrinaCell(value: e.description),
+            _fCurrency: TrinaCell(value: e.currencyCode ?? ''),
             _fDebit: TrinaCell(value: e.debit),
             _fCredit: TrinaCell(value: e.credit),
             _fBalance: TrinaCell(value: e.runningBalance),
+            if (statement.accountCurrencyCode != null) ...{
+              _fOrigDebit: TrinaCell(value: e.originalDebit),
+              _fOrigCredit: TrinaCell(value: e.originalCredit),
+            },
           }),
       ],
     );

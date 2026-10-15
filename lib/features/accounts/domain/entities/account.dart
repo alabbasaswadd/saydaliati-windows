@@ -98,6 +98,9 @@ class AccountStatementLine {
     required this.debit,
     required this.credit,
     required this.runningBalance,
+    this.currencyCode,
+    this.originalDebit = 0,
+    this.originalCredit = 0,
   });
 
   final String journalEntryId;
@@ -106,6 +109,13 @@ class AccountStatementLine {
   final double debit;
   final double credit;
   final double runningBalance;
+
+  /// العملة التي أُدخل بها السند — [debit]/[credit] بالأساسية على أي حال.
+  final String? currencyCode;
+
+  /// المبلغ بعملة الحساب نفسه — صفر لحساب بلا عملة خاصة.
+  final double originalDebit;
+  final double originalCredit;
 }
 
 /// كشف حساب كامل: الرصيد الافتتاحي/الختامي + السطور.
@@ -117,6 +127,8 @@ class AccountStatement {
     required this.openingBalance,
     required this.closingBalance,
     required this.entries,
+    this.baseCurrencyCode,
+    this.accountCurrencyCode,
   });
 
   final String accountId;
@@ -125,4 +137,10 @@ class AccountStatement {
   final double openingBalance;
   final double closingBalance;
   final List<AccountStatementLine> entries;
+
+  /// وحدة قياس الأرصدة والمدين والدائن في هذا الكشف.
+  final String? baseCurrencyCode;
+
+  /// عملة الحساب الخاصة (صناديق العملات) — null لبقية الحسابات.
+  final String? accountCurrencyCode;
 }

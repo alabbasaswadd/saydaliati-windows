@@ -85,6 +85,8 @@ class AccountRepositoryImpl implements AccountRepository {
       accountName: (j['accountName'] ?? '').toString(),
       openingBalance: ((j['openingBalance'] ?? 0) as num).toDouble(),
       closingBalance: ((j['closingBalance'] ?? 0) as num).toDouble(),
+      baseCurrencyCode: j['baseCurrencyCode'] as String?,
+      accountCurrencyCode: j['accountCurrencyCode'] as String?,
       entries: entries
           .whereType<Map<String, dynamic>>()
           .map(_lineFromJson)
@@ -99,5 +101,8 @@ class AccountRepositoryImpl implements AccountRepository {
         debit: ((j['debit'] ?? 0) as num).toDouble(),
         credit: ((j['credit'] ?? 0) as num).toDouble(),
         runningBalance: ((j['runningBalance'] ?? 0) as num).toDouble(),
+        currencyCode: j['currencyCode'] as String?,
+        originalDebit: ((j['originalDebit'] ?? 0) as num).toDouble(),
+        originalCredit: ((j['originalCredit'] ?? 0) as num).toDouble(),
       );
 }

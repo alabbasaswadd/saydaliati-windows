@@ -8,11 +8,13 @@ import 'package:saydaliati/features/currencies/presentation/widgets/currency_pic
 import 'package:saydaliati/features/suppliers/presentation/widgets/supplier_picker_field.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/core/enums/payment_method.dart';
+import 'package:saydaliati/core/network/server_capabilities.dart';
 import 'package:saydaliati/core/theme/app_semantic_colors.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/features/currencies/domain/currency_conversion.dart';
 import 'package:saydaliati/features/currencies/domain/entities/currency.dart';
 import 'package:saydaliati/features/currencies/presentation/providers/currencies_provider.dart';
+import 'package:saydaliati/features/currencies/presentation/providers/currency_freshness.dart';
 import 'package:saydaliati/features/dashboard/presentation/providers/dashboard_provider.dart';
 import 'package:saydaliati/features/medicines/domain/entities/medicine.dart';
 import 'package:saydaliati/features/medicines/medicine_providers.dart';
@@ -150,6 +152,15 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
   bool _prefilled = false;
   bool _prefillStarted = false;
 
+  @override
+  void initState() {
+    super.initState();
+    // الفاتورة تُسعَّر بسعر الصرف — نُحدِّثه إن قَدُم قبل أن يبدأ الإدخال.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) CurrencyFreshness.refreshIfStale(ref);
+    });
+  }
+
   bool get _isEdit => widget.purchaseToEdit != null;
 
   /// Ensures the edited invoice's lines are loaded: the list row carries no line
@@ -284,12 +295,21 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
     final selected =
         currencies.where((c) => c.id == currencyId).firstOrNull;
     double toBase(double v) => convertToBase(v, base, selected);
+    // عملة الفاتورة تُحفظ الآن بدل أن تُرمى، والمبالغ تُرسَل بها إن كان
+    // الخادم يحوّلها بنفسه (خادم أقدم يتجاهل العلم فنحوّل نحن كما كان).
+    final isForeign = selected != null && base != null && selected.id != base.id;
+    final serverConverts = isForeign &&
+        ref.read(serverCapabilitiesProvider).value?.amountsInOriginalCurrency ==
+            true;
+
     final input = CreatePurchaseInput(
       currencyId: base?.id ?? currencyId,
+      originalCurrencyId: isForeign ? selected.id : null,
+      amountsInOriginalCurrency: serverConverts,
       warehouseId: warehouseId,
       supplierId: _supplierId,
       purchaseDate: DateTime.now(),
-      totalAmount: toBase(_total),
+      totalAmount: serverConverts ? _total : toBase(_total),
       paymentMethod: _payMethod,
       paymentAccountId: _payMethod == PaymentMethod.credit ? null : _paymentAccountId,
       lines: [
@@ -297,7 +317,9 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
           CreatePurchaseLineInput(
             medicineId: l.medicine.id,
             unitId: l.unitId,
-            unitPrice: toBase(double.tryParse(l.price.text.trim()) ?? 0),
+            unitPrice: serverConverts
+                ? (double.tryParse(l.price.text.trim()) ?? 0)
+                : toBase(double.tryParse(l.price.text.trim()) ?? 0),
             quantity: double.tryParse(l.qty.text.trim()) ?? 0,
             expiryDate: l.expiry,
             scannedBarcode: l.scannedBarcode,

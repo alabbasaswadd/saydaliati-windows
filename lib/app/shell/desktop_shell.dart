@@ -5,10 +5,12 @@ import 'package:saydaliati/app/shell/widgets/desktop_sidebar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:saydaliati/app/shell/widgets/desktop_title_bar.dart';
 import 'package:saydaliati/app/sync/data_sync_controller.dart';
+import 'package:saydaliati/core/network/server_capabilities.dart';
 import 'package:saydaliati/features/announcements/announcements_providers.dart';
 import 'package:saydaliati/features/announcements/domain/announcement.dart';
 import 'package:saydaliati/features/announcements/presentation/widgets/announcement_dialog.dart';
 import 'package:saydaliati/features/catalog/catalog_providers.dart';
+import 'package:saydaliati/features/currencies/presentation/providers/currency_freshness.dart';
 import 'package:saydaliati/features/medicines/presentation/widgets/catalog_loading_overlay.dart';
 import 'package:saydaliati/features/onboarding/presentation/welcome_tour.dart';
 import 'package:saydaliati/features/shortcuts/presentation/shortcuts_scope.dart';
@@ -88,13 +90,18 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
   Widget build(BuildContext context) {
     // Show the first-catalog-download overlay when there is no local mirror
     // yet and a sync is in progress (same logic as the mobile shell).
+    // تُقرأ قدرات الخادم عند الإقلاع لا عند أول حفظ: قراءتها كسولةً تعني أن
+    // أول فاتورة بعد التشغيل تأخذ المسار القديم دوماً لأن النتيجة لم تصل بعد.
+    ref.watch(serverCapabilitiesProvider);
+
     final mirrorEmpty = ref.watch(catalogMirrorEmptyProvider).value ?? false;
     final sync = ref.watch(dataSyncControllerProvider);
     final firstLoading = mirrorEmpty && sync.running;
 
     // ShortcutsScope يلتقط المفاتيح قبل الشاشات فتعمل الاختصارات من أي مكان
     // داخل القشرة (شاشات الحوار المعروضة فوقها تأخذ تركيزها فلا تتأثّر).
-    return ShortcutsScope(
+    return CurrencyFreshness(
+      child: ShortcutsScope(
         child: Stack(
           children: [
             Scaffold(
@@ -142,6 +149,8 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
             if (firstLoading)
               const Positioned.fill(child: CatalogLoadingOverlay()),
           ],
-        ));
+        ),
+      ),
+    );
   }
 }

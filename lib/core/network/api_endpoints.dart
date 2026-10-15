@@ -166,6 +166,10 @@ abstract final class ApiEndpoints {
 
   // ---- Settings ----
   static const String settings = '$_base/Setting';
+
+  // قدرات الخادم — تُقرأ قبل إرسال مبالغ بعملتها الأصلية (خادم أقدم يتجاهل
+  // العلم فيأخذ 100 دولار على أنها 100 ليرة).
+  static const String capabilities = '$_base/Setting/capabilities';
   static String settingByKey(String key) => '$_base/Setting/$key';
 
   // ---- Keyboard shortcuts (stored customisations only; the app owns the
