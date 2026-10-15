@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_text_field.dart';
+import 'package:saydaliati/features/shortcuts/presentation/widgets/save_shortcut.dart';
 
 /// One field in an [showEntityFormDialog].
 class EntityField {
@@ -79,7 +80,9 @@ class _EntityFormDialogState extends State<_EntityFormDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Dialog(
+    return SaveShortcut(
+      onSave: _submit,
+      child: Dialog(
       backgroundColor: theme.colorScheme.surface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -185,6 +188,7 @@ class _EntityFormDialogState extends State<_EntityFormDialog> {
           ),
         ),
       ),
+    ),
     );
   }
 }

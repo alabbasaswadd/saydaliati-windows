@@ -17,15 +17,14 @@ import 'package:saydaliati/features/sales/presentation/pages/sale_detail_page.da
 import 'package:saydaliati/features/sales/presentation/pages/sales_page.dart';
 import 'package:saydaliati/features/sales/presentation/providers/sales_provider.dart';
 import 'package:saydaliati/features/sales/sale_providers.dart';
-import 'package:saydaliati/shared/utils/formatters.dart';
 import 'package:saydaliati/shared/widgets/dialogs/app_dialogs.dart';
 import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
+import 'package:saydaliati/shared/widgets/cards/invoice_card.dart';
 import 'package:saydaliati/shared/widgets/filters/filter_side_sheet.dart';
 import 'package:saydaliati/shared/widgets/filters/period_filter_list.dart';
-import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_dropdown.dart';
-import 'package:trina_grid/trina_grid.dart';
+import 'package:saydaliati/shared/widgets/states/app_states.dart';
 
 /// The sales invoices (online). Each row shows the invoice number, time, and
 /// amount in its ORIGINAL transaction currency. Filters (الفترة / العميل /
@@ -40,8 +39,10 @@ class SalesListPage extends ConsumerStatefulWidget {
 class _SalesListPageState extends ConsumerState<SalesListPage> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  /// مدير الشبكة — لزر إظهار/إخفاء الأعمدة.
-  TrinaGridStateManager? _gridManager;
+  /// إظهار أرباح الفواتير على البطاقات. مخفيّة افتراضياً: رقم حسّاس لا يُعرض
+  /// أمام زبون واقف عند الكاشير إلا بطلب صريح.
+  bool _showProfit = false;
+
   ReportPeriod? _period;
   String? _customerId;
   String? _medicineId;
@@ -96,12 +97,24 @@ class _SalesListPageState extends ConsumerState<SalesListPage> {
     String codeFor(String id) =>
         currencies.where((c) => c.id == id).map((c) => c.code).firstOrNull ?? '';
 
+    final customers = ref.watch(customersProvider).value ?? const <Customer>[];
+    String customerName(String id) => id.isEmpty
+        ? ''
+        : customers.where((c) => c.id == id).map((c) => c.fullName).firstOrNull ??
+            '';
+
     return Scaffold(
       key: _scaffoldKey,
       appBar: AppBar(
         title: const Text(AppStrings.salesList),
         actions: [
-          AppGridColumnsButton(managerGetter: () => _gridManager),
+          IconButton(
+            tooltip: _showProfit ? 'إخفاء الأرباح' : 'إظهار الأرباح',
+            onPressed: () => setState(() => _showProfit = !_showProfit),
+            icon: Icon(_showProfit
+                ? Icons.visibility_off_outlined
+                : Icons.visibility_outlined),
+          ),
           IconButton(
             tooltip: AppStrings.filters,
             onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
@@ -123,28 +136,25 @@ class _SalesListPageState extends ConsumerState<SalesListPage> {
         onMedicine: (v) => setState(() => _medicineId = v),
         onCurrency: (v) => setState(() => _currencyId = v),
       ),
-      // الغريد المعتمد: صف لكل فاتورة، فلترة لكل عمود، نقرة مزدوجة للتفاصيل.
+      // بطاقات بدل الغريد: كل فاتورة بطاقة تُقرأ بلمحة (الرقم، التاريخ،
+      // أصنافها، مبلغها) وفيها زرّا التعديل والحذف صريحين.
       body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text(e.toString())),
+        loading: () => const LoadingState(message: AppStrings.loading),
+        error: (e, _) => ErrorState.fromError(e,
+            onRetry: () => ref.invalidate(provider)),
         data: (sales) {
           if (sales.isEmpty) {
-            return const Center(child: Text(AppStrings.noSales));
+            return const EmptyState(
+              message: AppStrings.noSales,
+              icon: Icons.receipt_long_outlined,
+            );
           }
-          final byId = {for (final s in sales) s.id: s};
-          return Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: AppGrid(
-              columns: _columns(byId),
-              rows: [for (final s in sales) _row(s, codeFor)],
-              onLoaded: (m) => _gridManager = m,
-              onRowDoubleTap: (e) {
-                final sale = byId[e.row.cells[_fId]?.value];
-                if (sale != null) {
-                  Navigator.of(context).push(MaterialPageRoute<void>(
-                      builder: (_) => SaleDetailPage(sale: sale)));
-                }
-              },
+          return RefreshIndicator(
+            onRefresh: () async => ref.invalidate(provider),
+            child: InvoiceCardsGrid(
+              children: [
+                for (final sale in sales) _card(sale, codeFor, customerName),
+              ],
             ),
           );
         },
@@ -152,102 +162,60 @@ class _SalesListPageState extends ConsumerState<SalesListPage> {
     );
   }
 
-  static const _fId = 'id';
-  static const _fInvoice = 'invoice';
-  static const _fDate = 'date';
-  static const _fItems = 'items';
-  static const _fCurrency = 'currency';
-  static const _fTotal = 'total';
-  static const _fActions = 'actions';
-
-  List<TrinaColumn> _columns(Map<String, Sale> byId) {
-    return [
-      appGridNumberColumn(AppStrings.invoiceLabel, _fInvoice,
-          width: 110, format: '#'),
-      appGridTextColumn(AppStrings.dateColumn, _fDate,
-          width: 150, textAlign: TrinaColumnTextAlign.center),
-      appGridNumberColumn(AppStrings.piecesCountColumn, _fItems,
-          width: 95, format: '#'),
-      appGridTextColumn(AppStrings.filterByCurrency, _fCurrency,
-          width: 90, hide: true, textAlign: TrinaColumnTextAlign.center),
-      appGridNumberColumn(AppStrings.total, _fTotal, width: 130,
-          renderer: (ctx) {
-        final v = ctx.cell.value;
-        final n = v is num ? v.toDouble() : 0.0;
-        return Directionality(
-          textDirection: TextDirection.ltr,
-          child: Text(
-            Formatters.number(n),
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        );
-      }),
-      TrinaColumn(
-        title: '',
-        field: _fActions,
-        type: TrinaColumnType.text(),
-        width: 90,
-        enableEditingMode: false,
-        enableContextMenu: false,
-        enableFilterMenuItem: false,
-        enableSorting: false,
-        renderer: (ctx) {
-          final sale = byId[ctx.row.cells[_fId]?.value];
-          if (sale == null) return const SizedBox.shrink();
-          return Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.edit_outlined, size: 16),
-                visualDensity: VisualDensity.compact,
-                tooltip: AppStrings.edit,
-                onPressed: () => _edit(sale),
-              ),
-              IconButton(
-                icon: Icon(Icons.delete_outline,
-                    size: 16, color: Theme.of(context).colorScheme.error),
-                visualDensity: VisualDensity.compact,
-                tooltip: AppStrings.delete,
-                onPressed: () => _delete(sale),
-              ),
-            ],
-          );
-        },
-      ),
-      // معرف داخلي مخفي للربط بالكيان.
-      TrinaColumn(
-        title: '',
-        field: _fId,
-        type: TrinaColumnType.text(),
-        hide: true,
-      ),
-    ];
-  }
-
-  TrinaRow<dynamic> _row(Sale sale, String Function(String) codeFor) {
-    // Show the amount in the currency the sale was actually made in.
+  /// مبلغ الفاتورة بعملتها الأصلية (لا بعملة الأساس) ورمزها.
+  (double, String) _amountOf(Sale sale, String Function(String) codeFor) {
     final foreign = sale.originalCurrencyId.isNotEmpty;
-    final code = foreign
-        ? (codeFor(sale.originalCurrencyId).isNotEmpty
-            ? codeFor(sale.originalCurrencyId)
-            : sale.currencyCode)
-        : sale.currencyCode;
-    final amount =
-        foreign ? sale.totalAmount * sale.exchangeRate : sale.totalAmount;
-    return TrinaRow(
-      cells: {
-        _fId: TrinaCell(value: sale.id),
-        _fInvoice: TrinaCell(value: sale.invoiceNumber),
-        _fDate: TrinaCell(value: AppDate.ymdHm(sale.saleDate)),
-        _fItems: TrinaCell(value: sale.items.length),
-        _fCurrency: TrinaCell(value: code),
-        _fTotal: TrinaCell(value: amount),
-      },
+    if (!foreign) return (sale.totalAmount, sale.currencyCode);
+    final code = codeFor(sale.originalCurrencyId);
+    return (
+      sale.totalAmount * sale.exchangeRate,
+      code.isNotEmpty ? code : sale.currencyCode,
     );
+  }
+
+  /// ربح الفاتورة = إجماليها ناقص كلفة أسطرها، معروضاً بعملة الفاتورة نفسها
+  /// (التكلفة مخزَّنة بعملة الأساس كالإجمالي، فيُطبَّق سعر الصرف على الفرق).
+  double _profitOf(Sale sale) {
+    final cost = sale.items
+        .fold<double>(0, (sum, l) => sum + l.unitCost * l.quantity);
+    final profitBase = sale.totalAmount - cost;
+    return sale.originalCurrencyId.isEmpty
+        ? profitBase
+        : profitBase * sale.exchangeRate;
+  }
+
+  Widget _card(
+    Sale sale,
+    String Function(String) codeFor,
+    String Function(String) customerName,
+  ) {
+    final (amount, code) = _amountOf(sale, codeFor);
+    return InvoiceCard(
+      icon: Icons.point_of_sale_outlined,
+      invoiceNumber: sale.invoiceNumber,
+      dateLabel: AppDate.ymdHm(sale.saleDate),
+      itemsCount: sale.items.length,
+      itemsPreview: _preview(sale.items.map((e) => e.medicineName)),
+      amount: amount,
+      currencyCode: code,
+      partyLabel: customerName(sale.customerId),
+      badge: sale.isPrescription ? AppStrings.prescriptionLabel : null,
+      profit: _showProfit ? _profitOf(sale) : null,
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => SaleDetailPage(sale: sale)),
+      ),
+      onEdit: () => _edit(sale),
+      onDelete: () => _delete(sale),
+    );
+  }
+
+  /// أول صنفين وعدد الباقي — يكفي للتعرّف على الفاتورة بلا فتحها.
+  static String _preview(Iterable<String> names) {
+    final list = names.where((n) => n.isNotEmpty).toList();
+    if (list.isEmpty) return '';
+    final shown = list.take(2).join('، ');
+    final extra = list.length - 2;
+    return extra > 0 ? '$shown +$extra' : shown;
   }
 }
 

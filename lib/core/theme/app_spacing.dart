@@ -33,11 +33,15 @@ abstract final class AppSpacing {
 abstract final class AppRadius {
   const AppRadius._();
 
+  /// استدارة خفيفة جداً — لعناصر شريط أدوات الفاتورة: تكسر حدّة الزاوية
+  /// وتُبقي الحقل مستطيلاً واضح الإطار.
+  static const double xs = 6;
   static const double sm = 8;
   static const double md = 12;
   static const double lg = 16;
   static const double pill = 999;
 
+  static const BorderRadius brXs = BorderRadius.all(Radius.circular(xs));
   static const BorderRadius brSm = BorderRadius.all(Radius.circular(sm));
   static const BorderRadius brMd = BorderRadius.all(Radius.circular(md));
   static const BorderRadius brLg = BorderRadius.all(Radius.circular(lg));
@@ -50,6 +54,12 @@ abstract final class AppSizes {
   static const double buttonHeight = 50;
   static const double buttonHeightSm = 40;
   static const double inputHeight = 54;
+
+  /// ارتفاع عناصر شريط أدوات الفاتورة (تاريخ/عملة/عميل/حساب/طريقة دفع/وصفة).
+  /// قيمة واحدة لكل العناصر حتى تتحاذى رأسياً على خط واحد بلا تفاوت.
+  static const double toolbarFieldHeight = 48;
+
+  static const double iconXs = 16;
   static const double iconSm = 18;
   static const double iconMd = 22;
   static const double iconLg = 28;

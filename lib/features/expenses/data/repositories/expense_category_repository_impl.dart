@@ -20,9 +20,17 @@ class ExpenseCategoryRepositoryImpl implements ExpenseCategoryRepository {
   }
 
   @override
-  Future<Result<bool>> create({required String name, String? parentId}) async {
+  Future<Result<bool>> create({
+    required String name,
+    String? parentId,
+    String? accountId,
+  }) async {
     try {
-      await remote.create({'name': name, 'parentId': parentId});
+      await remote.create({
+        'name': name,
+        'parentId': parentId,
+        'accountId': accountId,
+      });
       return const Result.success(true);
     } catch (error) {
       return Result.failure(mapExceptionToFailure(error));
@@ -35,12 +43,14 @@ class ExpenseCategoryRepositoryImpl implements ExpenseCategoryRepository {
     required String name,
     String? parentId,
     required bool isActive,
+    String? accountId,
   }) async {
     try {
       await remote.update(id, {
         'name': name,
         'parentId': parentId,
         'isActive': isActive,
+        'accountId': accountId,
       });
       return const Result.success(true);
     } catch (error) {

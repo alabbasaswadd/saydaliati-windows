@@ -8,6 +8,7 @@ import 'package:saydaliati/features/currencies/presentation/providers/currencies
 import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_dropdown.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_text_field.dart';
+import 'package:saydaliati/features/shortcuts/presentation/widgets/save_shortcut.dart';
 
 /// حوار إضافة/تعديل حساب — بأسلوب نوافذ ويندوز، والحفظ داخل الحوار نفسه
 /// (مؤشّر تحميل على زر الحفظ، يُغلَق فقط عند النجاح) — نفس نمط حوار المصروف.
@@ -128,7 +129,10 @@ class _AccountFormDialogState extends ConsumerState<_AccountFormDialog> {
     // لا يمكن جعل الحساب أباً لنفسه.
     final parentOptions = widget.accounts.where((a) => a.id != widget.existing?.id).toList();
 
-    return PopScope(
+    return SaveShortcut(
+      onSave: _submit,
+      enabled: !_saving,
+      child: PopScope(
       canPop: !_saving,
       child: Dialog(
         backgroundColor: theme.colorScheme.surface,
@@ -284,6 +288,7 @@ class _AccountFormDialogState extends ConsumerState<_AccountFormDialog> {
           ),
         ),
       ),
+    ),
     );
   }
 }

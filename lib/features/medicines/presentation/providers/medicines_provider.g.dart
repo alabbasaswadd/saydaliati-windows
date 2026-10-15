@@ -48,7 +48,7 @@ final class MedicineCatalogProvider
   MedicineCatalog create() => MedicineCatalog();
 }
 
-String _$medicineCatalogHash() => r'702bb6c20bd319aefc4e8d845f8d574485f5dca5';
+String _$medicineCatalogHash() => r'60c95607a8a2727c34f25d2f367179ff7623c05d';
 
 /// The whole medicine catalog as an [AsyncValue] (cache-first). Shared by the
 /// medicines list screen and the POS (scanning + manual picker). Kept alive so

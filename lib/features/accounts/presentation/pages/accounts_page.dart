@@ -18,8 +18,8 @@ import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
 import 'package:saydaliati/shared/widgets/states/app_states.dart';
 import 'package:trina_grid/trina_grid.dart';
 
-/// دليل الحسابات — شجرة (أب/أبناء) مع الرصيد الحالي لكل حساب. نقرة مزدوجة
-/// تفتح كشف الحساب؛ زر القلم للتعديل، والحذف للحسابات غير المستخدَمة فقط.
+/// دليل الحسابات — شجرة (أب/أبناء) مع الرصيد الحالي لكل حساب. نقرة مزدوجة على
+/// الصف تفتح تعديل الحساب؛ وزر الحذف يظهر للحسابات القابلة للحذف وحدها.
 class AccountsPage extends ConsumerWidget {
   const AccountsPage({super.key});
 
@@ -280,6 +280,12 @@ class _AccountsGridState extends State<_AccountsGrid> {
       // الشبكة تبقى معروضة بصفوفها الأولى القديمة بلا هذا المفتاح.
       key: ValueKey(widget.accounts.length ^ widget.accounts.hashCode),
       tree: true,
+      // تعديل الحساب بنقرة مزدوجة على صفه — بديل زر القلم الذي كان يتكرّر
+      // في كل صف ويُثقل عمود الإجراءات.
+      onRowDoubleTap: (e) {
+        final a = byId[e.row.cells[AccountsPage._fId]?.value];
+        if (a != null) onEdit(a);
+      },
       onLoaded: (m) {
         _manager = m;
         m.addListener(_onGridChanged);
@@ -367,21 +373,17 @@ class _AccountsGridState extends State<_AccountsGrid> {
                   tooltip: 'كشف الحساب',
                   onPressed: () => onOpenStatement(a),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined, size: 16),
-                  visualDensity: VisualDensity.compact,
-                  tooltip: AppStrings.edit,
-                  onPressed: () => onEdit(a),
-                ),
-                IconButton(
-                  icon: a.isSystem
-                      ? const Icon(Icons.lock_outline, size: 16)
-                      : Icon(Icons.delete_outline,
-                          size: 16, color: Theme.of(context).colorScheme.error),
-                  visualDensity: VisualDensity.compact,
-                  tooltip: a.isSystem ? 'حساب أساسي — غير قابل للحذف' : AppStrings.delete,
-                  onPressed: () => onDelete(a),
-                ),
+                // التعديل بنقرة مزدوجة على الصف (بلا زر قلم في كل صف)، والحذف
+                // يظهر فقط للحسابات القابلة للحذف — الحساب الأساسي بلا أيقونة
+                // قفل معطّلة لا فائدة منها.
+                if (!a.isSystem)
+                  IconButton(
+                    icon: Icon(Icons.delete_outline,
+                        size: 16, color: Theme.of(context).colorScheme.error),
+                    visualDensity: VisualDensity.compact,
+                    tooltip: AppStrings.delete,
+                    onPressed: () => onDelete(a),
+                  ),
               ],
             );
           },

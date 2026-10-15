@@ -14,6 +14,7 @@ import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_date_picker.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_dropdown.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_text_field.dart';
+import 'package:saydaliati/features/shortcuts/presentation/widgets/save_shortcut.dart';
 
 /// حوار إضافة سند مباشر — طرف مدين وطرف دائن بنفس المبلغ (الحالة الشائعة
 /// لسند قبض/دفع). نفس أسلوب حوار المصروف/الحساب: الحفظ داخل الحوار نفسه
@@ -111,7 +112,10 @@ class _VoucherFormDialogState extends ConsumerState<_VoucherFormDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return PopScope(
+    return SaveShortcut(
+      onSave: _submit,
+      enabled: !_saving,
+      child: PopScope(
       canPop: !_saving,
       child: Dialog(
         backgroundColor: theme.colorScheme.surface,
@@ -282,6 +286,7 @@ class _VoucherFormDialogState extends ConsumerState<_VoucherFormDialog> {
           ),
         ),
       ),
+    ),
     );
   }
 }

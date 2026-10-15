@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/features/currencies/domain/entities/currency.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_search_field.dart';
+import 'package:saydaliati/shared/widgets/inputs/app_toolbar_field.dart';
 import 'package:saydaliati/shared/widgets/states/app_states.dart';
 
 /// حقل اختيار عملة بالبحث: يعرض العملة المختارة، وبالنقر يفتح بوب أب بحث —
@@ -14,6 +15,7 @@ class CurrencyPickerField extends StatelessWidget {
     required this.onSelected,
     this.label,
     this.hint,
+    this.compact = false,
     super.key,
   });
 
@@ -23,17 +25,37 @@ class CurrencyPickerField extends StatelessWidget {
   final String? label;
   final String? hint;
 
+  /// نسخة شريط أدوات الفاتورة: نفس الحقل بارتفاع وحدّ وأيقونات موحّدة مع بقية
+  /// عناصر الشريط ([AppToolbarField]). الافتراضي `false` فلا تتغيّر الشاشات
+  /// الأخرى التي تستخدم الحقل بشكله الكامل.
+  final bool compact;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final selected = currencies.where((c) => c.id == selectedId).firstOrNull;
+    final text =
+        selected != null ? '${selected.code} — ${selected.name}' : null;
+
+    Future<void> pick() async {
+      final picked = await showCurrencyPicker(context, currencies);
+      if (picked != null) onSelected(picked);
+    }
+
+    if (compact) {
+      return AppToolbarField(
+        icon: Icons.payments_outlined,
+        label: label,
+        value: text,
+        placeholder: hint ?? 'اختر عملة',
+        trailing: toolbarTrailingIcon(context, Icons.search),
+        onTap: pick,
+      );
+    }
 
     return InkWell(
       borderRadius: AppRadius.brMd,
-      onTap: () async {
-        final picked = await showCurrencyPicker(context, currencies);
-        if (picked != null) onSelected(picked);
-      },
+      onTap: pick,
       child: InputDecorator(
         decoration: InputDecoration(
           labelText: label,
@@ -44,7 +66,7 @@ class CurrencyPickerField extends StatelessWidget {
           ),
         ),
         child: Text(
-          selected != null ? '${selected.code} — ${selected.name}' : (hint ?? 'اختر عملة'),
+          text ?? (hint ?? 'اختر عملة'),
           overflow: TextOverflow.ellipsis,
           style: selected == null
               ? theme.textTheme.bodyMedium?.copyWith(color: theme.hintColor)

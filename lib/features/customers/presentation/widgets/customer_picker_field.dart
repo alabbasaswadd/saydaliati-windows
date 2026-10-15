@@ -8,6 +8,7 @@ import 'package:saydaliati/shared/widgets/dialogs/entity_form_dialog.dart';
 import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_search_field.dart';
+import 'package:saydaliati/shared/widgets/inputs/app_toolbar_field.dart';
 import 'package:saydaliati/shared/widgets/states/app_states.dart';
 
 /// حقل اختيار عميل بالبحث: يعرض العميل المختار، وبالنقر يفتح بوب أب بحث —
@@ -22,6 +23,7 @@ class CustomerPickerField extends StatelessWidget {
     this.hint,
     this.allowClear = false,
     this.onCleared,
+    this.compact = false,
     super.key,
   });
 
@@ -35,17 +37,40 @@ class CustomerPickerField extends StatelessWidget {
   final bool allowClear;
   final VoidCallback? onCleared;
 
+  /// نسخة شريط أدوات الفاتورة: نفس الحقل بارتفاع وحدّ وأيقونات موحّدة مع بقية
+  /// عناصر الشريط ([AppToolbarField]). الافتراضي `false` فلا تتغيّر الشاشات
+  /// الأخرى التي تستخدم الحقل بشكله الكامل.
+  final bool compact;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final selected = customers.where((c) => c.id == selectedId).firstOrNull;
+    final text = selected?.fullName.isNotEmpty == true ? selected!.fullName : null;
+
+    Future<void> pick() async {
+      final picked = await showCustomerPicker(context, customers);
+      if (picked != null) onSelected(picked);
+    }
+
+    if (compact) {
+      return AppToolbarField(
+        icon: Icons.person_outline,
+        label: label,
+        value: text,
+        placeholder: hint ?? 'اختر عميلاً',
+        // زر المسح بحجم الأيقونات نفسه (لا IconButton بمربّع لمس 48px يرفع
+        // الحقل عن سطر الشريط)، ويظهر فقط حين يكون هناك اختيار فعلي.
+        trailing: allowClear && selected != null
+            ? _ClearButton(onPressed: onCleared)
+            : toolbarTrailingIcon(context, Icons.search),
+        onTap: pick,
+      );
+    }
 
     return InkWell(
       borderRadius: AppRadius.brMd,
-      onTap: () async {
-        final picked = await showCustomerPicker(context, customers);
-        if (picked != null) onSelected(picked);
-      },
+      onTap: pick,
       child: InputDecorator(
         decoration: InputDecoration(
           labelText: label,
@@ -61,13 +86,35 @@ class CustomerPickerField extends StatelessWidget {
                 ),
         ),
         child: Text(
-          selected?.fullName.isNotEmpty == true
-              ? selected!.fullName
-              : (hint ?? 'اختر عميلاً'),
+          text ?? (hint ?? 'اختر عميلاً'),
           overflow: TextOverflow.ellipsis,
           style: selected == null
               ? theme.textTheme.bodyMedium?.copyWith(color: theme.hintColor)
               : theme.textTheme.bodyMedium,
+        ),
+      ),
+    );
+  }
+}
+
+/// زر مسح الاختيار داخل حقل الشريط — بحجم أيقونات الشريط نفسها مع منطقة نقر
+/// مريحة (24×24) تبقى سهلة الإصابة بالفأرة في الاستخدام اليومي.
+class _ClearButton extends StatelessWidget {
+  const _ClearButton({required this.onPressed});
+
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'مسح الاختيار',
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        onTap: onPressed,
+        child: SizedBox(
+          width: 24,
+          height: 24,
+          child: Center(child: toolbarTrailingIcon(context, Icons.close)),
         ),
       ),
     );

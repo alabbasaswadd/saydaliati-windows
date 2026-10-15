@@ -167,4 +167,9 @@ abstract final class ApiEndpoints {
   // ---- Settings ----
   static const String settings = '$_base/Setting';
   static String settingByKey(String key) => '$_base/Setting/$key';
+
+  // ---- Keyboard shortcuts (stored customisations only; the app owns the
+  // action catalogue and the defaults) ----
+  static const String shortcuts = '$_base/Shortcut';
+  static const String shortcutsReset = '$_base/Shortcut/reset';
 }

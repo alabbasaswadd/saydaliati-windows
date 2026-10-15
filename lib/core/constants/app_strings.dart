@@ -280,6 +280,11 @@ abstract final class AppStrings {
   // Sales / POS
   static const String selectCurrency = 'اختر العملة';
   static const String paymentMethod = 'طريقة الدفع';
+  // تسميات مختصرة لشريط أدوات الفاتورة: تُعرض فوق الحقل كتسمية صغيرة،
+  // فصيغة «اختر …» تطول بلا فائدة بعد أن تصير القيمة ظاهرة داخل الحقل.
+  static const String currencyLabel = 'العملة';
+  static const String accountLabel = 'الحساب';
+  static const String dateLabel = 'التاريخ';
   static const String saleEmptyHint = 'امسح دواءً أو أضِفه للبدء';
   static const String addLine = 'إضافة دواء';
   static const String noPricedUnitForProduct = 'لا يوجد سعر لهذا الدواء';

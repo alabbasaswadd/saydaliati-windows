@@ -5,13 +5,15 @@ import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/core/offline/sync/sync_service.dart';
 import 'package:saydaliati/core/theme/app_semantic_colors.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
+import 'package:saydaliati/features/notifications/presentation/widgets/notification_bell.dart';
 import 'package:saydaliati/shared/widgets/dialogs/app_dialogs.dart';
 import 'package:window_manager/window_manager.dart';
 
 /// Custom 40-px title bar for the desktop shell.
 ///
 /// Layout (LTR, Windows-standard):
-///   LEFT: Drag area + search          RIGHT: Sync badge | Window controls
+///   LEFT: Drag area                   RIGHT: Exchange rate | Notifications |
+///                                            Sync badge | Window controls
 ///
 /// The title bar lives in [Directionality.ltr] so window controls stay in the
 /// top-right corner regardless of the app's RTL locale.
@@ -105,6 +107,10 @@ class _DesktopTitleBarState extends ConsumerState<DesktopTitleBar>
 
             const ExchangeRateHeader(),
             const SizedBox(width: AppSpacing.xs),
+
+            // Notification bell — one entry point for the whole app, in the
+            // header, instead of a bell repeated in each page's AppBar.
+            const NotificationBell(compact: true),
 
             // Pending sync badge
             if (pending > 0)

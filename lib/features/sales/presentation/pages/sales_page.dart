@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:saydaliati/features/notifications/presentation/widgets/notification_bell.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:saydaliati/features/accounts/account_providers.dart';
 import 'package:saydaliati/features/accounts/domain/entities/account.dart';
@@ -8,7 +7,6 @@ import 'package:saydaliati/features/currencies/presentation/widgets/currency_pic
 import 'package:saydaliati/features/customers/presentation/widgets/customer_picker_field.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/core/enums/payment_method.dart';
-import 'package:saydaliati/core/offline/connectivity/work_mode.dart';
 import 'package:saydaliati/core/offline/sync/sync_service.dart';
 import 'package:saydaliati/core/utils/app_date.dart';
 import 'package:saydaliati/core/theme/app_semantic_colors.dart';
@@ -41,11 +39,13 @@ import 'package:saydaliati/shared/widgets/cards/invoice_total_badge.dart';
 import 'package:saydaliati/shared/widgets/dialogs/app_dialogs.dart';
 import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
-import 'package:saydaliati/shared/widgets/filters/filter_bar.dart';
 import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
 import 'package:trina_grid/trina_grid.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_date_picker.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_number_field.dart';
+import 'package:saydaliati/features/shortcuts/domain/shortcut_action.dart';
+import 'package:saydaliati/features/shortcuts/presentation/shortcuts_scope.dart';
+import 'package:saydaliati/shared/widgets/inputs/app_toolbar_field.dart';
 import 'package:saydaliati/shared/widgets/states/app_states.dart';
 
 /// One receipt line held in memory (there is no cart on the backend).
@@ -105,6 +105,7 @@ class _SingleSaleScaffold extends ConsumerStatefulWidget {
     this.queuedId,
     this.queuedPayload,
     this.standalone = true,
+    this.active = true,
     this.onDirtyChanged,
     super.key,
   });
@@ -113,6 +114,11 @@ class _SingleSaleScaffold extends ConsumerStatefulWidget {
   final String? queuedId;
   final Map<String, dynamic>? queuedPayload;
   final bool standalone;
+
+  /// التاب المعروض حالياً. التابات المخفيّة تبقى حيّة داخل [IndexedStack]،
+  /// فلو سجّلت كلها معالجات الاختصارات لتنازعت عليها — النشط وحده يسجّل.
+  final bool active;
+
   final ValueChanged<bool>? onDirtyChanged;
 
   @override
@@ -121,6 +127,26 @@ class _SingleSaleScaffold extends ConsumerStatefulWidget {
 
 class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
   final List<_PosLine> _lines = [];
+
+  /// ربط اختصارات الفاتورة بعمر هذا التاب (يُسجَّل وهو نشط فقط).
+  late final ShortcutRegistration _shortcuts = ShortcutRegistration(ref, this);
+  bool _shortcutsBound = false;
+
+  /// مدير شبكة الأسطر — تحتاجه اختصارات «حذف السطر» و«تعديل الكمية» لمعرفة
+  /// السطر المحدَّد حالياً.
+  TrinaGridStateManager? _grid;
+
+  /// السطر المحدَّد حالياً (بمعرّف [_lineId]).
+  ///
+  /// أي تغيير في الأسطر يبدّل بصمة [_gridKey] فتُعاد الشبكة من الصفر ويضيع
+  /// تحديدها الداخلي — لذا نحتفظ بالمحدَّد هنا ونعيد ضبطه بعد كل بناء. بهذا
+  /// يصير السطر المضاف محدَّداً تلقائياً فتعمل اختصارات الكمية والحذف عليه فوراً.
+  String? _currentLineId;
+
+  /// آخر قيم بناء يحتاجها الحفظ/الإضافة من خارج دورة البناء (الاختصارات).
+  List<Medicine> _lastCatalog = const [];
+  String? _lastWarehouseId;
+  Currency? _lastBase;
   DateTime _saleDate = DateTime.now();
   String? _currencyId;
   String? _customerId;
@@ -130,6 +156,183 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
   bool _isPrescription = false;
   bool _submitting = false;
   bool _prefilled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncShortcuts();
+  }
+
+  @override
+  void didUpdateWidget(covariant _SingleSaleScaffold oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.active != widget.active) _syncShortcuts();
+  }
+
+  @override
+  void dispose() {
+    _grid?.removeListener(_onGridSelectionChanged);
+    _shortcuts.dispose();
+    super.dispose();
+  }
+
+  /// التاب النشط يملك اختصارات الفاتورة؛ الخامل يتخلّى عنها.
+  void _syncShortcuts() {
+    if (widget.active == _shortcutsBound) return;
+    _shortcutsBound = widget.active;
+    if (!widget.active) {
+      _shortcuts.dispose();
+      return;
+    }
+    _shortcuts.bind({
+      ShortcutAction.invoiceSave: () => _submit(_lastWarehouseId, _lastBase),
+      ShortcutAction.invoiceCancel: _clearInvoice,
+      ShortcutAction.invoiceAddItem: () =>
+          _pickMedicineForLine(_lastCatalog, null),
+      ShortcutAction.invoiceDeleteLine: _deleteCurrentLine,
+      ShortcutAction.invoiceEditQty: _editCurrentQuantity,
+      ShortcutAction.invoicePickCustomer: _pickCustomerByShortcut,
+      ShortcutAction.invoicePickCurrency: _pickCurrencyByShortcut,
+      ShortcutAction.invoicePrescription: () =>
+          setState(() => _isPrescription = !_isPrescription),
+    });
+  }
+
+  // ─── إجراءات الاختصارات ─────────────────────────────────────────────────
+
+  /// يفرّغ أسطر الفاتورة بعد تأكيد (لا يمسّ التاريخ/العملة/العميل).
+  Future<void> _clearInvoice() async {
+    if (_lines.isEmpty) return;
+    final ok = await showConfirmationDialog(
+      context,
+      title: 'إلغاء الفاتورة؟',
+      message: 'ستُحذف كل أسطر هذه الفاتورة.',
+      confirmLabel: 'إلغاء الفاتورة',
+    );
+    if (!ok || !mounted) return;
+    setState(_lines.clear);
+  }
+
+  /// السطر الذي تعمل عليه اختصارات السطر.
+  ///
+  /// الأولوية لمؤشّر الشبكة، ثم [_currentLineId] (الحالة بين إعادة بناء الشبكة
+  /// وإعادة ضبط تحديدها)، وإلا **آخر سطر** — فالمؤشّر حين يكون على صف الإضافة
+  /// أو لا تحديد أصلاً، المقصود عملياً هو السطر الذي أُضيف للتو.
+  _PosLine? get _currentLine {
+    final fromGrid = _grid?.currentRow?.cells[_fId]?.value?.toString();
+    final id =
+        (fromGrid != null && fromGrid != _newRowId) ? fromGrid : _currentLineId;
+    final selected =
+        id == null ? null : _lines.where((l) => _lineId(l) == id).firstOrNull;
+    return selected ?? _lines.lastOrNull;
+  }
+
+  /// يجعل [line] هو السطر المحدَّد — يُستدعى بعد اختيار مادة فيصبح السطر
+  /// الجديد جاهزاً لاختصارات الكمية والحذف بلا نقرة إضافية.
+  void _selectLine(_PosLine line) => _currentLineId = _lineId(line);
+
+  /// يربط مدير الشبكة الجديد (كل إعادة بناء تعطي مديراً جديداً) ويعيد التحديد.
+  void _attachGrid(TrinaGridStateManager manager) {
+    _grid?.removeListener(_onGridSelectionChanged);
+    _grid = manager;
+    manager.addListener(_onGridSelectionChanged);
+    _restoreSelection();
+  }
+
+  /// يتابع تحديد المستخدم بالفأرة/الأسهم حتى لا يضيع عند إعادة البناء.
+  void _onGridSelectionChanged() {
+    final id = _grid?.currentRow?.cells[_fId]?.value?.toString();
+    if (id == null || id == _newRowId) return;
+    _currentLineId = id;
+  }
+
+  /// يعيد ضبط الخلية الحالية على السطر المحفوظ بعد بناء الشبكة.
+  void _restoreSelection() {
+    final id = _currentLineId;
+    final grid = _grid;
+    if (id == null || grid == null) return;
+
+    // بعد اكتمال الإطار: الصفوف لم تُركَّب بعد أثناء onLoaded.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !identical(_grid, grid)) return;
+      _focusQuantityCell(grid, id, startEditing: false);
+    });
+  }
+
+  /// ينقل الخلية الحالية إلى خلية كمية السطر [lineId]، ويفتحها للتحرير عند
+  /// [startEditing]. يعيد `false` إن لم يعد السطر موجوداً في الشبكة.
+  bool _focusQuantityCell(
+    TrinaGridStateManager grid,
+    String lineId, {
+    required bool startEditing,
+  }) {
+    final index = grid.refRows
+        .indexWhere((r) => r.cells[_fId]?.value?.toString() == lineId);
+    if (index < 0) return false;
+    final cell = grid.refRows[index].cells[_fQty];
+    if (cell == null) return false;
+
+    // الشبكة قد تكون بلا تركيز (أُغلق منتقي الدواء للتو)، وبلا تركيزها لا
+    // تستقبل خلية التحرير ما يُكتَب. وطلب التركيز يتأخّر إطاراً كاملاً، فيأتي
+    // فتح التحرير بعده لا معه.
+    if (startEditing) grid.setKeepFocus(true);
+    grid.setCurrentCell(cell, index);
+    if (!startEditing) return true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !identical(_grid, grid)) return;
+      grid.setEditing(true);
+    });
+    return true;
+  }
+
+  void _deleteCurrentLine() {
+    final line = _currentLine;
+    if (line == null) {
+      AppSnackbar.info(context, 'لا توجد أسطر في الفاتورة');
+      return;
+    }
+    // التحديد ينتقل للسطر السابق (أو التالي) حتى يبقى الحذف المتتابع ممكناً.
+    final index = _lines.indexOf(line);
+    final next = index > 0
+        ? _lines[index - 1]
+        : (_lines.length > 1 ? _lines[index + 1] : null);
+    setState(() => _lines.remove(line));
+    _currentLineId = next == null ? null : _lineId(next);
+  }
+
+  /// ينقل التحرير إلى خلية الكمية في السطر المحدَّد.
+  void _editCurrentQuantity() {
+    final grid = _grid;
+    final line = _currentLine;
+    if (grid == null || line == null) {
+      AppSnackbar.info(context, 'لا توجد أسطر في الفاتورة');
+      return;
+    }
+    _focusQuantityCell(grid, _lineId(line), startEditing: true);
+  }
+
+  /// تغيير عملة الفاتورة من الاختصار — نفس قائمة حقل العملة في الشريط
+  /// (الأساسية + كل عملة لها سعر صرف موجب)، ثم يُعاد تسعير الأسطر.
+  Future<void> _pickCurrencyByShortcut() async {
+    final currencies = ref.read(currenciesProvider).value ?? const <Currency>[];
+    final selectable = currencies
+        .where((c) => c.isBaseCurrency || c.exchangeRate > 0)
+        .toList();
+    final picked = await showCurrencyPicker(context, selectable);
+    if (picked == null || !mounted) return;
+    setState(() {
+      _currencyId = picked.id;
+      _repriceLines(_lastBase, currencies);
+    });
+  }
+
+  Future<void> _pickCustomerByShortcut() async {
+    final customers = ref.read(customersProvider).value ?? const <Customer>[];
+    final picked = await showCustomerPicker(context, customers);
+    if (picked == null || !mounted) return;
+    setState(() => _customerId = picked.id);
+  }
 
   bool get _isEdit => widget.saleToEdit != null;
   bool get _isQueuedEdit => widget.queuedId != null;
@@ -206,6 +409,7 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
         _lines.isNotEmpty &&
         _lines.last.medicine.id == medicine.id) {
       setState(() => _lines.last.quantity += 1);
+      _selectLine(_lines.last);
       return;
     }
     if (medicine.units.isEmpty) {
@@ -263,10 +467,13 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
         .firstOrNull;
     if (existing != null) {
       setState(() => existing.quantity += 1);
+      _selectLine(existing);
       return;
     }
     final line = _PosLine(medicine: med, unit: unit, unitPrice: price);
     setState(() => _lines.add(line));
+    // السطر المضاف يصير المحدَّد فوراً — فاختصار تعديل الكمية يعمل عليه مباشرة.
+    _selectLine(line);
     _loadBatches(line); // fetch expiry batches; default to nearest
   }
 
@@ -660,7 +867,6 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
     final base = ref.watch(baseCurrencyProvider);
 
     final isMainPos = !_isEdit && !_isQueuedEdit;
-    final offline = !ref.watch(effectiveOnlineProvider);
     final pending = ref.watch(pendingOperationsCountProvider).value ?? 0;
 
     // يبلّغ حاوية التابات (إن وُجدت) إن كانت هذه الفاتورة تحمل أسطراً غير
@@ -700,37 +906,26 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
     if (!widget.standalone) return body;
 
     return Scaffold(
+      // عنوان الشاشة يظهر فقط عند تعديل فاتورة قائمة (سياق يحتاج توضيحاً)؛
+      // فاتورة البيع الجديدة بلا عنوان — الشريط العلوي يُعرِّف نفسه بحقوله.
+      // الإشعارات انتقلت لشريط العنوان العلوي، وتبديل الأوفلاين للقائمة
+      // الجانبية، فلم يبقَ هنا إلا الفواتير غير المرحّلة عند وجودها.
       appBar: AppBar(
-        title: Text(_isEdit || _isQueuedEdit
-            ? AppStrings.editSale
-            : AppStrings.newSale),
+        title: Text(_isEdit || _isQueuedEdit ? AppStrings.editSale : ''),
         actions: [
-          const NotificationBell(),
-          if (isMainPos) ...[
-            // Manual online/offline toggle, right in the POS header.
-            IconButton(
-              tooltip: AppStrings.offlineToggleTooltip,
-              icon: Icon(offline ? Icons.cloud_off : Icons.cloud_done_outlined,
-                  color: offline ? Colors.orange.shade800 : null),
-              onPressed: () => ref
-                  .read(workModeControllerProvider.notifier)
-                  .toggleOffline(
-                      ref.read(workModeControllerProvider) != WorkMode.offline),
-            ),
+          if (isMainPos && pending > 0)
             // The "cloud" of un-synced invoices — shown ONLY when some exist.
-            if (pending > 0)
-              IconButton(
-                tooltip: AppStrings.pendingInvoices,
-                icon: Badge(
-                  label: Text('$pending'),
-                  child: const Icon(Icons.cloud_queue),
-                ),
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                      builder: (_) => const PendingInvoicesPage()),
-                ),
+            IconButton(
+              tooltip: AppStrings.pendingInvoices,
+              icon: Badge(
+                label: Text('$pending'),
+                child: const Icon(Icons.cloud_queue),
               ),
-          ],
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                    builder: (_) => const PendingInvoicesPage()),
+              ),
+            ),
         ],
       ),
       body: body,
@@ -751,6 +946,11 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
         '';
     final accounts = ref.watch(accountsListProvider).value ?? const <Account>[];
     _suggestPaymentAccountForCurrency(_effectiveCurrencyId(base), accounts, base?.id);
+
+    // اختصارات الفاتورة تُستدعى من خارج دورة البناء، فتحتاج آخر قيم معروفة.
+    _lastCatalog = catalog;
+    _lastWarehouseId = warehouseId;
+    _lastBase = base;
 
     return BarcodeScannerListener(
       onScan: (code) {
@@ -785,11 +985,12 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
                       runSpacing: AppSpacing.sm,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        _dateChip(theme),
+                        _dateField(),
                         SizedBox(
                           width: 170,
                           child: CurrencyPickerField(
-                            label: AppStrings.selectCurrency,
+                            compact: true,
+                            label: AppStrings.currencyLabel,
                             // عملات قابلة للاختيار فقط: الأساسية + أي عملة سعر
                             // صرفها موجب (عملة بلا سعر صرف تُخفى لأن التحويل
                             // لا يعمل معها).
@@ -808,6 +1009,7 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
                         SizedBox(
                           width: 220,
                           child: CustomerPickerField(
+                            compact: true,
                             label: AppStrings.customer,
                             hint: AppStrings.noCustomer,
                             customers: ref.watch(customersProvider).value ??
@@ -818,37 +1020,21 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
                             onSelected: (c) => setState(() => _customerId = c.id),
                           ),
                         ),
-                    _toolbarMenu<PaymentMethod>(
-                      icon: Icons.account_balance_wallet_outlined,
-                      tooltip: AppStrings.paymentMethod,
-                      label: _payMethod.label,
-                      items: [
-                        for (final m in PaymentMethod.values)
-                          PopupMenuItem(value: m, child: Text(m.label)),
-                      ],
-                      onSelected: (m) => setState(() => _payMethod = m),
-                    ),
-                    if (_payMethod != PaymentMethod.credit)
-                      SizedBox(
-                        width: 220,
-                        child: AccountPickerField(
-                          label: AppStrings.selectAccount,
-                          accounts: accounts,
-                          selectedId: _paymentAccountId,
-                          onSelected: (a) =>
-                              setState(() => _paymentAccountId = a.id),
-                        ),
-                      ),
-                    // وصفة طبية؟ عند التفعيل يصبح اختيار العميل إجبارياً.
-                    FilterChip(
-                      label: const Text(AppStrings.prescriptionLabel),
-                      avatar: _isPrescription
-                          ? null
-                          : Icon(Icons.description_outlined,
-                              size: AppSizes.iconSm, color: theme.hintColor),
-                      selected: _isPrescription,
-                      onSelected: (v) => setState(() => _isPrescription = v),
-                    ),
+                        _paymentMethodField(),
+                        if (_payMethod != PaymentMethod.credit)
+                          SizedBox(
+                            width: 220,
+                            child: AccountPickerField(
+                              compact: true,
+                              label: AppStrings.accountLabel,
+                              accounts: accounts,
+                              selectedId: _paymentAccountId,
+                              onSelected: (a) =>
+                                  setState(() => _paymentAccountId = a.id),
+                            ),
+                          ),
+                        // وصفة طبية؟ عند التفعيل يصبح اختيار العميل إجبارياً.
+                        _prescriptionToggle(theme),
                       ],
                     ),
                   ),
@@ -863,7 +1049,9 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
             ],
           ),
         ),
-        const Divider(height: 1),
+        // فاصل حقيقي بين الشريط العلوي وبنود الفاتورة — خطّ بلون الحدود
+        // المحايد نفسه لا لون الـ divider الباهت، فيُقرأ الشريطان كمنطقتين.
+        Container(height: 1, color: toolbarFieldBorderColor(context)),
         // الجدول دائم الظهور ويملأ المساحة كاملة: آخر صف فيه هو "صف جديد"
         // تُختار المادة من خليته.
         Expanded(
@@ -902,6 +1090,7 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
       setState(() {
         final fresh = _lines.removeLast()..quantity = line.quantity;
         _lines[index] = fresh;
+        _selectLine(fresh);
       });
     }
   }
@@ -1142,6 +1331,9 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
         }),
       ],
       showColumnFilter: false,
+      // يُحتفَظ بالمدير لاختصارَي «حذف السطر» و«تعديل الكمية» (يحتاجان الصف
+      // المحدَّد حالياً).
+      onLoaded: _attachGrid,
       onChanged: (e) {
         final l = lineOf(e.row);
         if (l == null) return;
@@ -1182,28 +1374,34 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
     });
   }
 
-  /// عنصر شريط الأدوات — يفوّض للمكوّن المشترك [AppMenuChip].
-  Widget _toolbarMenu<T>({
-    required IconData icon,
-    required String label,
-    required List<PopupMenuEntry<T>> items,
-    required ValueChanged<T> onSelected,
-    String? tooltip,
-  }) {
-    return AppMenuChip<T>(
-      icon: icon,
-      label: label,
-      items: items,
-      onSelected: onSelected,
-      tooltip: tooltip,
+  /// طريقة الدفع — نفس غلاف حقول الشريط [AppToolbarField]، والنقر يفتح قائمة
+  /// الطرق. التفاعل من [PopupMenuButton] الخارجي فلا يأخذ الحقل نقرة خاصة به.
+  Widget _paymentMethodField() {
+    return PopupMenuButton<PaymentMethod>(
+      tooltip: AppStrings.paymentMethod,
+      onSelected: (m) => setState(() => _payMethod = m),
+      itemBuilder: (_) => [
+        for (final m in PaymentMethod.values)
+          PopupMenuItem(value: m, child: Text(m.label)),
+      ],
+      child: AppToolbarField(
+        width: 150,
+        icon: Icons.account_balance_wallet_outlined,
+        label: AppStrings.paymentMethod,
+        value: _payMethod.label,
+        trailing: toolbarTrailingIcon(context, Icons.arrow_drop_down),
+      ),
     );
   }
 
-  /// شريحة تاريخ الفاتورة — بنفس أسلوب [AppMenuChip] (حدّ + أيقونة)، تفتح
-  /// منتقي تاريخ عند الضغط. الافتراضي تاريخ اليوم (قيمة [_saleDate] الابتدائية).
-  Widget _dateChip(ThemeData theme) {
-    return InkWell(
-      borderRadius: AppRadius.brMd,
+  /// تاريخ الفاتورة — نفس غلاف حقول الشريط، يفتح منتقي تاريخ عند الضغط.
+  /// الافتراضي تاريخ اليوم (قيمة [_saleDate] الابتدائية).
+  Widget _dateField() {
+    return AppToolbarField(
+      width: 140,
+      icon: Icons.calendar_today_outlined,
+      label: AppStrings.dateLabel,
+      value: AppDate.ymd(_saleDate),
       onTap: () async {
         final picked = await showDatePicker(
           context: context,
@@ -1213,24 +1411,16 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
         );
         if (picked != null) setState(() => _saleDate = picked);
       },
-      child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 10),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          border: Border.all(color: context.semantic.border),
-          borderRadius: AppRadius.brMd,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.calendar_today_outlined,
-                size: AppSizes.iconSm, color: theme.colorScheme.primary),
-            const SizedBox(width: AppSpacing.xs),
-            Text(AppDate.ymd(_saleDate), style: theme.textTheme.bodyMedium),
-          ],
-        ),
-      ),
+    );
+  }
+
+  /// مفتاح «وصفة طبية» — زرّ حالة لا حقل، لكنه مبنيّ يدوياً بنفس مقاسات حقول
+  /// الشريط (الارتفاع والزاوية والحدّ ولون النص) لأن `FilterChip` يفرض زاوية
+  /// ثيم الشرائح وحشوتها فيخرج أكثر استدارة من جيرانه على السطر نفسه.
+  Widget _prescriptionToggle(ThemeData theme) {
+    return _PrescriptionToggle(
+      selected: _isPrescription,
+      onChanged: (v) => setState(() => _isPrescription = v),
     );
   }
 
@@ -1287,6 +1477,21 @@ class _SalesTabsHostState extends ConsumerState<_SalesTabsHost> {
   int _activeIndex = 0;
   final Map<int, bool> _dirty = {};
 
+  /// «فاتورة جديدة» تخصّ الحاوية لا تاباً بعينه، فتُسجَّل هنا.
+  late final ShortcutRegistration _shortcuts = ShortcutRegistration(ref, this);
+
+  @override
+  void initState() {
+    super.initState();
+    _shortcuts.bind({ShortcutAction.invoiceNewTab: _addTab});
+  }
+
+  @override
+  void dispose() {
+    _shortcuts.dispose();
+    super.dispose();
+  }
+
   void _addTab() {
     setState(() {
       _dirty[_nextId] = false;
@@ -1328,39 +1533,17 @@ class _SalesTabsHostState extends ConsumerState<_SalesTabsHost> {
 
   @override
   Widget build(BuildContext context) {
-    final offline = !ref.watch(effectiveOnlineProvider);
     final pending = ref.watch(pendingOperationsCountProvider).value ?? 0;
 
     return Scaffold(
+      // بلا عنوان «فاتورة بيع» وبلا أيقونات: شريط التطبيق مطويّ الارتفاع
+      // (toolbarHeight: 0) فلا يبقى شريط أبيض فارغ فوق التابات — التابات هي
+      // أعلى الشاشة مباشرة. زر الفواتير غير المرحّلة انتقل داخل شريط التابات.
       appBar: AppBar(
-        title: const Text(AppStrings.newSale),
-        actions: [
-          const NotificationBell(),
-          IconButton(
-            tooltip: AppStrings.offlineToggleTooltip,
-            icon: Icon(offline ? Icons.cloud_off : Icons.cloud_done_outlined,
-                color: offline ? Colors.orange.shade800 : null),
-            onPressed: () => ref
-                .read(workModeControllerProvider.notifier)
-                .toggleOffline(
-                    ref.read(workModeControllerProvider) != WorkMode.offline),
-          ),
-          if (pending > 0)
-            IconButton(
-              tooltip: AppStrings.pendingInvoices,
-              icon: Badge(
-                label: Text('$pending'),
-                child: const Icon(Icons.cloud_queue),
-              ),
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                    builder: (_) => const PendingInvoicesPage()),
-              ),
-            ),
-        ],
+        toolbarHeight: 0,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(42),
-          child: _tabStrip(context),
+          child: _tabStrip(context, pending),
         ),
       ),
       body: IndexedStack(
@@ -1370,6 +1553,7 @@ class _SalesTabsHostState extends ConsumerState<_SalesTabsHost> {
             _SingleSaleScaffold(
               key: ValueKey(id),
               standalone: false,
+              active: _tabIds[_activeIndex] == id,
               onDirtyChanged: (v) => _setDirty(id, v),
             ),
         ],
@@ -1379,7 +1563,7 @@ class _SalesTabsHostState extends ConsumerState<_SalesTabsHost> {
 
   /// شريط التابات بأسلوب سطح المكتب: تابات قابلة للسحب أفقياً + زر «+» لفاتورة
   /// جديدة في نهاية الشريط.
-  Widget _tabStrip(BuildContext context) {
+  Widget _tabStrip(BuildContext context, int pending) {
     final theme = Theme.of(context);
     return Container(
       height: 42,
@@ -1401,6 +1585,19 @@ class _SalesTabsHostState extends ConsumerState<_SalesTabsHost> {
             icon: const Icon(Icons.add, size: 20),
             onPressed: _addTab,
           ),
+          if (pending > 0)
+            IconButton(
+              tooltip: AppStrings.pendingInvoices,
+              visualDensity: VisualDensity.compact,
+              icon: Badge(
+                label: Text('$pending'),
+                child: const Icon(Icons.cloud_queue, size: 20),
+              ),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                    builder: (_) => const PendingInvoicesPage()),
+              ),
+            ),
         ],
       ),
     );
@@ -1832,6 +2029,76 @@ class _AddStockDialogState extends State<_AddStockDialog> {
                     ),
                   ),
                 ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+/// مفتاح «وصفة طبية» بمقاسات [AppToolbarField] نفسها: الحالة المحدَّدة أخضر
+/// هادئ (حدّ + تعبئة 8%)، والتمرير يُلمّح بالحدّ كبقية عناصر الشريط.
+class _PrescriptionToggle extends StatefulWidget {
+  const _PrescriptionToggle({required this.selected, required this.onChanged});
+
+  final bool selected;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  State<_PrescriptionToggle> createState() => _PrescriptionToggleState();
+}
+
+class _PrescriptionToggleState extends State<_PrescriptionToggle> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final primary = theme.colorScheme.primary;
+    final selected = widget.selected;
+
+    final borderColor = selected
+        ? primary.withValues(alpha: 0.55)
+        : _hovered
+            ? primary.withValues(alpha: 0.45)
+            : toolbarFieldBorderColor(context);
+    final contentColor = selected
+        ? primary
+        : _hovered
+            ? primary
+            : context.semantic.textSecondary;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: () => widget.onChanged(!selected),
+        child: Container(
+          height: AppSizes.toolbarFieldHeight,
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm + 2),
+          decoration: BoxDecoration(
+            color: selected
+                ? primary.withValues(alpha: 0.08)
+                : theme.colorScheme.surface,
+            border: Border.all(color: borderColor),
+            borderRadius: toolbarFieldRadius,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.description_outlined,
+                  size: AppSizes.iconXs, color: contentColor),
+              const SizedBox(width: AppSpacing.sm),
+              Text(
+                AppStrings.prescriptionLabel,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  height: 1.25,
+                  color: selected ? primary : toolbarFieldTextColor(context),
+                ),
               ),
             ],
           ),

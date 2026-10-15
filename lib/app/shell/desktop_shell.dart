@@ -10,6 +10,8 @@ import 'package:saydaliati/features/announcements/domain/announcement.dart';
 import 'package:saydaliati/features/announcements/presentation/widgets/announcement_dialog.dart';
 import 'package:saydaliati/features/catalog/catalog_providers.dart';
 import 'package:saydaliati/features/medicines/presentation/widgets/catalog_loading_overlay.dart';
+import 'package:saydaliati/features/onboarding/presentation/welcome_tour.dart';
+import 'package:saydaliati/features/shortcuts/presentation/shortcuts_scope.dart';
 import 'package:saydaliati/shared/widgets/offline_banner.dart';
 
 /// The desktop shell: custom title bar + collapsible sidebar + content area.
@@ -39,8 +41,19 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final prefs = await SharedPreferences.getInstance();
       if (mounted) setState(() => _sidebarExpanded = prefs.getBool(_prefKey) ?? true);
+      // جولة الترحيب أولاً عند أول فتح، ثم إعلانات الإصدار — حتى لا تتزاحم
+      // نافذتان على المستخدم الجديد في اللحظة نفسها.
+      await _maybeShowWelcome();
+      if (!mounted) return;
       _showAnnouncements();
     });
+  }
+
+  /// لمحة المزايا + شرح الاختصارات، مرّة واحدة عند أول فتح.
+  Future<void> _maybeShowWelcome() async {
+    if (await WelcomeTour.isDone()) return;
+    if (!mounted) return;
+    await WelcomeTour.show(context, ref);
   }
 
   Future<void> _showAnnouncements() async {
@@ -79,8 +92,9 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
     final sync = ref.watch(dataSyncControllerProvider);
     final firstLoading = mirrorEmpty && sync.running;
 
-    return Focus(
-        autofocus: true,
+    // ShortcutsScope يلتقط المفاتيح قبل الشاشات فتعمل الاختصارات من أي مكان
+    // داخل القشرة (شاشات الحوار المعروضة فوقها تأخذ تركيزها فلا تتأثّر).
+    return ShortcutsScope(
         child: Stack(
           children: [
             Scaffold(

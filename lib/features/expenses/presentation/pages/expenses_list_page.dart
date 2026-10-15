@@ -105,6 +105,11 @@ class ExpensesListPage extends ConsumerWidget {
                   SimpleEntityColumn(AppStrings.expensePaymentSource,
                       (e) => e.paymentAccountName,
                       width: 130),
+                  // هل حرّك هذا المصروف الحسابات فعلاً؟ يتحرّك فقط إن كان
+                  // تصنيفه مربوطاً بحساب — وإلا فهو تتبّع بحت.
+                  SimpleEntityColumn('الحسابات',
+                      (e) => e.isPosted ? 'مُرحَّل' : 'لا يؤثّر',
+                      width: 100),
                   SimpleEntityColumn(AppStrings.expenseNote, (e) => e.note, width: 220),
                 ],
                 onEdit: (e) => _addOrEdit(context, ref, categories, e),

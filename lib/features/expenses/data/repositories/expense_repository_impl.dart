@@ -69,7 +69,10 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
         spentOn: DateTime.tryParse('${j['spentOn']}') ?? DateTime(1970),
         note: (j['note'] ?? '').toString(),
         amount: ((j['amount'] ?? 0) as num).toDouble(),
+        baseAmount: ((j['baseAmount'] ?? 0) as num).toDouble(),
+        currencyId: (j['currencyId'] ?? '').toString(),
         currencyCode: (j['currencyCode'] ?? '').toString(),
+        journalEntryId: j['journalEntryId']?.toString(),
         paymentAccountId: (j['paymentAccountId'] ?? '').toString(),
         paymentAccountName: (j['paymentAccountName'] ?? '').toString(),
       );

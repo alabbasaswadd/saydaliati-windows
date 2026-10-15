@@ -37,6 +37,9 @@ import 'package:saydaliati/features/reports/presentation/pages/stocktake_report_
 import 'package:saydaliati/features/sales/presentation/pages/sale_returns_list_page.dart';
 import 'package:saydaliati/features/sales/presentation/pages/sales_page.dart';
 import 'package:saydaliati/features/settings/presentation/pages/settings_page.dart';
+import 'package:saydaliati/features/shortcuts/presentation/pages/shortcuts_page.dart';
+import 'package:saydaliati/features/sales/presentation/pages/sales_list_page.dart';
+import 'package:saydaliati/features/purchases/presentation/pages/purchases_list_page.dart';
 import 'package:saydaliati/features/splash/splash_page.dart';
 import 'package:saydaliati/features/stock/presentation/pages/stock_page.dart';
 import 'package:saydaliati/features/stock_movements/presentation/pages/stock_movements_page.dart';
@@ -238,11 +241,16 @@ GoRouter goRouter(Ref ref) {
             ],
           ),
 
-          // ── System (indices 17-20) ─────────────────────────────────────
+          // ── System (indices 17-21) ─────────────────────────────────────
           branch(AppRoutes.notifications, const NotificationsPage()),
           branch(AppRoutes.tutorials, const TutorialsPage()),
           branch(AppRoutes.settings, const SettingsPage()),
           branch(AppRoutes.profile, const AccountPage()),
+          // يُضاف في النهاية عمداً: رقم الفرع هو ما يعتمده الشريط الجانبي،
+          // فالإدراج في المنتصف يزيح أرقام ما بعده.
+          branch(AppRoutes.shortcuts, const ShortcutsPage()),
+          branch(AppRoutes.salesInvoices, const SalesListPage()),
+          branch(AppRoutes.purchaseInvoices, const PurchasesListPage()),
         ],
       ),
     ],

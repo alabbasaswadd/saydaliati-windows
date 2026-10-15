@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:saydaliati/app/router/app_routes.dart';
+import 'package:saydaliati/core/constants/app_strings.dart';
+import 'package:saydaliati/core/offline/connectivity/work_mode.dart';
 import 'package:saydaliati/core/theme/app_semantic_colors.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
-import 'package:saydaliati/features/notifications/notification_center_providers.dart';
 
 // ─── Data model ────────────────────────────────────────────────────────────
 
@@ -14,7 +15,6 @@ class _NavItem {
     required this.icon,
     required this.selectedIcon,
     this.route,
-    this.hasBadge = false,
   });
 
   /// Branch index in the StatefulShellRoute (selection + goBranch).
@@ -27,7 +27,6 @@ class _NavItem {
   /// the individual reports) and selection matches the location, not the
   /// branch index.
   final String? route;
-  final bool hasBadge;
 }
 
 class _NavSection {
@@ -57,6 +56,20 @@ const _mainSections = <_NavSection>[
       label: 'المشتريات',
       icon: Icons.local_shipping_outlined,
       selectedIcon: Icons.local_shipping,
+    ),
+    _NavItem(
+      index: 22,
+      label: 'فواتير المبيعات',
+      icon: Icons.receipt_long_outlined,
+      selectedIcon: Icons.receipt_long,
+      route: AppRoutes.salesInvoices,
+    ),
+    _NavItem(
+      index: 23,
+      label: 'فواتير المشتريات',
+      icon: Icons.receipt_outlined,
+      selectedIcon: Icons.receipt,
+      route: AppRoutes.purchaseInvoices,
     ),
     _NavItem(
       index: 7,
@@ -225,8 +238,8 @@ const _mainSections = <_NavSection>[
   ]),
 ];
 
-// عناصر النظام السفلية — قسمان منفصلان بحدّ بينهما: البقية أولاً، والإشعارات
-// أخيراً وحدها في قسمها الخاص (واجهة أنظف).
+// عناصر النظام السفلية — قسمان منفصلان بحدّ بينهما: البقية أولاً، ثم مفتاح
+// وضع الاتصال وحده في القسم الأخير (الإشعارات انتقلت لشريط العنوان العلوي).
 const _bottomItems = <_NavItem>[
   _NavItem(
     index: 18,
@@ -246,15 +259,13 @@ const _bottomItems = <_NavItem>[
     icon: Icons.person_outline,
     selectedIcon: Icons.person,
   ),
+  _NavItem(
+    index: 21,
+    label: 'الاختصارات',
+    icon: Icons.keyboard_outlined,
+    selectedIcon: Icons.keyboard,
+  ),
 ];
-
-const _notificationsItem = _NavItem(
-  index: 17,
-  label: 'الإشعارات',
-  icon: Icons.notifications_outlined,
-  selectedIcon: Icons.notifications,
-  hasBadge: true,
-);
 
 // ─── Widget ────────────────────────────────────────────────────────────────
 
@@ -306,7 +317,6 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final unread = ref.watch(notificationsUnreadCountProvider);
 
     return ClipRect(
       child: AnimatedContainer(
@@ -346,7 +356,7 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
                       children: [
                         for (var i = 0; i < _mainSections.length; i++) ...[
                           if (i > 0) _sectionDivider(context),
-                          _buildSection(_mainSections[i], showLabels, unread),
+                          _buildSection(_mainSections[i], showLabels),
                         ],
                       ],
                     ),
@@ -379,13 +389,7 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
                   padding: const EdgeInsets.fromLTRB(
                     AppSpacing.sm, 0, AppSpacing.sm, AppSpacing.sm,
                   ),
-                  child: _NavItemTile(
-                    item: _notificationsItem,
-                    isSelected: _isSelected(_notificationsItem),
-                    showLabels: showLabels,
-                    badgeCount: unread,
-                    onTap: () => _onTap(_notificationsItem),
-                  ),
+                  child: _OfflineToggleTile(showLabels: showLabels),
                 ),
               ],
             );
@@ -408,7 +412,7 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
 
   /// كتلة قابلة للطي: رأس بسهم دوّار يفتح/يغلق عناصرها. في الوضع المطوي
   /// (أيقونات فقط) لا رؤوس — تُعرض كل العناصر.
-  Widget _buildSection(_NavSection section, bool showLabels, int unread) {
+  Widget _buildSection(_NavSection section, bool showLabels) {
     // الطي هنا يتبع نقرة المستخدم دوماً — حتى لو كانت الكتلة تحوي العنصر
     // المحدّد حالياً (الطي السابق كان يمنع إغلاق كتلة فيها تظليل، فبدا للمستخدم
     // كأن الكتلة "لا تُقفل").
@@ -420,7 +424,7 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
           item: item,
           isSelected: _isSelected(item),
           showLabels: showLabels,
-          badgeCount: item.hasBadge ? unread : 0,
+          badgeCount: 0,
           onTap: () => _onTap(item),
         ),
     ];
@@ -571,6 +575,89 @@ class _SectionHeader extends StatelessWidget {
                 child: Icon(Icons.expand_more, size: 16, color: color),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// مفتاح وضع الاتصال (أونلاين/أوفلاين) في آخر القائمة الجانبية — ليس انتقالاً
+/// لصفحة بل تبديل حالة، فيأخذ شكل عناصر القائمة نفسه (الارتفاع والزاوية
+/// والتمرير) مع لون تحذيري حين يكون العمل دون اتصال.
+class _OfflineToggleTile extends ConsumerStatefulWidget {
+  const _OfflineToggleTile({required this.showLabels});
+
+  final bool showLabels;
+
+  @override
+  ConsumerState<_OfflineToggleTile> createState() => _OfflineToggleTileState();
+}
+
+class _OfflineToggleTileState extends ConsumerState<_OfflineToggleTile> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final offline = !ref.watch(effectiveOnlineProvider);
+    final warning = context.semantic.warning;
+    final color = offline ? warning : theme.colorScheme.onSurfaceVariant;
+
+    final icon = Icon(
+      offline ? Icons.cloud_off : Icons.cloud_done_outlined,
+      size: AppSizes.iconMd,
+      color: color,
+    );
+
+    return Tooltip(
+      message: AppStrings.offlineToggleTooltip,
+      preferBelow: false,
+      waitDuration: const Duration(milliseconds: 400),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          onTap: () => ref.read(workModeControllerProvider.notifier).toggleOffline(
+                ref.read(workModeControllerProvider) != WorkMode.offline,
+              ),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            height: AppDesktopSizes.sidebarItemHeight,
+            margin: const EdgeInsets.symmetric(vertical: 1),
+            decoration: BoxDecoration(
+              color: offline
+                  ? warning.withValues(alpha: 0.12)
+                  : _hovered
+                      ? theme.colorScheme.primary.withValues(alpha: 0.06)
+                      : Colors.transparent,
+              borderRadius: AppRadius.brSm,
+            ),
+            child: Row(
+              children: [
+                if (widget.showLabels)
+                  SizedBox(
+                    width: AppDesktopSizes.sidebarCollapsed - AppSpacing.sm * 2,
+                    child: Center(child: icon),
+                  )
+                else
+                  Expanded(child: Center(child: icon)),
+                if (widget.showLabels)
+                  Expanded(
+                    child: Text(
+                      offline ? AppStrings.workingOffline : 'متّصل بالإنترنت',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: offline ? warning : theme.colorScheme.onSurface,
+                        fontWeight:
+                            offline ? FontWeight.w600 : FontWeight.w400,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),

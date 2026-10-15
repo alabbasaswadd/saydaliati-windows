@@ -1,6 +1,11 @@
-/// سجلّ مصروف محفوظ — تتبّع بحت بهذه المرحلة، بلا قيد محاسبي (راجع
-/// EXPENSES_PLAN.md §6 للمرحلة اللاحقة). مصدر الدفع حساب حقيقي من دليل
-/// الحسابات (الصندوق/البنك/أي حساب آخر)، لا تعداد ثابت.
+/// سجلّ مصروف محفوظ.
+///
+/// [amount] بعملة المصروف نفسها ([currencyCode]) — هو ما كتبه المستخدم بلا أي
+/// تحويل، وهو ما يُعرَض في الشاشة. [baseAmount] مقابله بالعملة الأساسية،
+/// مُجمَّد منذ الحفظ، للتقارير الموحَّدة والقيد المحاسبي.
+///
+/// [journalEntryId] غير فارغ يعني أن تصنيفه مربوط بحساب فأثّر على الأرصدة
+/// (نقص الصندوق/البنك، وزاد حساب المصروف).
 class Expense {
   const Expense({
     required this.id,
@@ -13,6 +18,9 @@ class Expense {
     required this.currencyCode,
     required this.paymentAccountId,
     required this.paymentAccountName,
+    this.baseAmount = 0,
+    this.currencyId = '',
+    this.journalEntryId,
   });
 
   final String id;
@@ -22,20 +30,28 @@ class Expense {
   final DateTime spentOn;
   final String note;
   final double amount;
+  final double baseAmount;
+  final String currencyId;
   final String currencyCode;
   final String paymentAccountId;
   final String paymentAccountName;
+  final String? journalEntryId;
+
+  /// هل أثّر هذا المصروف على الحسابات فعلاً؟
+  bool get isPosted => journalEntryId != null && journalEntryId!.isNotEmpty;
 }
 
-/// حمولة `POST pharmacy-api/Expense` — [amount] دوماً بعملة الصيدلية الأساسية
-/// (الواجهة تحوِّله قبل الإرسال عبر `convertToBase`)؛ [originalCurrencyId] +
-/// [exchangeRate] هما ما اختاره المستخدم فعلياً، للتدقيق فقط — بنفس نمط فاتورة البيع.
+/// حمولة `POST pharmacy-api/Expense`.
+///
+/// [amount] **بعملة [currencyId] كما كتبه المستخدم** — لا تحويل في الواجهة.
+/// الخادم يشتقّ المقابل بالعملة الأساسية مرّة واحدة ويجمّده.
 class CreateExpenseInput {
   const CreateExpenseInput({
     required this.categoryId,
     required this.spentOn,
     required this.note,
     required this.amount,
+    required this.currencyId,
     required this.paymentAccountId,
     this.originalCurrencyId,
     this.exchangeRate = 1,
@@ -45,6 +61,7 @@ class CreateExpenseInput {
   final DateTime spentOn;
   final String note;
   final double amount;
+  final String currencyId;
   final String paymentAccountId;
   final String? originalCurrencyId;
   final double exchangeRate;
@@ -54,21 +71,24 @@ class CreateExpenseInput {
         'spentOn': spentOn.toIso8601String(),
         'note': note,
         'amount': amount,
-        'currencyId': '00000000-0000-0000-0000-000000000000',
+        'currencyId': currencyId.isEmpty
+            ? '00000000-0000-0000-0000-000000000000'
+            : currencyId,
         'originalCurrencyId': originalCurrencyId,
         'exchangeRate': exchangeRate <= 0 ? 1 : exchangeRate,
         'paymentAccountId': paymentAccountId,
       };
 }
 
-/// حمولة `PUT pharmacy-api/Expense/{id}` — نفس منطق [CreateExpenseInput]؛
-/// عملة التخزين الأساسية للمصروف لا تتغيّر بالتعديل (الباك لا يقبلها هنا).
+/// حمولة `PUT pharmacy-api/Expense/{id}` — نفس منطق [CreateExpenseInput]،
+/// وتقبل تغيير العملة (المبلغ محفوظ بها الآن).
 class UpdateExpenseInput {
   const UpdateExpenseInput({
     required this.categoryId,
     required this.spentOn,
     required this.note,
     required this.amount,
+    required this.currencyId,
     required this.paymentAccountId,
     this.originalCurrencyId,
     this.exchangeRate = 1,
@@ -78,6 +98,7 @@ class UpdateExpenseInput {
   final DateTime spentOn;
   final String note;
   final double amount;
+  final String currencyId;
   final String paymentAccountId;
   final String? originalCurrencyId;
   final double exchangeRate;
@@ -87,6 +108,9 @@ class UpdateExpenseInput {
         'spentOn': spentOn.toIso8601String(),
         'note': note,
         'amount': amount,
+        'currencyId': currencyId.isEmpty
+            ? '00000000-0000-0000-0000-000000000000'
+            : currencyId,
         'originalCurrencyId': originalCurrencyId,
         'exchangeRate': exchangeRate <= 0 ? 1 : exchangeRate,
         'paymentAccountId': paymentAccountId,

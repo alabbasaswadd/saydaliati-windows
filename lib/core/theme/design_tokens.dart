@@ -71,6 +71,7 @@ library design_tokens;
 //   xxl: 32
 //
 // Border radius:
+//   xs:   6
 //   sm:   8
 //   md:   12
 //   lg:   16
@@ -89,7 +90,14 @@ library design_tokens;
 //
 // Button:       height 50px (normal), 40px (small)
 // Input:        height 54px
-// Icon:         18 (sm) / 22 (md) / 28 (lg)
+// Toolbar field: height 48px  (invoice top bar: date / currency / customer /
+//               account / payment method / prescription — one shared height so
+//               every control sits on the same baseline)
+//               radius=xs(6), border=1px neutral (textSecondary@40% on surface), label=labelMedium,
+//               value=bodyMedium in black, leading/trailing icon=16 muted
+//               hover: border=primary@45%, leading icon=primary
+//               focus: border=primary 1.4px, label=primary
+// Icon:         16 (xs) / 18 (sm) / 22 (md) / 28 (lg)
 // Card:         bg=surface, elevation=0, border=1px border-color, radius=lg(16)
 // Dialog:       bg=card, radius=lg(16), title=titleLarge
 // Sidebar item active:  bg=primary@12%, icon+text=primary

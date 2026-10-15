@@ -33,6 +33,10 @@ abstract final class AppRoutes {
 
   // Returns → sales/purchases return documents (sibling routes under one
   // branch, same pattern as reports below — sidebar section of their own).
+  // قوائم الفواتير المحفوظة (عرض + تعديل) — غير شاشتي الإنشاء.
+  static const String salesInvoices = '/more/invoices/sales';
+  static const String purchaseInvoices = '/more/invoices/purchases';
+
   static const String salesReturns = '/more/returns/sales';
   static const String purchaseReturns = '/more/returns/purchases';
 
@@ -64,6 +68,7 @@ abstract final class AppRoutes {
   static const String stocktakeReport = '/more/reports/stocktake';
   static const String prescriptionsReport = '/more/reports/prescriptions';
   static const String settings = '/more/settings';
+  static const String shortcuts = '/more/shortcuts';
   static const String profile = '/more/profile';
   static const String tutorials = '/more/tutorials';
   static const String notifications = '/more/notifications';

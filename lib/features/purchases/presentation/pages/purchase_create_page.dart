@@ -36,6 +36,7 @@ import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
 import 'package:trina_grid/trina_grid.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_dropdown.dart';
 import 'package:saydaliati/services/barcode_scanner.dart';
+import 'package:saydaliati/features/shortcuts/presentation/widgets/save_shortcut.dart';
 
 /// Plain, parse-safe number string (no thousands separators) — the price/qty
 /// fields are read back with `double.tryParse`, which rejects grouped values.
@@ -45,11 +46,26 @@ String _plainNum(num v) =>
 class _PurLine {
   _PurLine({required this.medicine, required this.unitId, double unitPrice = 0}) {
     price.text = unitPrice == 0 ? '' : _plainNum(unitPrice);
+    suggested = unitPrice == 0 ? null : unitPrice;
     qty.text = '1';
+  }
+
+  /// هل ما زالت القيمة هي المقترَحة (لم يلمسها المستخدم)؟
+  bool get holdsSuggestion {
+    final s = suggested;
+    if (s == null) return price.text.trim().isEmpty;
+    final current = double.tryParse(price.text.trim());
+    return current != null && (current - s).abs() < 0.005;
   }
 
   final Medicine medicine;
   String unitId;
+
+  /// آخر تكلفة اقترحها البرنامج لهذا السطر (بعملة الفاتورة). تُقارَن بالقيمة
+  /// الحالية لمعرفة ما إذا كان المستخدم قد عدّلها يدوياً — فتغيير النسبة لا
+  /// يدوس على تعديل متعمَّد.
+  double? suggested;
+
   DateTime? expiry;
   // باركود لدواء بلا باركود (يُرسَل مع الفاتورة ويُحدّث الدواء).
   String? scannedBarcode;
@@ -83,6 +99,48 @@ class PurchaseCreatePage extends ConsumerStatefulWidget {
 
 class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
   final List<_PurLine> _lines = [];
+
+  /// نسبة سعر الشراء المقترَح من سعر المبيع. الافتراضي 27% — رقم تقريبي شائع
+  /// لهامش الصيدليات، والمستخدم يغيّره من تنويه أعلى الفاتورة.
+  double _costPercent = _defaultCostPercent;
+  static const double _defaultCostPercent = 27;
+
+  /// التكلفة المقترَحة لوحدة بعملة الفاتورة = سعر مبيعها × النسبة.
+  double _suggestedCost(MedicineUnit unit, Currency? base, Currency? selected) =>
+      convertFromBase(unit.salePrice * _costPercent / 100, base, selected);
+
+  /// تغيير النسبة يعيد تسعير الأسطر التي ما زالت تحمل القيمة المقترَحة فقط —
+  /// أي سطر عدّله المستخدم يدوياً يبقى كما تركه.
+  void _applyPercent(double percent) {
+    final base = ref.read(baseCurrencyProvider);
+    final currencies = ref.read(currenciesProvider).value ?? const <Currency>[];
+    final selected =
+        currencies.where((c) => c.id == _effectiveCurrencyId(base)).firstOrNull;
+
+    setState(() {
+      _costPercent = percent;
+      for (final line in _lines) {
+        if (!line.holdsSuggestion) continue;
+        final unit = line.medicine.units
+            .where((u) => u.unitId == line.unitId)
+            .firstOrNull;
+        if (unit == null) continue;
+        final cost = _suggestedCost(unit, base, selected);
+        line.suggested = cost;
+        line.price.text = cost == 0 ? '' : _plainNum(cost);
+      }
+    });
+  }
+
+  /// يفتح نافذة تغيير النسبة.
+  Future<void> _editPercent() async {
+    final value = await showDialog<double>(
+      context: context,
+      builder: (_) => _CostPercentDialog(initial: _costPercent),
+    );
+    if (value == null || !mounted) return;
+    _applyPercent(value);
+  }
   String? _currencyId;
   String? _supplierId; // المورّد (اختياري)
   PaymentMethod _payMethod = PaymentMethod.cash;
@@ -181,16 +239,14 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
     // اختيار الوحدة الافتراضية تلقائياً (وإلا الأولى) — ويمكن تغييرها من القائمة.
     final unit =
         m.units.firstWhere((u) => u.isDefault, orElse: () => m.units.first);
-    // A5/F1: default the cost in the selected currency (converted from the base
-    // catalog price). The user can still edit it.
     final base = ref.read(baseCurrencyProvider);
     final currencies = ref.read(currenciesProvider).value ?? const <Currency>[];
     final selected =
         currencies.where((c) => c.id == _effectiveCurrencyId(base)).firstOrNull;
-    // التكلفة المقترحة لهذه الوحدة = تكلفة الوحدة الأساسية × معامل التحويل،
-    // ثم تحويلها لعملة الفاتورة. يمكن للمستخدم تعديلها.
-    final cost = convertFromBase(
-        m.purchaseCost * unit.conversionFactor, base, selected);
+    // التكلفة المقترَحة = نسبة [_costPercent] من سعر مبيع هذه الوحدة، محوَّلةً
+    // لعملة الفاتورة. مجرّد اقتراح — التنويه أعلى الفاتورة يشرحه، والمستخدم
+    // يغيّر النسبة أو يكتب القيمة مباشرة في خلية السعر.
+    final cost = _suggestedCost(unit, base, selected);
     setState(() =>
         _lines.add(_PurLine(medicine: m, unitId: unit.unitId, unitPrice: cost)));
   }
@@ -301,6 +357,9 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
         code: code,
         onFound: _add,
       ),
+      child: SaveShortcut(
+      onSave: () => _save(warehouseId, base),
+      enabled: !_saving,
       child: Scaffold(
       appBar: AppBar(
           title: Text(_isEdit ? AppStrings.editPurchase : AppStrings.newPurchase),
@@ -329,6 +388,15 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
                   ),
                   const SizedBox(height: AppSpacing.sm),
                 ],
+                _CostSuggestionNotice(
+                  percent: _costPercent,
+                  isDefault: _costPercent == _defaultCostPercent,
+                  onEdit: _editPercent,
+                  onReset: _costPercent == _defaultCostPercent
+                      ? null
+                      : () => _applyPercent(_defaultCostPercent),
+                ),
+                const SizedBox(height: AppSpacing.sm),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
@@ -406,6 +474,7 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
         ],
       ),
       ),
+    ),
     );
   }
 
@@ -746,6 +815,162 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
           ),
         ],
       ),
+    );
+  }
+}
+
+
+/// تنويه أعلى فاتورة الشراء: يشرح أن سعر الشراء مقترَح تلقائياً من سعر المبيع،
+/// ويتيح تغيير النسبة أو إعادتها لافتراضيّها. القيمة نفسها تبقى قابلة للتعديل
+/// مباشرةً في خلية السعر داخل الجدول.
+class _CostSuggestionNotice extends StatelessWidget {
+  const _CostSuggestionNotice({
+    required this.percent,
+    required this.isDefault,
+    required this.onEdit,
+    required this.onReset,
+  });
+
+  final double percent;
+  final bool isDefault;
+  final VoidCallback onEdit;
+  final VoidCallback? onReset;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final accent = context.semantic.info;
+    final shown = percent == percent.roundToDouble()
+        ? percent.toInt().toString()
+        : percent.toString();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.08),
+        borderRadius: AppRadius.brSm,
+        border: Border.all(color: accent.withValues(alpha: 0.28)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.auto_awesome_outlined,
+              size: AppSizes.iconSm, color: accent),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text.rich(
+              TextSpan(children: [
+                const TextSpan(text: 'سعر الشراء مقترَح تلقائياً = '),
+                TextSpan(
+                  text: '$shown٪',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w700, color: accent),
+                ),
+                const TextSpan(
+                  text: ' من سعر المبيع — غيّر النسبة، أو اكتب السعر مباشرةً '
+                      'في عمود «سعر التكلفة».',
+                ),
+              ]),
+              style: theme.textTheme.bodySmall,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          if (onReset != null)
+            IconButton(
+              icon: const Icon(Icons.restart_alt, size: AppSizes.iconXs),
+              tooltip: 'إرجاع النسبة الافتراضية',
+              visualDensity: VisualDensity.compact,
+              onPressed: onReset,
+            ),
+          OutlinedButton.icon(
+            onPressed: onEdit,
+            icon: const Icon(Icons.percent, size: AppSizes.iconXs),
+            label: const Text('تغيير النسبة'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(0, 32),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              foregroundColor: accent,
+              side: BorderSide(color: accent.withValues(alpha: 0.45)),
+              shape: const RoundedRectangleBorder(borderRadius: AppRadius.brXs),
+              textStyle: theme.textTheme.labelMedium
+                  ?.copyWith(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// نافذة تغيير نسبة سعر الشراء من سعر المبيع.
+class _CostPercentDialog extends StatefulWidget {
+  const _CostPercentDialog({required this.initial});
+
+  final double initial;
+
+  @override
+  State<_CostPercentDialog> createState() => _CostPercentDialogState();
+}
+
+class _CostPercentDialogState extends State<_CostPercentDialog> {
+  late final TextEditingController _ctrl = TextEditingController(
+    text: widget.initial == widget.initial.roundToDouble()
+        ? widget.initial.toInt().toString()
+        : widget.initial.toString(),
+  );
+  String? _error;
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final value = double.tryParse(_ctrl.text.trim().replaceAll('٪', ''));
+    if (value == null || value <= 0 || value > 100) {
+      setState(() => _error = 'أدخل نسبة بين 1 و 100');
+      return;
+    }
+    Navigator.of(context).pop(value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return AlertDialog(
+      title: const Text('نسبة سعر الشراء'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'سعر الشراء المقترَح = النسبة × سعر المبيع. تُطبَّق على الأسطر التي '
+            'لم تعدّل سعرها يدوياً، وعلى ما تضيفه بعدها.',
+            style: theme.textTheme.bodySmall,
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          TextField(
+            controller: _ctrl,
+            autofocus: true,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => _submit(),
+            decoration: InputDecoration(
+              labelText: 'النسبة ٪',
+              suffixText: '٪',
+              errorText: _error,
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text(AppStrings.cancel),
+        ),
+        FilledButton(onPressed: _submit, child: const Text(AppStrings.save)),
+      ],
     );
   }
 }

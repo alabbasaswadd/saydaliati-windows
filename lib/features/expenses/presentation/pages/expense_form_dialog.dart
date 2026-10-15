@@ -5,7 +5,6 @@ import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/features/accounts/account_providers.dart';
 import 'package:saydaliati/features/accounts/domain/entities/account.dart';
-import 'package:saydaliati/features/currencies/domain/currency_conversion.dart';
 import 'package:saydaliati/features/currencies/domain/entities/currency.dart';
 import 'package:saydaliati/features/currencies/presentation/providers/currencies_provider.dart';
 import 'package:saydaliati/features/expenses/domain/entities/expense.dart';
@@ -15,6 +14,7 @@ import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_date_picker.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_dropdown.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_text_field.dart';
+import 'package:saydaliati/features/shortcuts/presentation/widgets/save_shortcut.dart';
 
 /// حوار إضافة/تعديل مصروف — بأسلوب نوافذ ويندوز (مطابق لـ EntityFormDialog):
 /// عرض ثابت ضيّق، رأس بأيقونة + عنوان + زر إغلاق صغير، أزرار بحجم محتواها.
@@ -103,8 +103,9 @@ class _ExpenseFormDialogState extends ConsumerState<_ExpenseFormDialog> {
     if (_categoryId == null || _spentOn == null || _paymentAccountId == null) return;
 
     final selected = currencies.where((c) => c.id == _currencyId).firstOrNull ?? base;
+    // المبلغ يُرسَل كما كُتب بعملته المختارة — لا تحويل هنا. الخادم يشتقّ
+    // المقابل بالعملة الأساسية مرّة واحدة ويجمّده للقيد والتقارير.
     final enteredAmount = double.tryParse(_amountController.text.trim()) ?? 0;
-    final baseAmount = convertToBase(enteredAmount, base, selected);
 
     setState(() => _saving = true);
 
@@ -114,7 +115,8 @@ class _ExpenseFormDialogState extends ConsumerState<_ExpenseFormDialog> {
             categoryId: _categoryId!,
             spentOn: _spentOn!,
             note: _noteController.text.trim(),
-            amount: baseAmount,
+            amount: enteredAmount,
+            currencyId: selected?.id ?? '',
             paymentAccountId: _paymentAccountId!,
             originalCurrencyId: selected?.id,
             exchangeRate: selected?.exchangeRate ?? 1,
@@ -125,7 +127,8 @@ class _ExpenseFormDialogState extends ConsumerState<_ExpenseFormDialog> {
               categoryId: _categoryId!,
               spentOn: _spentOn!,
               note: _noteController.text.trim(),
-              amount: baseAmount,
+              amount: enteredAmount,
+              currencyId: selected?.id ?? '',
               paymentAccountId: _paymentAccountId!,
               originalCurrencyId: selected?.id,
               exchangeRate: selected?.exchangeRate ?? 1,
@@ -149,7 +152,10 @@ class _ExpenseFormDialogState extends ConsumerState<_ExpenseFormDialog> {
     final currencies = ref.watch(currenciesProvider).value ?? const <Currency>[];
     final base = ref.watch(baseCurrencyProvider);
     final accounts = ref.watch(accountsListProvider).value ?? const <Account>[];
-    _currencyId ??= widget.existing?.currencyCode != null
+    // المصروف المحفوظ يحمل معرّف عملته صراحةً الآن — لا حاجة لمطابقة الرمز.
+    _currencyId ??= (widget.existing?.currencyId.isNotEmpty ?? false)
+        ? widget.existing!.currencyId
+        : widget.existing?.currencyCode != null
         ? currencies
                 .where((c) => c.code == widget.existing!.currencyCode)
                 .firstOrNull
@@ -158,7 +164,10 @@ class _ExpenseFormDialogState extends ConsumerState<_ExpenseFormDialog> {
         : base?.id;
     _suggestPaymentAccountForCurrency(_currencyId, accounts, base?.id);
 
-    return PopScope(
+    return SaveShortcut(
+      onSave: () => _submit(currencies, base),
+      enabled: !_saving,
+      child: PopScope(
       canPop: !_saving,
       child: Dialog(
         backgroundColor: theme.colorScheme.surface,
@@ -349,6 +358,7 @@ class _ExpenseFormDialogState extends ConsumerState<_ExpenseFormDialog> {
           ),
         ),
       ),
+    ),
     );
   }
 }
