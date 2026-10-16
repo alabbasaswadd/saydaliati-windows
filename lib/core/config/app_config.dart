@@ -17,11 +17,12 @@ abstract final class AppConfig {
   /// Host origin only — **no `/pharmacy-api`** suffix, because every path in
   /// `ApiEndpoints` already carries its own prefix (`/pharmacy-api/...`, or
   /// `/api/Alternatives`). So the live calls resolve to
-  /// `http://169.58.139.217:5010/pharmacy-api/...`.
-  /// Override per environment with `--dart-define=API_BASE_URL=...`.
+  /// `https://codetechsyria.com/pharmacy-api/...`.
+  /// Default = PRODUCTION. Override per environment with
+  /// `--dart-define=API_BASE_URL=http://169.58.139.217:5010` (dev).
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://169.58.139.217:5010',
+    defaultValue: 'https://codetechsyria.com',
   );
 
   /// Whether to accept a self-signed dev certificate. Debug builds only.
