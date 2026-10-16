@@ -22,6 +22,10 @@ abstract class PurchaseLine with _$PurchaseLine {
     required String unitName,
     required double unitPrice,
     required double quantity,
+
+    /// كمية البونص المُستلَمة مجّاناً — بلا ثمن وبكلفة صفر، فبيعها ربح صافٍ.
+    @Default(0) double bonusQuantity,
+
     required double subTotal,
     @Default('') String medicineId,
     @Default('') String unitId,

@@ -23,6 +23,7 @@ extension PurchaseItemDtoMapper on PurchaseItemDto {
       unitName: unit?.name ?? '',
       unitPrice: price,
       quantity: qty,
+      bonusQuantity: (bonusQuantity ?? 0).toDouble(),
       subTotal: (subTotal ?? (qty * price)).toDouble(),
       expiryDate: expiryDate,
     );

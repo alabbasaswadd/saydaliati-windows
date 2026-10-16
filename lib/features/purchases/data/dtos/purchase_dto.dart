@@ -31,6 +31,7 @@ class PurchaseItemDto {
     this.unitId,
     this.unitPrice,
     this.quantity,
+    this.bonusQuantity,
     this.subTotal,
     this.expiryDate,
     this.medicine,
@@ -41,6 +42,7 @@ class PurchaseItemDto {
   final String? unitId;
   final num? unitPrice;
   final num? quantity;
+  final num? bonusQuantity;
   final num? subTotal;
   final DateTime? expiryDate;
   final PurchaseMedicineDto? medicine;

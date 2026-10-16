@@ -14,6 +14,7 @@ extension PurchasesGridInvoiceDtoMapper on PurchasesGridInvoiceDto {
         discountAmount: (discountAmount ?? 0).toDouble(),
         totalAmount: (totalAmount ?? 0).toDouble(),
         itemsCount: itemsCount ?? 0,
+        bonusQuantity: (bonusQuantity ?? 0).toDouble(),
         items: [
           for (final i in items ?? const <PurchasesGridItemDto>[]) i.toEntity(),
         ],
@@ -25,6 +26,7 @@ extension PurchasesGridItemDtoMapper on PurchasesGridItemDto {
         brandName: brandName ?? '',
         unitName: unitName ?? '',
         quantity: (quantity ?? 0).toDouble(),
+        bonusQuantity: (bonusQuantity ?? 0).toDouble(),
         unitPrice: (unitPrice ?? 0).toDouble(),
         discount: (discount ?? 0).toDouble(),
         subTotal: (subTotal ?? 0).toDouble(),

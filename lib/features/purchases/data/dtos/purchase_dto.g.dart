@@ -25,6 +25,7 @@ PurchaseItemDto _$PurchaseItemDtoFromJson(Map<String, dynamic> json) =>
       unitId: json['unitId'] as String?,
       unitPrice: json['unitPrice'] as num?,
       quantity: json['quantity'] as num?,
+      bonusQuantity: json['bonusQuantity'] as num?,
       subTotal: json['subTotal'] as num?,
       expiryDate: json['expiryDate'] == null
           ? null

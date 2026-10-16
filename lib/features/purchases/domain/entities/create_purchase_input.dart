@@ -87,6 +87,7 @@ class CreatePurchaseLineInput {
     required this.unitId,
     required this.unitPrice,
     required this.quantity,
+    this.bonusQuantity = 0,
     this.expiryDate,
     this.note,
     this.scannedBarcode,
@@ -96,6 +97,13 @@ class CreatePurchaseLineInput {
   final String unitId;
   final double unitPrice;
   final double quantity;
+
+  /// كمية البونص (مجّانية) بوحدة السطر.
+  ///
+  /// لا تُحتسَب في إجمالي الفاتورة ولا في قيدها — فلا يخرج مقابلها مال.
+  /// تدخل المخزون بكلفة صفر، فبيعها ربح صافٍ كامل.
+  final double bonusQuantity;
+
   final DateTime? expiryDate;
   final String? note;
 
@@ -104,6 +112,7 @@ class CreatePurchaseLineInput {
   final String? scannedBarcode;
 
   Map<String, dynamic> toJson(String warehouseId) => {
+        'bonusQuantity': bonusQuantity,
         'warehouseId': warehouseId,
         'medicineId': medicineId,
         'unitId': unitId,

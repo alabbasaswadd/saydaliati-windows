@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:saydaliati/core/theme/app_semantic_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/core/enums/payment_method.dart';
@@ -42,6 +43,7 @@ class _PurchasesReportPageState extends ConsumerState<PurchasesReportPage> {
   static const _fCurrency = 'currency';
   static const _fUnitPrice = 'unitPrice';
   static const _fQty = 'qty';
+  static const _fBonus = 'bonus';
   static const _fDiscount = 'discount';
   static const _fBatch = 'batch';
   static const _fExpiry = 'expiry';
@@ -151,6 +153,24 @@ class _PurchasesReportPageState extends ConsumerState<PurchasesReportPage> {
       appGridTextColumn(AppStrings.invoiceLabel, _fInvoice, width: 170),
       appGridNumberColumn(AppStrings.unitPriceColumn, _fUnitPrice, width: 100),
       appGridNumberColumn(AppStrings.piecesCountColumn, _fQty, width: 95),
+      // البونص عمود مستقلّ: كميةٌ دخلت المخزون بلا ثمن، وثمنها عند البيع
+      // ربحٌ صافٍ. إخفاؤه يجعل القارئ يرى كميةً بلا مصدر ظاهر.
+      appGridNumberColumn('بونص', _fBonus, width: 85, renderer: (ctx) {
+        final v = ctx.cell.value;
+        final n = v is num ? v.toDouble() : 0.0;
+        if (n == 0) return const SizedBox.shrink();
+        return Directionality(
+          textDirection: TextDirection.ltr,
+          child: Text(
+            Formatters.number(n),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: context.semantic.success,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        );
+      }),
       appGridNumberColumn(AppStrings.total, _fTotal,
           width: 120, renderer: (ctx) => _totalCell(context, ctx)),
       appGridTextColumn(AppStrings.dateColumn, _fDate,
@@ -207,6 +227,7 @@ class _PurchasesReportPageState extends ConsumerState<PurchasesReportPage> {
                 : inv.currencyCode),
         _fUnitPrice: TrinaCell(value: ''),
         _fQty: TrinaCell(value: inv.itemsCount),
+        _fBonus: TrinaCell(value: inv.bonusQuantity),
         _fDiscount: TrinaCell(value: inv.discountAmount),
         _fBatch: TrinaCell(value: ''),
         _fExpiry: TrinaCell(value: ''),
@@ -242,6 +263,7 @@ class _PurchasesReportPageState extends ConsumerState<PurchasesReportPage> {
         _fCurrency: TrinaCell(value: currency),
         _fUnitPrice: TrinaCell(value: it.unitPrice),
         _fQty: TrinaCell(value: it.quantity),
+        _fBonus: TrinaCell(value: it.bonusQuantity),
         _fDiscount: TrinaCell(value: it.discount),
         _fBatch: TrinaCell(value: it.batchNumber),
         _fExpiry: TrinaCell(

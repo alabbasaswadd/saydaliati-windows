@@ -76,15 +76,23 @@ class _PurLine {
   String? scannedBarcode;
   final price = TextEditingController();
   final qty = TextEditingController();
+
+  /// كمية البونص — منفصلة عن الكمية المدفوعة: دمجهما يُفقد أثر البونص في
+  /// الفاتورة وفي التقارير، وهو بيتُ القصيد.
+  final bonus = TextEditingController();
+
   final barcodeCtrl = TextEditingController();
 
   double get lineTotal =>
       (double.tryParse(price.text.trim()) ?? 0) *
       (double.tryParse(qty.text.trim()) ?? 0);
 
+  double get bonusQty => double.tryParse(bonus.text.trim()) ?? 0;
+
   void dispose() {
     price.dispose();
     qty.dispose();
+    bonus.dispose();
     barcodeCtrl.dispose();
   }
 }
@@ -216,6 +224,7 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
       final line = _PurLine(medicine: med, unitId: unitId);
       line.price.text = _plainNum(it.unitPrice);
       line.qty.text = _plainNum(it.quantity);
+      if (it.bonusQuantity > 0) line.bonus.text = _plainNum(it.bonusQuantity);
       line.expiry = it.expiryDate;
       _lines.add(line);
     }
@@ -234,6 +243,7 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
   String _effectiveCurrencyId(Currency? base) => _currencyId ?? base?.id ?? '';
 
   double get _total => _lines.fold(0, (s, l) => s + l.lineTotal);
+
 
   /// يقترح صندوق العملة المختارة (الحساب المرتبط بها)، أو صندوق العملة
   /// الأساسية إن لم يوجد صندوق مخصَّص لها. لا يلمس اختياراً صريحاً للمستخدم.
@@ -345,6 +355,8 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
                 ? (double.tryParse(l.price.text.trim()) ?? 0)
                 : toBase(double.tryParse(l.price.text.trim()) ?? 0),
             quantity: double.tryParse(l.qty.text.trim()) ?? 0,
+            // البونص بلا سعر — لا يُحوَّل ولا يدخل الإجمالي.
+            bonusQuantity: l.bonusQty,
             expiryDate: l.expiry,
             scannedBarcode: l.scannedBarcode,
           ),
@@ -548,15 +560,23 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
     );
   }
 
-  /// Picks a medicine from the grid cell (wakeed-style in-cell selection).
-  /// [line] == null → the trailing "new row": appends a line. Otherwise the
-  /// existing row's medicine is replaced (fresh unit/cost defaults).
+  /// اختيار المادة من خليّة الجدول.
+  ///
+  /// [mergeIfSame] يفرّق بين مدخلين:
+  ///
+  /// * **زرّ «إضافة مادة»** (`true`): المادة نفسها مرّتين تزيد كمية آخر سطر.
+  /// * **خليّة الصفّ الجاهز** (`false`): تُضاف **سطراً مستقلاً** دائماً وإن
+  ///   كانت نفس المادة — فقد تختلف كلفتها أو دفعتها أو صلاحيتها عن الأوّل،
+  ///   ودمجُها يُفقد ذلك بلا رجعة.
+  ///
+  /// و[line] غير null يعني استبدال مادة صفٍّ قائم في موضعه.
   Future<void> _pickMedicineForLine(
-      List<Medicine> catalog, _PurLine? line) async {
+      List<Medicine> catalog, _PurLine? line,
+      {bool mergeIfSame = false}) async {
     final picked = await showMedicinePicker(context, catalog);
     if (picked == null || !mounted) return;
     if (line == null) {
-      _add(picked);
+      _add(picked, mergeWithLast: mergeIfSame);
       return;
     }
     // استبدال مادة صف موجود: دائماً سطر جديد في نفس الموضع، بلا دمج.
@@ -580,6 +600,8 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
   static const _fUnit = 'unit';
   static const _fCost = 'cost';
   static const _fQty = 'qty';
+  static const _fBonus = 'bonus';
+  static const _fReceived = 'received';
   static const _fExpiry = 'expiry';
   static const _fBarcode = 'barcode';
   static const _fTotal = 'total';
@@ -626,6 +648,10 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
           l.unitId,
           l.price.text,
           l.qty.text,
+          // البونص جزء من البصمة: بدونه لا يتغيّر المفتاح عند محوه، فلا
+          // تُعاد الشبكة بناءً — فيبقى عمود «إجمالي الكميات» ظاهراً بقيمته
+          // القديمة بعد حذف البونص.
+          l.bonus.text,
           l.expiry,
           l.scannedBarcode,
         ],
@@ -635,6 +661,9 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
     final theme = Theme.of(context);
     // عمود الباركود يظهر فقط إذا كان في الفاتورة دواء بلا باركود.
     final needsBarcode = _lines.any((l) => l.medicine.barcode.isEmpty);
+    // عمود الإجمالي يظهر **عند وجود بونص فقط**: بلا بونص يساوي الكمية
+    // حرفياً، فعمودٌ مكرَّر يُشوّش لا يُفيد.
+    final hasBonus = _lines.any((l) => l.bonusQty > 0);
     final byId = {for (final l in _lines) _lineId(l): l};
 
     bool isNewRow(TrinaRow<dynamic> row) => row.cells[_fId]?.value == _newRowId;
@@ -726,6 +755,50 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
           enableEditingMode: true,
           checkReadOnly: (row, cell) => isNewRow(row),
         ),
+        // البونص عمود مستقلّ بجانب الكمية: المدفوعة والمجّانية تختلفان في
+        // الكلفة (صفر للبونص)، فدمجهما يُفقد أثره في الفاتورة وفي الربح.
+        TrinaColumn(
+          title: 'بونص',
+          field: _fBonus,
+          type: TrinaColumnType.number(
+              format: '#,##0.##', locale: 'en', applyFormatOnInit: false),
+          width: 85,
+          textAlign: TrinaColumnTextAlign.center,
+          enableEditingMode: true,
+          checkReadOnly: (row, cell) => isNewRow(row),
+          renderer: (ctx) {
+            final v = ctx.cell.value;
+            final n =
+                v is num ? v.toDouble() : double.tryParse(v?.toString() ?? '');
+            if (n == null || n == 0) return const SizedBox.shrink();
+            return Directionality(
+              textDirection: TextDirection.ltr,
+              child: Text(
+                Formatters.number(n),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: context.semantic.success,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            );
+          },
+        ),
+        if (hasBonus)
+          appGridNumberColumn('إجمالي الكميات', _fReceived, width: 110,
+              renderer: (ctx) {
+            final v = ctx.cell.value;
+            final n = v is num ? v.toDouble() : 0.0;
+            if (n == 0) return const SizedBox.shrink();
+            return Directionality(
+              textDirection: TextDirection.ltr,
+              child: Text(
+                Formatters.number(n),
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            );
+          }),
         TrinaColumn(
           title: AppStrings.expiryDateLabel,
           field: _fExpiry,
@@ -840,6 +913,13 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
             _fCost: TrinaCell(
                 value: double.tryParse(l.price.text.trim()) ?? ''),
             _fQty: TrinaCell(value: double.tryParse(l.qty.text.trim()) ?? ''),
+            _fBonus:
+                TrinaCell(value: double.tryParse(l.bonus.text.trim()) ?? ''),
+            // الداخل للمخزون فعلاً: المدفوعة + البونص. البونص كمية إضافية
+            // لا جزءٌ من الكمية، فـ«١٠ + ٥» تُدخل ١٥.
+            if (hasBonus)
+              _fReceived: TrinaCell(
+                  value: (double.tryParse(l.qty.text.trim()) ?? 0) + l.bonusQty),
             _fExpiry: TrinaCell(
                 value: l.expiry != null ? _ymd(l.expiry!) : ''),
             if (needsBarcode)
@@ -857,6 +937,8 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
           _fUnit: TrinaCell(value: ''),
           _fCost: TrinaCell(value: ''),
           _fQty: TrinaCell(value: ''),
+          _fBonus: TrinaCell(value: ''),
+          if (hasBonus) _fReceived: TrinaCell(value: ''),
           _fExpiry: TrinaCell(value: ''),
           if (needsBarcode) _fBarcode: TrinaCell(value: ''),
           _fTotal: TrinaCell(value: ''),
@@ -878,6 +960,12 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
                   ? (e.value as num).toDouble()
                   : double.tryParse(e.value?.toString() ?? '');
               if (v != null && v > 0) l.qty.text = _plainNum(v);
+            case _fBonus:
+              // البونص لا يدخل الإجمالي، فلا يُعاد حساب المبالغ بتغييره.
+              final b = e.value is num
+                  ? (e.value as num).toDouble()
+                  : double.tryParse(e.value?.toString() ?? '');
+              l.bonus.text = b == null || b <= 0 ? '' : _plainNum(b);
             case _fBarcode:
               final s = e.value?.toString().trim() ?? '';
               l.barcodeCtrl.text = s;
@@ -1075,3 +1163,4 @@ class _CostPercentDialogState extends State<_CostPercentDialog> {
     );
   }
 }
+

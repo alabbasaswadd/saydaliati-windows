@@ -25,6 +25,7 @@ PurchasesGridInvoiceDto _$PurchasesGridInvoiceDtoFromJson(
   discountAmount: json['discountAmount'] as num?,
   totalAmount: json['totalAmount'] as num?,
   itemsCount: (json['itemsCount'] as num?)?.toInt(),
+  bonusQuantity: json['bonusQuantity'] as num?,
   items: (json['items'] as List<dynamic>?)
       ?.map((e) => PurchasesGridItemDto.fromJson(e as Map<String, dynamic>))
       .toList(),
@@ -38,6 +39,7 @@ PurchasesGridItemDto _$PurchasesGridItemDtoFromJson(
   unitId: json['unitId'] as String?,
   unitName: json['unitName'] as String?,
   quantity: json['quantity'] as num?,
+  bonusQuantity: json['bonusQuantity'] as num?,
   unitPrice: json['unitPrice'] as num?,
   discount: json['discount'] as num?,
   subTotal: json['subTotal'] as num?,

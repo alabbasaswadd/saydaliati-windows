@@ -20,6 +20,7 @@ class PurchasesGridInvoiceDto {
     this.discountAmount,
     this.totalAmount,
     this.itemsCount,
+    this.bonusQuantity,
     this.items,
   });
 
@@ -37,6 +38,7 @@ class PurchasesGridInvoiceDto {
   final num? discountAmount;
   final num? totalAmount;
   final int? itemsCount;
+  final num? bonusQuantity;
   final List<PurchasesGridItemDto>? items;
 
   factory PurchasesGridInvoiceDto.fromJson(Map<String, dynamic> json) =>
@@ -52,6 +54,7 @@ class PurchasesGridItemDto {
     this.unitId,
     this.unitName,
     this.quantity,
+    this.bonusQuantity,
     this.unitPrice,
     this.discount,
     this.subTotal,
@@ -64,6 +67,7 @@ class PurchasesGridItemDto {
   final String? unitId;
   final String? unitName;
   final num? quantity;
+  final num? bonusQuantity;
   final num? unitPrice;
   final num? discount;
   final num? subTotal;

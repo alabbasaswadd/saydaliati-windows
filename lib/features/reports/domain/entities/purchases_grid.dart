@@ -19,6 +19,9 @@ abstract class PurchasesGridInvoice with _$PurchasesGridInvoice {
     @Default(0) double discountAmount,
     @Default(0) double totalAmount,
     @Default(0) int itemsCount,
+
+    /// مجموع كميات البونص في الفاتورة — يُقرأ على الترويسة بلا توسيعها.
+    @Default(0) double bonusQuantity,
     @Default(<PurchasesGridItem>[]) List<PurchasesGridItem> items,
   }) = _PurchasesGridInvoice;
 }
@@ -29,6 +32,10 @@ abstract class PurchasesGridItem with _$PurchasesGridItem {
     @Default('') String brandName,
     @Default('') String unitName,
     @Default(0) double quantity,
+
+    /// كمية البونص — بلا ثمن وبكلفة صفر، فبيعها ربح صافٍ كامل.
+    @Default(0) double bonusQuantity,
+
     @Default(0) double unitPrice,
     @Default(0) double discount,
     @Default(0) double subTotal,

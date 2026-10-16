@@ -194,7 +194,7 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
       ShortcutAction.invoiceSave: () => _submit(_lastWarehouseId, _lastBase),
       ShortcutAction.invoiceCancel: _clearInvoice,
       ShortcutAction.invoiceAddItem: () =>
-          _pickMedicineForLine(_lastCatalog, null),
+          _pickMedicineForLine(_lastCatalog, null, mergeIfSame: true),
       ShortcutAction.invoiceDeleteLine: _deleteCurrentLine,
       ShortcutAction.invoiceEditQty: _editCurrentQuantity,
       ShortcutAction.invoicePickCustomer: _pickCustomerByShortcut,
@@ -1105,15 +1105,23 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
   }
 
   /// اختيار المادة من خلية الجدول مباشرة (أسلوب وكيد).
-  /// [line] == null → "الصف الجديد" في آخر الجدول: يضيف سطراً عبر [_addMedicine].
-  /// غير ذلك: تُستبدل مادة الصف الموجود بسطر جديد في نفس الموضع (مع نقل الكمية).
+  /// [line] == null → إضافة سطر جديد.
+  ///
+  /// [mergeIfSame] يفرّق بين مدخلين:
+  ///
+  /// * **زرّ/اختصار «إضافة مادة»** (`true`): اختيار المادة نفسها مرّتين يزيد
+  ///   كمية آخر سطر — سلوك نقطة البيع المعتاد للتكرار السريع.
+  /// * **خليّة الصفّ الجاهز** (`false`): تُضاف **سطراً مستقلاً** دائماً وإن
+  ///   كانت نفس المادة، لأن المستخدم قصد سطراً ثانياً لها — وقد يختلف سعره
+  ///   أو كلفته أو دفعته عن الأول، ودمجُه يُفقد ذلك بلا رجعة.
+  /// وغير ذلك: تُستبدل مادة الصف الموجود بسطر جديد في موضعه (بنقل الكمية).
   Future<void> _pickMedicineForLine(
-      List<Medicine> catalog, _PosLine? line) async {
+      List<Medicine> catalog, _PosLine? line,
+      {bool mergeIfSame = false}) async {
     final picked = await showMedicinePicker(context, catalog);
     if (picked == null || !mounted) return;
     if (line == null) {
-      // صف جديد: تسري قاعدة "نفس المادة بعد بعضها → زيادة كمية آخر سطر".
-      await _addMedicine(picked);
+      await _addMedicine(picked, mergeWithLast: mergeIfSame);
       return;
     }
     // استبدال مادة صف موجود: دائماً سطر جديد في نفس الموضع، بلا دمج.
