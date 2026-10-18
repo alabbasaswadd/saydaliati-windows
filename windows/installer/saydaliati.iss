@@ -1,4 +1,4 @@
-; ============================================================================
+﻿; ============================================================================
 ;  Saydaliati (صيدليتي) — Windows installer script for Inno Setup 6
 ;  Produces a single, self-contained "Setup.exe" that installs the Flutter
 ;  Windows release build into Program Files, with desktop + Start-menu
@@ -20,6 +20,12 @@
 ; Release output of `flutter build windows --release`, relative to this file
 ; (windows\installer\  ->  project root is two levels up).
 #define BuildDir "..\..\build\windows\x64\runner\Release"
+; مُثبِّت Microsoft الرسميّ لمكتبات التشغيل (Visual C++ 2015-2022 x64).
+; يُجهَّز في هذا المسار بواسطة scripts\build_windows_installer.ps1: يُنسَخ من
+; تثبيت Visual Studio المحلّي إن وُجد، وإلّا يُنزَّل من رابط مايكروسوفت
+; الرسميّ (aka.ms) ويُتحقَّق من توقيعه قبل الاستعمال.
+#define VCRedistDir "..\..\build\redist"
+#define VCRedistExe "vc_redist.x64.exe"
 
 [Setup]
 ; A STABLE AppId — keep it unchanged forever so updates/reinstalls map to the
@@ -53,6 +59,11 @@ Name: "arabic"; MessagesFile: "compiler:Languages\Arabic.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
+; مكتبات تشغيل C++ — تُستخرَج مؤقّتاً وتُشغَّل قبل نسخ ملفات التطبيق.
+;
+; `dontcopy` لأن تثبيتها يجري من [Code] لا بنسخها إلى مجلّد التطبيق.
+Source: "{#VCRedistDir}\{#VCRedistExe}"; Flags: dontcopy
+
 ; The entire Release folder: Runner exe, flutter_windows.dll, every plugin DLL,
 ; and the data\ bundle (flutter_assets, icudtl.dat). recursesubdirs keeps the
 ; data\ tree; ignoreversion makes upgrades always overwrite app binaries.
@@ -71,6 +82,76 @@ Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 ; Pre-checked by default (no `unchecked` flag) => desktop icon is created
 ; automatically unless the user explicitly unticks it.
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
+
+[Code]
+// ───────────────────────────────────────────────────────────────────────────
+//  مكتبات تشغيل Visual C++
+//
+//  تطبيق Flutter لويندوز يُبنى بـMSVC ويرتبط ديناميكياً بـ
+//  VCRUNTIME140.dll و VCRUNTIME140_1.dll و MSVCP140.dll. وهذه **ليست جزءاً
+//  من ويندوز**: جهاز المستخدم النظيف لا يملكها، فيُقلع التطبيق برسالة
+//  «VCRUNTIME140_1.dll was not found» ويموت قبل أن يرسم شيئاً.
+//
+//  (أمّا api-ms-win-crt-* فهي الـUniversal CRT وتأتي مع ويندوز 10 فصاعداً.)
+//
+//  الحلّ: تشغيل مُثبِّت مايكروسوفت الرسميّ بصمت عند الحاجة — لا نسخُ DLL
+//  يدوياً إلى System32، فذلك يكسر تحديثات الأمان ويُفسد تطبيقاتٍ أخرى.
+// ───────────────────────────────────────────────────────────────────────────
+
+const
+  VCRuntimeKey = 'SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\X64';
+  // 29325 = إصدار VS 2019 16.8؛ أقدم منه قد يفتقد VCRUNTIME140_1.dll.
+  VCRuntimeMinBuild = 29325;
+
+function VCRuntimeInstalled: Boolean;
+var
+  installed, bld: Cardinal;
+begin
+  Result := False;
+
+  // المفتاح يُكتَب في المَشهدين (مُثبِّت الحزمة 32-بت)، فيُقرأ الاثنان.
+  if RegQueryDWordValue(HKEY_LOCAL_MACHINE, VCRuntimeKey, 'Installed', installed)
+     or RegQueryDWordValue(HKEY_LOCAL_MACHINE_32, VCRuntimeKey, 'Installed', installed) then
+  begin
+    if installed = 1 then
+    begin
+      if not RegQueryDWordValue(HKEY_LOCAL_MACHINE, VCRuntimeKey, 'Bld', bld) then
+        RegQueryDWordValue(HKEY_LOCAL_MACHINE_32, VCRuntimeKey, 'Bld', bld);
+      Result := bld >= VCRuntimeMinBuild;
+    end;
+  end;
+
+  // تحقّقٌ من الواقع لا من السجلّ وحده: مفتاحٌ باقٍ بعد حذفٍ ناقص يجعل
+  // المُثبِّت يتخطّى الخطوة ويُسلّم تطبيقاً لا يُقلع.
+  if Result and (not FileExists(ExpandConstant('{sys}\VCRUNTIME140_1.dll'))) then
+    Result := False;
+end;
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  code: Integer;
+begin
+  Result := '';
+  if VCRuntimeInstalled then
+    Exit;
+
+  ExtractTemporaryFile('{#VCRedistExe}');
+
+  if not Exec(ExpandConstant('{tmp}\{#VCRedistExe}'),
+              '/install /passive /norestart', '',
+              SW_SHOW, ewWaitUntilTerminated, code) then
+  begin
+    Result := 'تعذّر تشغيل مُثبِّت مكتبات Microsoft Visual C++.';
+    Exit;
+  end;
+
+  // 0 = تمّ، 1638 = نسخة أحدث موجودة، 3010 = يحتاج إعادة تشغيل.
+  if code = 3010 then
+    NeedsRestart := True
+  else if (code <> 0) and (code <> 1638) then
+    Result := 'فشل تثبيت مكتبات Microsoft Visual C++ (رمز ' + IntToStr(code) + ').'
+              + #13#10 + 'التطبيق لن يعمل بدونها — أعد المحاولة أو ثبّتها يدوياً.';
+end;
 
 [Run]
 ; Offer to launch the app at the end of a non-silent install.
