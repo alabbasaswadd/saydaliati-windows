@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:saydaliati/features/tutorials/presentation/tutorial_help.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/core/enums/dosage_form.dart';
@@ -15,6 +14,8 @@ import 'package:saydaliati/features/medicines/medicine_providers.dart';
 import 'package:saydaliati/features/medicines/presentation/providers/medicines_provider.dart';
 import 'package:saydaliati/features/onboarding/onboarding_coach.dart';
 import 'package:saydaliati/features/onboarding/onboarding_controller.dart';
+import 'package:saydaliati/features/tutorials/presentation/tutorial_help.dart';
+import 'package:saydaliati/services/barcode_scanner.dart';
 import 'package:saydaliati/shared/widgets/buttons/app_button.dart';
 import 'package:saydaliati/shared/widgets/dialogs/app_dialogs.dart';
 import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
@@ -22,7 +23,6 @@ import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
 import 'package:saydaliati/shared/widgets/forms/form_widgets.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_dropdown.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_number_field.dart';
-import 'package:saydaliati/services/barcode_scanner.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_text_field.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 

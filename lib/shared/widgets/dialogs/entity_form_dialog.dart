@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
-import 'package:saydaliati/shared/widgets/inputs/app_text_field.dart';
 import 'package:saydaliati/features/shortcuts/presentation/widgets/save_shortcut.dart';
+import 'package:saydaliati/shared/widgets/inputs/app_text_field.dart';
 
 /// One field in an [showEntityFormDialog].
 class EntityField {

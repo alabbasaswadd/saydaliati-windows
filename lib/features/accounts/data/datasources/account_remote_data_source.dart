@@ -10,7 +10,11 @@ class AccountRemoteDataSource {
   Future<List<Map<String, dynamic>>> list() async {
     final data = await _api.get(
       ApiEndpoints.accounts,
-      queryParameters: {'limit': 500, 'offset': 0},
+      // بلا حدٍّ: دليل الحسابات **شجرة** لا قائمة، وقصُّها عند 500 صفّ
+      // يقطع الأبناء عن آبائهم ويُخفي أعلى الرموز — حسابات الموردين
+      // (2101-xxxx) والإيرادات والمصاريف تسقط أوّلاً في صيدليةٍ لها مئات
+      // العملاء، فتفشل فواتيرها برسالة «الحساب غير موجود» بلا سبب ظاهر.
+      // والخادم يُعيد الكل حين لا يُمرَّر حدّ.
     );
     final list = (data as List?) ?? const [];
     return list.whereType<Map<String, dynamic>>().toList();

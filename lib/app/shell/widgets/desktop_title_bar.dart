@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:saydaliati/app/shell/widgets/exchange_rate_header.dart';
+import 'package:saydaliati/app/shell/widgets/window_controls.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/core/offline/sync/sync_service.dart';
 import 'package:saydaliati/core/theme/app_semantic_colors.dart';
@@ -29,44 +30,8 @@ class DesktopTitleBar extends ConsumerStatefulWidget {
   ConsumerState<DesktopTitleBar> createState() => _DesktopTitleBarState();
 }
 
-class _DesktopTitleBarState extends ConsumerState<DesktopTitleBar>
-    with WindowListener {
-  bool _isMaximized = false;
-
-  @override
-  void initState() {
-    super.initState();
-    windowManager.addListener(this);
-    _syncMaximized();
-  }
-
-  @override
-  void dispose() {
-    windowManager.removeListener(this);
-    super.dispose();
-  }
-
-  @override
-  void onWindowMaximize() => setState(() => _isMaximized = true);
-
-  @override
-  void onWindowUnmaximize() => setState(() => _isMaximized = false);
-
-  Future<void> _syncMaximized() async {
-    final max = await windowManager.isMaximized();
-    if (mounted) setState(() => _isMaximized = max);
-  }
-
-  Future<void> _minimize() => windowManager.minimize();
-
-  Future<void> _toggleMaximize() async {
-    if (_isMaximized) {
-      await windowManager.unmaximize();
-    } else {
-      await windowManager.maximize();
-    }
-  }
-
+class _DesktopTitleBarState extends ConsumerState<DesktopTitleBar> {
+  /// تأكيدٌ قبل الإغلاق — فاتورةٌ نصف مكتوبة تضيع بنقرةٍ واحدة بلا سؤال.
   Future<void> _close() async {
     final shouldExit = await showConfirmationDialog(
       context,
@@ -128,112 +93,8 @@ class _DesktopTitleBarState extends ConsumerState<DesktopTitleBar>
               ),
 
             // Window controls — always LTR, top-right corner
-            _WindowControls(
-              isMaximized: _isMaximized,
-              onMinimize: _minimize,
-              onMaximize: _toggleMaximize,
-              onClose: _close,
-            ),
+            WindowControls(onClose: _close),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Window control buttons ────────────────────────────────────────────────
-
-class _WindowControls extends StatelessWidget {
-  const _WindowControls({
-    required this.isMaximized,
-    required this.onMinimize,
-    required this.onMaximize,
-    required this.onClose,
-  });
-
-  final bool isMaximized;
-  final VoidCallback onMinimize;
-  final VoidCallback onMaximize;
-  final VoidCallback onClose;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _WinButton(
-          icon: Icons.remove,
-          tooltip: 'تصغير',
-          onTap: onMinimize,
-        ),
-        _WinButton(
-          icon: isMaximized ? Icons.filter_none : Icons.crop_square,
-          tooltip: isMaximized ? 'استعادة' : 'تكبير',
-          onTap: onMaximize,
-        ),
-        _WinButton(
-          icon: Icons.close,
-          tooltip: AppStrings.close,
-          onTap: onClose,
-          isClose: true,
-        ),
-      ],
-    );
-  }
-}
-
-class _WinButton extends StatefulWidget {
-  const _WinButton({
-    required this.icon,
-    required this.tooltip,
-    required this.onTap,
-    this.isClose = false,
-  });
-
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback onTap;
-  final bool isClose;
-
-  @override
-  State<_WinButton> createState() => _WinButtonState();
-}
-
-class _WinButtonState extends State<_WinButton> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    const w = 46.0;
-    const h = AppDesktopSizes.titleBarHeight;
-
-    return Tooltip(
-      message: widget.tooltip,
-      preferBelow: true,
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: GestureDetector(
-          onTap: widget.onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 100),
-            width: w,
-            height: h,
-            color: _hovered
-                ? (widget.isClose
-                    ? const Color(0xFFC42B1C)
-                    : theme.colorScheme.onSurface.withValues(alpha: 0.08))
-                : Colors.transparent,
-            child: Icon(
-              widget.icon,
-              size: 14,
-              color: _hovered && widget.isClose
-                  ? Colors.white
-                  : theme.colorScheme.onSurface,
-            ),
-          ),
         ),
       ),
     );

@@ -9,6 +9,7 @@ import 'package:saydaliati/features/medicines/presentation/widgets/medicine_pick
 import 'package:saydaliati/features/settings/settings_providers.dart';
 import 'package:saydaliati/features/stock/domain/entities/stock.dart';
 import 'package:saydaliati/features/stock/stock_providers.dart';
+import 'package:saydaliati/services/barcode_scanner.dart';
 import 'package:saydaliati/shared/widgets/buttons/app_button.dart';
 import 'package:saydaliati/shared/widgets/cards/app_cards.dart';
 import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
@@ -16,7 +17,6 @@ import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
 import 'package:saydaliati/shared/widgets/forms/form_widgets.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_date_picker.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_number_field.dart';
-import 'package:saydaliati/services/barcode_scanner.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_text_field.dart';
 
 /// Receive stock (create a new batch). If the chosen medicine has no barcode

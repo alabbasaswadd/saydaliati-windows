@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/features/medicines/medicine_providers.dart';
 import 'package:saydaliati/features/medicines/presentation/providers/medicines_provider.dart';
+import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 
 /// Shared «مزامنة أسعار الأدوية» flow — used from both أدويتي and الكاتلوغ:
 ///  1. a confirmation popup explaining what will happen (and how to opt a drug out),
@@ -32,9 +33,7 @@ Future<void> runMedicinePriceSync(BuildContext context, WidgetRef ref) async {
   } catch (e) {
     if (context.mounted) {
       Navigator.of(context, rootNavigator: true).pop(); // close overlay
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تعذّرت مزامنة الأسعار: $e')),
-      );
+      AppSnackbar.info(context, 'تعذّرت مزامنة الأسعار: $e');
     }
     return;
   }
@@ -45,14 +44,8 @@ Future<void> runMedicinePriceSync(BuildContext context, WidgetRef ref) async {
 
   final updated = (summary['updated'] as num?)?.toInt() ?? 0;
   final skipped = (summary['skippedDisabled'] as num?)?.toInt() ?? 0;
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(
-        'تمت مزامنة الأسعار — حُدِّث $updated دواء'
-        '${skipped > 0 ? ' · مستثنى $skipped' : ''}',
-      ),
-    ),
-  );
+  AppSnackbar.info(context, 'تمت مزامنة الأسعار — حُدِّث $updated دواء'
+        '${skipped > 0 ? ' · مستثنى $skipped' : ''}',);
 }
 
 /// Confirmation popup for the price sync — Windows-style dialog: narrow fixed

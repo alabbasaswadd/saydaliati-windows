@@ -5,9 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:printing/printing.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:saydaliati/features/catalog/domain/catalog_item.dart';
 import 'package:saydaliati/features/catalog/presentation/medicine_pdf.dart';
+import 'package:share_plus/share_plus.dart';
 
 /// Captures the medicine card (wrapped in a RepaintBoundary with [boundaryKey])
 /// as a PNG and opens the share sheet — "share the normal medicine view".

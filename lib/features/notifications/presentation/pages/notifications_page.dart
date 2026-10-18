@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:saydaliati/core/theme/app_semantic_colors.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/features/notifications/domain/app_notification.dart';
 import 'package:saydaliati/features/notifications/notification_center_providers.dart';
 import 'package:saydaliati/shared/widgets/states/app_states.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// Notification center. A clean, grouped list that clearly marks system notices
 /// apart from business ones, highlights unread items, and lets the user mark one
@@ -16,7 +16,7 @@ class NotificationsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(notificationCenterProvider);
-    final unread = async.asData?.value?.unreadCount ?? 0;
+    final unread = async.asData?.value.unreadCount ?? 0;
 
     return Scaffold(
       appBar: AppBar(

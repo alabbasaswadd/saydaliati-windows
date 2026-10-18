@@ -11,6 +11,7 @@ import 'package:saydaliati/features/purchases/presentation/pages/purchase_create
 import 'package:saydaliati/features/purchases/presentation/pages/purchase_detail_page.dart';
 import 'package:saydaliati/features/purchases/purchase_providers.dart';
 import 'package:saydaliati/features/reports/domain/report_period.dart';
+import 'package:saydaliati/shared/widgets/buttons/app_refresh_button.dart';
 import 'package:saydaliati/shared/widgets/cards/invoice_card.dart';
 import 'package:saydaliati/shared/widgets/filters/filter_side_sheet.dart';
 import 'package:saydaliati/shared/widgets/filters/period_filter_list.dart';
@@ -77,10 +78,8 @@ class _PurchasesListPageState extends ConsumerState<PurchasesListPage> {
       appBar: AppBar(
         title: const Text('فواتير المشتريات'),
         actions: [
-          IconButton(
-            tooltip: AppStrings.refreshData,
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(purchasesListProvider),
+          AppRefreshButton(
+            onRefresh: () => ref.refresh(purchasesListProvider.future),
           ),
           IconButton(
             tooltip: AppStrings.filters,
@@ -118,7 +117,7 @@ class _PurchasesListPageState extends ConsumerState<PurchasesListPage> {
             );
           }
           return RefreshIndicator(
-            onRefresh: () async => ref.invalidate(purchasesListProvider),
+            onRefresh: () => ref.refresh(purchasesListProvider.future),
             child: InvoiceCardsGrid(
               children: [for (final p in items) _card(p)],
             ),
@@ -132,11 +131,14 @@ class _PurchasesListPageState extends ConsumerState<PurchasesListPage> {
     return InvoiceCard(
       icon: Icons.local_shipping_outlined,
       invoiceNumber: purchase.invoiceNumber,
-      dateLabel: AppDate.ymd(purchase.purchaseDate),
+      dateLabel: AppDate.ymdHm(purchase.purchaseDate),
       itemsCount: purchase.items.length,
       itemsPreview: _preview(purchase.items.map((e) => e.medicineName)),
       amount: purchase.totalAmount,
       currencyCode: '',
+      // المورّد على البطاقة كما العميل في فواتير المبيعات: فاتورةٌ بلا اسم
+      // مَن اشتُريت منه تُلزم فتحها لمعرفة أبسط ما يُعرّفها.
+      partyLabel: purchase.supplierName.isEmpty ? null : purchase.supplierName,
       onTap: () => _open(PurchaseDetailPage(purchase: purchase)),
       onEdit: () => _edit(purchase),
       // لا حذف لفواتير الشراء: الخادم لا يوفّر نقطة حذف (التعديل يعكس المخزون

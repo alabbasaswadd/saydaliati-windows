@@ -10,6 +10,7 @@ import 'package:saydaliati/features/onboarding/onboarding_controller.dart';
 import 'package:saydaliati/features/settings/settings_providers.dart';
 import 'package:saydaliati/features/tutorials/presentation/tutorial_help.dart';
 import 'package:saydaliati/shared/widgets/dialogs/entity_form_dialog.dart';
+import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 
 /// شاشة الإعدادات — تفضيلات التطبيق مجمَّعة بأقسام.
 ///
@@ -127,11 +128,7 @@ Widget _valueText(AsyncValue<String?> async, String fallback, {bool bold = false
 /// يُعلِم المستخدم بنتيجة الحفظ — نفس الرسالة في كل إعداد.
 void _notify(BuildContext context, {required bool saved}) {
   if (!context.mounted) return;
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(saved ? AppStrings.settingsSaved : AppStrings.saveFailed),
-    ),
-  );
+  AppSnackbar.info(context, saved ? AppStrings.settingsSaved : AppStrings.saveFailed);
 }
 
 // ═══════════════════════ إعدادات عامة ═══════════════════════
@@ -307,13 +304,7 @@ class _SyncDataTile extends ConsumerWidget {
     await ref.read(dataSyncControllerProvider.notifier).syncAll();
     if (!context.mounted) return;
     final st = ref.read(dataSyncControllerProvider);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          st.offline ? AppStrings.noInternetToRefresh : AppStrings.syncDone,
-        ),
-      ),
-    );
+    AppSnackbar.info(context, st.offline ? AppStrings.noInternetToRefresh : AppStrings.syncDone,);
   }
 
   static String _fmtTime(DateTime t) =>

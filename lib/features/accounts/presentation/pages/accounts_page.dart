@@ -11,6 +11,7 @@ import 'package:saydaliati/features/currencies/domain/currency_conversion.dart';
 import 'package:saydaliati/features/currencies/domain/entities/currency.dart';
 import 'package:saydaliati/features/currencies/presentation/providers/currencies_provider.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
+import 'package:saydaliati/shared/widgets/buttons/app_refresh_button.dart';
 import 'package:saydaliati/shared/widgets/dialogs/app_dialogs.dart';
 import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
@@ -76,23 +77,16 @@ class AccountsPage extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('الحسابات'),
         actions: [
-          IconButton(
-            tooltip: 'تحديث',
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(accountsListProvider),
+          AppRefreshButton(
+            onRefresh: () => ref.refresh(accountsListProvider.future),
           ),
           Padding(
             padding: const EdgeInsetsDirectional.only(end: 12),
             child: SizedBox(
               height: 36,
               child: FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: context.semantic.success,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                ),
                 icon: const Icon(Icons.add, size: 18),
-                label: const Text('حساب جديد'),
+                label: const Text('إضافة حساب'),
                 onPressed: () =>
                     _addOrEdit(context, ref, async.value ?? const <Account>[]),
               ),

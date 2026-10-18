@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
-import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/core/theme/app_semantic_colors.dart';
+import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/core/utils/app_date.dart';
 import 'package:saydaliati/features/stock/domain/entities/stock.dart';
 import 'package:saydaliati/features/stock/presentation/pages/add_stock_page.dart';

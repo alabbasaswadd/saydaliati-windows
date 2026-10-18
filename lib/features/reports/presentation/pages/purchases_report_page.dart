@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:saydaliati/core/theme/app_semantic_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/core/enums/payment_method.dart';
+import 'package:saydaliati/core/theme/app_semantic_colors.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/features/purchases/presentation/pages/purchase_return_page.dart';
 import 'package:saydaliati/features/reports/domain/entities/purchases_grid.dart';
@@ -12,6 +12,7 @@ import 'package:saydaliati/features/reports/report_providers.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
 import 'package:saydaliati/shared/widgets/cards/stat_chips_bar.dart';
 import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
+import 'package:saydaliati/shared/widgets/grids/grid_group_memory.dart';
 import 'package:saydaliati/shared/widgets/states/app_states.dart';
 import 'package:trina_grid/trina_grid.dart';
 
@@ -34,6 +35,21 @@ class _PurchasesReportPageState extends ConsumerState<PurchasesReportPage> {
 
   /// مدير الشبكة — لفتح نافذة إظهار/إخفاء الأعمدة من زر «الأعمدة».
   TrinaGridStateManager? _gridManager;
+
+  /// بصمة الصفوف المعروضة — بها يُعرَف وصولُ بياناتٍ جديدة فعلاً.
+  Object? _rowsFingerprint;
+
+  /// ذاكرة الشجرة — تُبقي الفواتير المفتوحة بعد التحديث.
+  late final _groups = GridGroupMemory(
+    keyField: _fInvoice,
+    isMounted: () => mounted,
+  );
+
+  @override
+  void dispose() {
+    _groups.dispose();
+    super.dispose();
+  }
 
   // Column field keys.
   static const _fInvoice = 'invoice';
@@ -59,8 +75,9 @@ class _PurchasesReportPageState extends ConsumerState<PurchasesReportPage> {
       title: AppStrings.purchasesReport,
       period: _period,
       onPeriodChanged: (p) => setState(() => _period = p),
-      onRefresh: () => ref.invalidate(
-          purchasesGridProvider(_period.startUtcIso, _period.endUtcIso)),
+      onRefresh: () => ref.refresh(
+          purchasesGridProvider(_period.startUtcIso, _period.endUtcIso)
+              .future),
       body: async.when(
         loading: () => const LoadingState(),
         error: (e, _) => ErrorState.fromError(
@@ -73,7 +90,28 @@ class _PurchasesReportPageState extends ConsumerState<PurchasesReportPage> {
     );
   }
 
+  /// يدفع الصفوف الجديدة إلى الشبكة القائمة بلا إعادة بنائها.
+  void _syncRows(List<PurchasesGridInvoice> invoices) {
+    final fingerprint = Object.hashAll([
+      invoices.length,
+      for (final inv in invoices) inv.purchaseId,
+      for (final inv in invoices) inv.totalAmount,
+    ]);
+    if (fingerprint == _rowsFingerprint) return;
+
+    final isFirst = _rowsFingerprint == null;
+    _rowsFingerprint = fingerprint;
+    if (isFirst) return; // البناء الأوّل تتولّاه `rows:` نفسها.
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      // الإعلان من شأن `AppRefreshButton`؛ هنا تُحدَّث الصفوف وحدها.
+      _groups.replaceRows([for (final inv in invoices) _invoiceRow(inv)]);
+    });
+  }
+
   Widget _content(BuildContext context, List<PurchasesGridInvoice> invoices) {
+    _syncRows(invoices);
     if (invoices.isEmpty) {
       return const EmptyState(
         icon: Icons.local_shipping_outlined,
@@ -123,10 +161,16 @@ class _PurchasesReportPageState extends ConsumerState<PurchasesReportPage> {
           const SizedBox(height: AppSpacing.md),
           Expanded(
             child: AppGrid(
+              // بلا مفتاح مشتقّ من البيانات: تغييره يُعيد بناء الشبكة كلّها
+              // فيومض الجدول ويضيع موضع التمرير وعرض الأعمدة وتُطوى الشجرة.
+              // الصفوف تُستبدَل في مكانها (`_syncRows`) والشبكة باقية.
               tree: true,
               columns: _columns(context),
               rows: [for (final inv in invoices) _invoiceRow(inv)],
-              onLoaded: (m) => _gridManager = m,
+              onLoaded: (m) {
+                _gridManager = m;
+                _groups.attach(m);
+              },
             ),
           ),
         ],

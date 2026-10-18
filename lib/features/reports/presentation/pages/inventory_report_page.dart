@@ -60,7 +60,7 @@ class _InventoryReportPageState extends ConsumerState<InventoryReportPage> {
     return ReportScaffold(
       title: AppStrings.inventoryReport,
       actions: [AppGridColumnsButton(managerGetter: () => _gridManager)],
-      onRefresh: () => ref.invalidate(inventoryReportProvider),
+      onRefresh: () => ref.refresh(inventoryReportProvider.future),
       body: async.when(
         loading: () => const LoadingState(),
         error: (e, _) => ErrorState.fromError(

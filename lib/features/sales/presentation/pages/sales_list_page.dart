@@ -17,10 +17,11 @@ import 'package:saydaliati/features/sales/presentation/pages/sale_detail_page.da
 import 'package:saydaliati/features/sales/presentation/pages/sales_page.dart';
 import 'package:saydaliati/features/sales/presentation/providers/sales_provider.dart';
 import 'package:saydaliati/features/sales/sale_providers.dart';
+import 'package:saydaliati/shared/widgets/buttons/app_refresh_button.dart';
+import 'package:saydaliati/shared/widgets/cards/invoice_card.dart';
 import 'package:saydaliati/shared/widgets/dialogs/app_dialogs.dart';
 import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
-import 'package:saydaliati/shared/widgets/cards/invoice_card.dart';
 import 'package:saydaliati/shared/widgets/filters/filter_side_sheet.dart';
 import 'package:saydaliati/shared/widgets/filters/period_filter_list.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_dropdown.dart';
@@ -108,13 +109,9 @@ class _SalesListPageState extends ConsumerState<SalesListPage> {
       appBar: AppBar(
         title: const Text(AppStrings.salesList),
         actions: [
-          IconButton(
-            tooltip: AppStrings.refreshData,
-            icon: const Icon(Icons.refresh),
-            // يُبطَل المزوّد المُعامَل بالفلاتر الحالية نفسها، لا المزوّد
-            // العامّ: إبطال العامّ لا يمسّ النسخة المعروضة فلا يتغيّر شيء.
-            onPressed: () => ref.invalidate(provider),
-          ),
+          // يُحدَّث المزوّد المُعامَل بالفلاتر الحالية نفسها، لا المزوّد
+          // العامّ: تحديث العامّ لا يمسّ النسخة المعروضة فلا يتغيّر شيء.
+          AppRefreshButton(onRefresh: () => ref.refresh(provider.future)),
           IconButton(
             tooltip: _showProfit ? 'إخفاء الأرباح' : 'إظهار الأرباح',
             onPressed: () => setState(() => _showProfit = !_showProfit),

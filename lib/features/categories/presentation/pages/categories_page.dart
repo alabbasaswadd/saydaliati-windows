@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:saydaliati/shared/widgets/buttons/add_entity_button.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/features/categories/category_providers.dart';
 import 'package:saydaliati/features/categories/domain/entities/category.dart';
@@ -81,9 +82,8 @@ class CategoriesPage extends ConsumerWidget {
       appBar: AppBar(
         title: const Text(AppStrings.categories),
         actions: [
-          IconButton(
-            tooltip: AppStrings.addNew,
-            icon: const Icon(Icons.add),
+          AddEntityButton(
+            label: 'إضافة فئة',
             onPressed: () => _addOrEdit(context, ref),
           ),
         ],

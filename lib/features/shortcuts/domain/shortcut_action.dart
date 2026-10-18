@@ -27,7 +27,10 @@ enum ShortcutAction {
     label: 'حفظ',
     section: ShortcutSection.general,
     icon: Icons.save_outlined,
-    defaultCombo: 'Ctrl+S',
+    // نُقل من Ctrl+S إلى Ctrl+Enter لأن Ctrl+S صار لتعديل السعر بطلب
+    // المستخدم، ولا يصحّ إجراءان مفعَّلان على تركيبة واحدة. و«إنتر» مع
+    // مُعدِّل اصطلاحٌ معروف للإتمام والحفظ.
+    defaultCombo: 'Ctrl+Enter',
     hint: 'يحفظ ما هو مفتوح أمامك: فاتورة، مصروف، سند، أو أي نموذج',
   ),
 
@@ -131,12 +134,20 @@ enum ShortcutAction {
     icon: Icons.delete_outline,
     defaultCombo: 'Ctrl+D',
   ),
+  invoiceEditPrice(
+    id: 'invoice.editPrice',
+    label: 'تعديل سعر السطر',
+    section: ShortcutSection.invoice,
+    icon: Icons.sell_outlined,
+    defaultCombo: 'Ctrl+S',
+    hint: 'ينقل التحرير إلى خلية السعر في السطر المحدَّد',
+  ),
   invoiceEditQty(
     id: 'invoice.editQty',
     label: 'تعديل كمية السطر',
     section: ShortcutSection.invoice,
     icon: Icons.numbers_outlined,
-    defaultCombo: 'Ctrl+K',
+    defaultCombo: 'Ctrl+F',
     hint: 'ينقل التحرير إلى خلية الكمية في السطر المحدَّد',
   ),
   invoicePickCustomer(

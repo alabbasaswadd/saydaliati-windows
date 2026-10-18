@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
-import 'package:saydaliati/core/theme/app_semantic_colors.dart';
 import 'package:saydaliati/core/utils/app_date.dart';
 import 'package:saydaliati/features/expenses/domain/entities/expense.dart';
 import 'package:saydaliati/features/expenses/domain/entities/expense_category.dart';
@@ -68,11 +67,6 @@ class ExpensesListPage extends ConsumerWidget {
             child: SizedBox(
               height: 36,
               child: FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: context.semantic.success,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                ),
                 icon: const Icon(Icons.add, size: 18),
                 label: const Text(AppStrings.addExpense),
                 onPressed: () => _addOrEdit(context, ref, categories),

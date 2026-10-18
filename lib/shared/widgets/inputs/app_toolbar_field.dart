@@ -90,65 +90,71 @@ class _AppToolbarFieldState extends State<AppToolbarField> {
     final hasValue = widget.value != null && widget.value!.isNotEmpty;
     final text = hasValue ? widget.value! : (widget.placeholder ?? '');
 
-    OutlineInputBorder border() => OutlineInputBorder(
-          borderRadius: toolbarFieldRadius,
-          borderSide: BorderSide(color: borderColor, width: borderWidth),
-        );
-
-    // ارتفاع ثابت لا حدّ أدنى: عناصر الشريط كلها (حقول ومفتاح «وصفة طبية»)
-    // تأخذ القيمة نفسها حرفياً فتتطابق حوافها العليا والسفلى بلا تفاوت.
-    final field = SizedBox(
+    // ── بناء يدويّ لا `InputDecorator` ───────────────────────────────
+    // كان الحقل يستعمل عنواناً عائماً (`floatingLabelBehavior.always`)،
+    // والعنوان العائم يُرسَم **على الحدّ**: نصفه العلوي خارج الصندوق. ومع
+    // ارتفاع ثابت يُقصّ ذلك النصف فيظهر العنوان مبتوراً، ويزداد ظهوراً كلّما
+    // ارتفع الحقل.
+    //
+    // والبناء اليدويّ يُلغي السبب لا العَرَض: العنوان **داخل** الصندوق فوق
+    // القيمة، فلا شيء يُرسَم خارج الحدود أصلاً. وهو ما فُعل بمفتاح «وصفة
+    // طبية» للسبب نفسه، فصارت عناصر الشريط بهندسة واحدة.
+    final field = Container(
       height: AppSizes.toolbarFieldHeight,
-      child: InputDecorator(
-        isFocused: _focused,
-        isHovering: _hovered,
-        decoration: InputDecoration(
-          labelText: widget.label,
-          floatingLabelBehavior: FloatingLabelBehavior.always,
-          isDense: true,
-          filled: true,
-          fillColor: scheme.surface,
-          // التمرير يُقرأ من الحدّ والأيقونة، لا من تعبئة إضافية خلف النص.
-          hoverColor: Colors.transparent,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.sm + 2,
-            vertical: AppSpacing.sm,
-          ),
-          prefixIcon: Padding(
-            padding: const EdgeInsetsDirectional.only(end: AppSpacing.sm),
-            child: Icon(widget.icon, size: AppSizes.iconXs, color: iconColor),
-          ),
-          // بلا هذه القيود يفرض الحقل مربّع لمس 48px فيرتفع عن بقية الشريط.
-          prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-          suffixIcon: widget.trailing == null
-              ? null
-              : Padding(
-                  padding:
-                      const EdgeInsetsDirectional.only(start: AppSpacing.xs),
-                  child: widget.trailing,
+      padding: const EdgeInsetsDirectional.only(
+        start: AppSpacing.sm + 2,
+        end: AppSpacing.sm,
+        top: 5,
+        bottom: 5,
+      ),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: toolbarFieldRadius,
+        border: Border.all(color: borderColor, width: borderWidth),
+      ),
+      child: Row(
+        children: [
+          Icon(widget.icon, size: AppSizes.iconXs, color: iconColor),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (widget.label != null) ...[
+                  Text(
+                    widget.label!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: labelColor,
+                      height: 1,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                ],
+                Text(
+                  text,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    height: 1,
+                    // القيمة بالأسود الصريح (أعلى تباين ممكن) — شاشة إدخال
+                    // سريع تُقرأ قيمها بلمحة؛ نصّ الحالة الفارغة وحده يبقى
+                    // ثانوياً.
+                    color: hasValue
+                        ? toolbarFieldTextColor(context)
+                        : semantic.textSecondary,
+                  ),
                 ),
-          suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-          labelStyle: theme.textTheme.labelMedium?.copyWith(color: labelColor),
-          floatingLabelStyle:
-              theme.textTheme.labelMedium?.copyWith(color: labelColor),
-          border: border(),
-          enabledBorder: border(),
-          focusedBorder: border(),
-          disabledBorder: border(),
-        ),
-        child: Text(
-          text,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            height: 1.25,
-            // القيمة بالأسود الصريح (أعلى تباين ممكن) — شاشة إدخال سريع تُقرأ
-            // قيمها بلمحة؛ نصّ الحالة الفارغة وحده يبقى ثانوياً.
-            color: hasValue
-                ? toolbarFieldTextColor(context)
-                : semantic.textSecondary,
+              ],
+            ),
           ),
-        ),
+          if (widget.trailing != null) ...[
+            const SizedBox(width: AppSpacing.xs),
+            widget.trailing!,
+          ],
+        ],
       ),
     );
 
@@ -204,9 +210,10 @@ Widget toolbarTrailingIcon(BuildContext context, IconData icon) => Icon(
 /// الإطار بدل أن يبدو شريحة أو زراً.
 const BorderRadius toolbarFieldRadius = AppRadius.brXs;
 
-/// حدّ عناصر شريط الأدوات — رمادي محايد (بلا ميل أخضر) بتباين ظاهر يرسم إطار
-/// الحقل بوضوح على الخلفية البيضاء.
-Color toolbarFieldBorderColor(BuildContext context) => Color.alphaBlend(
-      context.semantic.textSecondary.withValues(alpha: 0.40),
-      Theme.of(context).colorScheme.surface,
-    );
+/// حدّ عناصر شريط الأدوات — **أسود** يرسم إطار الحقل بأعلى تباين ممكن على
+/// الخلفية البيضاء.
+///
+/// يُشتقّ من `onSurface` لا من `Colors.black` الثابت: فيبقى أسودَ في السمة
+/// الفاتحة وأبيضَ في الداكنة — لونٌ ثابت يختفي على خلفية داكنة.
+Color toolbarFieldBorderColor(BuildContext context) =>
+    Theme.of(context).colorScheme.onSurface;

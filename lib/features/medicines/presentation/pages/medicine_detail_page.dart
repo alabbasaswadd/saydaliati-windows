@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
+import 'package:saydaliati/core/theme/app_breakpoints.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/features/alternatives/presentation/pages/alternatives_page.dart';
 import 'package:saydaliati/features/currencies/domain/currency_conversion.dart';
@@ -9,9 +10,9 @@ import 'package:saydaliati/features/currencies/presentation/providers/currencies
 import 'package:saydaliati/features/medicines/domain/entities/medicine.dart';
 import 'package:saydaliati/features/medicines/medicine_providers.dart';
 import 'package:saydaliati/features/medicines/presentation/providers/medicines_provider.dart';
-import 'package:saydaliati/core/theme/app_breakpoints.dart';
 import 'package:saydaliati/features/reports/presentation/pages/medicine_report_page.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
+import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
 import 'package:trina_grid/trina_grid.dart';
 
@@ -191,9 +192,7 @@ class _AutoPriceSyncTileState extends ConsumerState<_AutoPriceSyncTile> {
     } catch (e) {
       if (mounted) {
         setState(() => _enabled = previous); // revert on failure
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('تعذّر حفظ الإعداد: $e')),
-        );
+        AppSnackbar.info(context, 'تعذّر حفظ الإعداد: $e');
       }
     } finally {
       if (mounted) setState(() => _busy = false);

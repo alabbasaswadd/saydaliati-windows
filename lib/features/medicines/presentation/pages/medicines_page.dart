@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:saydaliati/shared/widgets/buttons/add_entity_button.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/features/medicines/domain/entities/medicine.dart';
@@ -15,6 +16,7 @@ import 'package:saydaliati/features/onboarding/onboarding_controller.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
 import 'package:saydaliati/shared/widgets/async_value_widget.dart';
 import 'package:saydaliati/shared/widgets/buttons/app_button.dart';
+import 'package:saydaliati/shared/widgets/buttons/app_refresh_button.dart';
 import 'package:saydaliati/shared/widgets/dialogs/app_dialogs.dart';
 import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
@@ -163,15 +165,9 @@ class _MedicinesPageState extends ConsumerState<MedicinesPage> {
         actions: [
           AppGridColumnsButton(managerGetter: () => _gridManager),
           const NotificationBell(),
-          IconButton(
+          AppRefreshButton(
             tooltip: 'تحديث أدويتي',
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              ref.invalidate(medicineCatalogProvider);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('يتم تحديث أدويتك…')),
-              );
-            },
+            onRefresh: () => ref.refresh(medicineCatalogProvider.future),
           ),
           IconButton(
             tooltip: 'مزامنة الأسعار من الكاتلوغ',
@@ -214,11 +210,10 @@ class _MedicinesPageState extends ConsumerState<MedicinesPage> {
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 // زر إضافة دواء بأسلوب سطح المكتب — بجانب البحث بدل الزر العائم.
-                FilledButton.icon(
+                AddEntityButton(
                   key: _addKey,
-                  onPressed: () => _openForm(),
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('إضافة دواء'),
+                  label: 'إضافة دواء',
+                  onPressed: _openForm,
                 ),
               ],
             ),

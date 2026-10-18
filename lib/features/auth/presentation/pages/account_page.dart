@@ -4,6 +4,7 @@ import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/core/session/session_controller.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/features/auth/auth_providers.dart';
+import 'package:saydaliati/shared/widgets/buttons/app_refresh_button.dart';
 import 'package:saydaliati/shared/widgets/dialogs/app_dialogs.dart';
 import 'package:saydaliati/shared/widgets/states/app_states.dart';
 
@@ -37,10 +38,8 @@ class AccountPage extends ConsumerWidget {
       appBar: AppBar(
         title: const Text(AppStrings.accountTitle),
         actions: [
-          IconButton(
-            tooltip: AppStrings.refreshData,
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(currentUserProvider),
+          AppRefreshButton(
+            onRefresh: () => ref.refresh(currentUserProvider.future),
           ),
         ],
       ),

@@ -5,24 +5,137 @@ import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/shared/widgets/buttons/app_button.dart';
 
 /// Centered loading indicator with an optional message. One loading look app-wide.
-class LoadingState extends StatelessWidget {
+class LoadingState extends StatefulWidget {
   const LoadingState({this.message, super.key});
 
   final String? message;
 
   @override
+  State<LoadingState> createState() => _LoadingStateState();
+}
+
+class _LoadingStateState extends State<LoadingState>
+    with SingleTickerProviderStateMixin {
+  /// تأخير قصير قبل الظهور.
+  ///
+  /// أكثر القراءات تعود من الكاش في أجزاء من الثانية، وإظهار مؤشّر لها
+  /// يُنتج وميضاً يجعل الشاشة تبدو مضطربة. فما يسبق هذا التأخير لا يُرى
+  /// أصلاً، وما يتجاوزه يظهر مرّةً واحدة بهدوء.
+  static const _delay = Duration(milliseconds: 180);
+
+  bool _visible = false;
+  late final AnimationController _c;
+
+  @override
+  void initState() {
+    super.initState();
+    _c = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+
+    Future<void>.delayed(_delay, () {
+      if (mounted) setState(() => _visible = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const CircularProgressIndicator(),
-          if (message != null) ...[
+    final theme = Theme.of(context);
+    final primary = theme.colorScheme.primary;
+
+    return AnimatedOpacity(
+      opacity: _visible ? 1 : 0,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // أيقونة الصيدلية لا دائرة دوّارة: الدائرة عامّة تُستعمل في كل
+            // تطبيق، والأيقونة تقول **أين** أنت أثناء الانتظار. وتتنفّس
+            // برفق (تكبير طفيف) بدل أن تدور — فالدوران يُلحّ على العين
+            // والتنفّس يُطمئن.
+            ScaleTransition(
+              scale: Tween<double>(begin: 0.92, end: 1.06).animate(
+                CurvedAnimation(
+                  parent: _c,
+                  curve: Curves.easeInOut,
+                  reverseCurve: Curves.easeInOut,
+                ),
+              ),
+              child: Container(
+                width: 62,
+                height: 62,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: primary.withValues(alpha: 0.09),
+                ),
+                child: Icon(Icons.local_pharmacy_rounded,
+                    size: 28, color: primary),
+              ),
+            ),
             const SizedBox(height: AppSpacing.md),
-            Text(message!, style: Theme.of(context).textTheme.bodySmall),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  widget.message ?? AppStrings.loading,
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: theme.hintColor),
+                ),
+                const SizedBox(width: 6),
+                // ثلاث نقاط تتعاقب — تُظهر أن العمل جارٍ بلا ضجيج بصري.
+                _Dots(controller: _c, color: primary),
+              ],
+            ),
           ],
-        ],
+        ),
       ),
+    );
+  }
+}
+
+/// ثلاث نقاط تُضيء بالتعاقب على إيقاع المتحكّم نفسه.
+class _Dots extends StatelessWidget {
+  const _Dots({required this.controller, required this.color});
+
+  final AnimationController controller;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) {
+        final t = controller.value * 3; // ثلاث مراحل في الدورة
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var i = 0; i < 3; i++) ...[
+              if (i > 0) const SizedBox(width: 3),
+              Container(
+                width: 4,
+                height: 4,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: color.withValues(
+                    // النقطة التي حان دورها أوضح، والبقية باهتة.
+                    alpha: (t.floor() % 3) == i ? 0.95 : 0.25,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        );
+      },
     );
   }
 }

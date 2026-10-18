@@ -94,6 +94,13 @@ flutter_launcher_icons:
   web:
     generate: true
     image_path: "assets/icon/app_icon.png"
+  # نسخة ويندوز كانت تحمل أيقونة Flutter الافتراضية: هذا القسم لم يكن موجوداً
+  # فلم يُولَّد `windows/runner/resources/app_icon.ico` من الشعار أصلاً.
+  # و256px هو أكبر مقاس يستعمله ويندوز (أيقونة سطح المكتب الكبيرة).
+  windows:
+    generate: true
+    image_path: "assets/icon/app_icon.png"
+    icon_size: 256
 
 flutter:
   uses-material-design: true

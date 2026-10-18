@@ -241,7 +241,7 @@ class _RateEditDialogState extends ConsumerState<_RateEditDialog> {
                       child: Row(
                         children: [
                           Icon(
-                            entered! > _oldRate
+                            entered > _oldRate
                                 ? Icons.trending_up
                                 : Icons.trending_down,
                             size: 16,

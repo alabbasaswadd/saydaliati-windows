@@ -8,9 +8,11 @@ import 'package:saydaliati/features/currencies/presentation/providers/currencies
 import 'package:saydaliati/features/reports/domain/entities/stocktake.dart';
 import 'package:saydaliati/features/reports/report_providers.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
+import 'package:saydaliati/shared/widgets/buttons/app_refresh_button.dart';
 import 'package:saydaliati/shared/widgets/cards/stat_chips_bar.dart';
 import 'package:saydaliati/shared/widgets/filters/filter_bar.dart';
 import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
+import 'package:saydaliati/shared/widgets/grids/grid_group_memory.dart';
 import 'package:saydaliati/shared/widgets/states/app_states.dart';
 import 'package:trina_grid/trina_grid.dart';
 
@@ -33,6 +35,22 @@ class _StocktakeReportPageState extends ConsumerState<StocktakeReportPage> {
 
   TrinaGridStateManager? _gridManager;
 
+  @override
+  void dispose() {
+    _groups.dispose();
+    super.dispose();
+  }
+
+  /// ذاكرة الشجرة: تُبقي المجموعات المفتوحة عبر إعادة بناء الشبكة.
+  ///
+  /// مفتاح الشبكة يضمّ العملة وأساس التسعير (لأن القيم تتغيّر بهما)، فكل
+  /// تبديل كان يُعيد البناء ويطوي الشجرة — فيفقد المستخدم موضعه بعد كل
+  /// نقرة على المفتاح أو العملة.
+  late final _groups = GridGroupMemory(
+    keyField: _fName,
+    isMounted: () => mounted,
+  );
+
   static const _fName = 'name';
   static const _fQty = 'qty';
   static const _fPrice = 'price';
@@ -53,9 +71,8 @@ class _StocktakeReportPageState extends ConsumerState<StocktakeReportPage> {
         title: const Text(AppStrings.stocktakeReport),
         actions: [
           AppGridColumnsButton(managerGetter: () => _gridManager),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(stocktakeProvider),
+          AppRefreshButton(
+            onRefresh: () => ref.refresh(stocktakeProvider.future),
           ),
         ],
       ),
@@ -207,7 +224,10 @@ class _StocktakeReportPageState extends ConsumerState<StocktakeReportPage> {
                     ),
                   ),
               ],
-              onLoaded: (m) => _gridManager = m,
+              onLoaded: (m) {
+                _gridManager = m;
+                _groups.attach(m);
+              },
             ),
           ),
         ],

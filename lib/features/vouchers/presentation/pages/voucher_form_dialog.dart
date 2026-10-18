@@ -4,11 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/core/network/server_capabilities.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
-import 'package:saydaliati/features/currencies/domain/currency_conversion.dart';
-import 'package:saydaliati/features/currencies/domain/entities/currency.dart';
 import 'package:saydaliati/features/accounts/domain/entities/account.dart';
 import 'package:saydaliati/features/accounts/presentation/widgets/account_picker_field.dart';
+import 'package:saydaliati/features/currencies/domain/currency_conversion.dart';
+import 'package:saydaliati/features/currencies/domain/entities/currency.dart';
 import 'package:saydaliati/features/currencies/presentation/providers/currencies_provider.dart';
+import 'package:saydaliati/features/shortcuts/presentation/widgets/save_shortcut.dart';
 import 'package:saydaliati/features/vouchers/domain/entities/voucher.dart';
 import 'package:saydaliati/features/vouchers/voucher_providers.dart';
 import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
@@ -16,7 +17,6 @@ import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_date_picker.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_dropdown.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_text_field.dart';
-import 'package:saydaliati/features/shortcuts/presentation/widgets/save_shortcut.dart';
 
 /// حوار إضافة سند مباشر — طرف مدين وطرف دائن بنفس المبلغ (الحالة الشائعة
 /// لسند قبض/دفع). نفس أسلوب حوار المصروف/الحساب: الحفظ داخل الحوار نفسه

@@ -4,6 +4,7 @@ import 'package:saydaliati/core/theme/app_semantic_colors.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/features/shortcuts/domain/entities/shortcut_binding.dart';
 import 'package:saydaliati/features/shortcuts/domain/shortcut_action.dart';
+import 'package:saydaliati/features/shortcuts/presentation/shortcut_hints_setting.dart';
 import 'package:saydaliati/features/shortcuts/presentation/shortcuts_controller.dart';
 import 'package:saydaliati/features/shortcuts/presentation/widgets/key_cap.dart';
 import 'package:saydaliati/features/shortcuts/presentation/widgets/shortcut_recorder.dart';
@@ -73,6 +74,11 @@ class _ShortcutsPageState extends ConsumerState<ShortcutsPage> {
                     children: [
                       for (final (section, bindings) in sections) ...[
                         _SectionHeader(section: section),
+                        // خيار على مستوى قسم الفاتورة وحده: شريط التلميحات
+                        // يخصّ شاشتي البيع والشراء، فمكانه حيث تُقرأ
+                        // اختصاراتهما لا في إعدادات عامّة بعيدة عنها.
+                        if (section == ShortcutSection.invoice)
+                          const _HintsToggle(),
                         const SizedBox(height: AppSpacing.sm),
                         Card(
                           child: Column(
@@ -223,6 +229,57 @@ class _Toolbar extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// مفتاح «إظهار الاختصارات على الشاشة» — محلّي للجهاز.
+class _HintsToggle extends ConsumerWidget {
+  const _HintsToggle();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final on = ref.watch(showShortcutHintsProvider);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.sm),
+      child: InkWell(
+        borderRadius: AppRadius.brSm,
+        onTap: () => ref.read(showShortcutHintsProvider.notifier).toggle(),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+          child: Row(
+            children: [
+              SizedBox(
+                height: 28,
+                child: Switch(
+                  value: on,
+                  onChanged: (v) =>
+                      ref.read(showShortcutHintsProvider.notifier).set(v),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('إظهار الاختصارات على الشاشة',
+                        style: theme.textTheme.bodyMedium),
+                    Text(
+                      'سطر واحد أسفل شريط فاتورتَي البيع والشراء يذكر كل '
+                      'اختصار وما يفعله. الخيار لهذا الجهاز وحده.',
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: theme.hintColor),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

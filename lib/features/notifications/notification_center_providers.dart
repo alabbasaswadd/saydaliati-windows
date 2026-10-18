@@ -69,4 +69,4 @@ class NotificationCenter extends _$NotificationCenter {
 /// Unread count for the bell badge — 0 while loading / on error.
 @riverpod
 int notificationsUnreadCount(Ref ref) =>
-    ref.watch(notificationCenterProvider).asData?.value?.unreadCount ?? 0;
+    ref.watch(notificationCenterProvider).asData?.value.unreadCount ?? 0;

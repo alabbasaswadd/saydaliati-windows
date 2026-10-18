@@ -11,11 +11,11 @@ import 'package:saydaliati/features/currencies/presentation/providers/currencies
 import 'package:saydaliati/features/expenses/domain/entities/expense.dart';
 import 'package:saydaliati/features/expenses/domain/entities/expense_category.dart';
 import 'package:saydaliati/features/expenses/expense_providers.dart';
+import 'package:saydaliati/features/shortcuts/presentation/widgets/save_shortcut.dart';
 import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_date_picker.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_dropdown.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_text_field.dart';
-import 'package:saydaliati/features/shortcuts/presentation/widgets/save_shortcut.dart';
 
 /// حوار إضافة/تعديل مصروف — بأسلوب نوافذ ويندوز (مطابق لـ EntityFormDialog):
 /// عرض ثابت ضيّق، رأس بأيقونة + عنوان + زر إغلاق صغير، أزرار بحجم محتواها.

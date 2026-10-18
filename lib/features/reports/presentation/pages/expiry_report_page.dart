@@ -5,6 +5,7 @@ import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/features/reports/domain/entities/expiry_report.dart';
 import 'package:saydaliati/features/reports/report_providers.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
+import 'package:saydaliati/shared/widgets/buttons/app_refresh_button.dart';
 import 'package:saydaliati/shared/widgets/cards/stat_chips_bar.dart';
 import 'package:saydaliati/shared/widgets/filters/filter_bar.dart';
 import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
@@ -50,9 +51,8 @@ class _ExpiryReportPageState extends ConsumerState<ExpiryReportPage> {
         title: const Text(AppStrings.expiryReport),
         actions: [
           AppGridColumnsButton(managerGetter: () => _gridManager),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(expiryReportProvider(_window)),
+          AppRefreshButton(
+            onRefresh: () => ref.refresh(expiryReportProvider(_window).future),
           ),
         ],
       ),

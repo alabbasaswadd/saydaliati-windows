@@ -1,31 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:saydaliati/features/accounts/account_providers.dart';
-import 'package:saydaliati/features/accounts/domain/entities/account.dart';
-import 'package:saydaliati/features/accounts/presentation/widgets/account_picker_field.dart';
-import 'package:saydaliati/features/currencies/presentation/widgets/currency_picker_field.dart';
-import 'package:saydaliati/features/customers/presentation/widgets/customer_picker_field.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/core/enums/payment_method.dart';
 import 'package:saydaliati/core/network/server_capabilities.dart';
 import 'package:saydaliati/core/offline/sync/sync_service.dart';
-import 'package:saydaliati/core/utils/app_date.dart';
 import 'package:saydaliati/core/theme/app_semantic_colors.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
+import 'package:saydaliati/core/utils/app_date.dart';
+import 'package:saydaliati/features/accounts/account_providers.dart';
+import 'package:saydaliati/features/accounts/domain/entities/account.dart';
+import 'package:saydaliati/features/accounts/presentation/widgets/account_picker_field.dart';
 import 'package:saydaliati/features/currencies/domain/currency_conversion.dart';
 import 'package:saydaliati/features/currencies/domain/entities/currency.dart';
 import 'package:saydaliati/features/currencies/presentation/providers/currencies_provider.dart';
 import 'package:saydaliati/features/currencies/presentation/providers/currency_freshness.dart';
+import 'package:saydaliati/features/currencies/presentation/widgets/currency_picker_field.dart';
 import 'package:saydaliati/features/customers/customer_providers.dart';
 import 'package:saydaliati/features/customers/domain/entities/customer.dart';
+import 'package:saydaliati/features/customers/presentation/widgets/customer_picker_field.dart';
 import 'package:saydaliati/features/dashboard/presentation/providers/dashboard_provider.dart';
 import 'package:saydaliati/features/medicines/domain/entities/medicine.dart';
 import 'package:saydaliati/features/medicines/medicine_providers.dart';
 import 'package:saydaliati/features/medicines/presentation/medicine_scan_actions.dart';
 import 'package:saydaliati/features/medicines/presentation/providers/medicines_provider.dart';
+import 'package:saydaliati/features/medicines/presentation/widgets/medicine_picker_field.dart';
 import 'package:saydaliati/features/purchases/domain/entities/create_purchase_input.dart';
 import 'package:saydaliati/features/purchases/purchase_providers.dart';
-import 'package:saydaliati/features/medicines/presentation/widgets/medicine_picker_field.dart';
 import 'package:saydaliati/features/sales/domain/entities/create_sale_input.dart';
 import 'package:saydaliati/features/sales/domain/entities/medicine_batch.dart';
 import 'package:saydaliati/features/sales/domain/entities/sale.dart';
@@ -33,6 +33,9 @@ import 'package:saydaliati/features/sales/presentation/pages/pending_invoices_pa
 import 'package:saydaliati/features/sales/presentation/providers/sales_provider.dart';
 import 'package:saydaliati/features/sales/sale_providers.dart';
 import 'package:saydaliati/features/settings/settings_providers.dart';
+import 'package:saydaliati/features/shortcuts/domain/shortcut_action.dart';
+import 'package:saydaliati/features/shortcuts/presentation/shortcuts_scope.dart';
+import 'package:saydaliati/features/shortcuts/presentation/widgets/shortcut_hints_bar.dart';
 import 'package:saydaliati/services/barcode_scanner.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
 import 'package:saydaliati/shared/widgets/buttons/app_button.dart';
@@ -42,13 +45,11 @@ import 'package:saydaliati/shared/widgets/dialogs/app_dialogs.dart';
 import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
 import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
-import 'package:trina_grid/trina_grid.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_date_picker.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_number_field.dart';
-import 'package:saydaliati/features/shortcuts/domain/shortcut_action.dart';
-import 'package:saydaliati/features/shortcuts/presentation/shortcuts_scope.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_toolbar_field.dart';
 import 'package:saydaliati/shared/widgets/states/app_states.dart';
+import 'package:trina_grid/trina_grid.dart';
 
 /// One receipt line held in memory (there is no cart on the backend).
 class _PosLine {
@@ -145,6 +146,14 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
   /// يصير السطر المضاف محدَّداً تلقائياً فتعمل اختصارات الكمية والحذف عليه فوراً.
   String? _currentLineId;
 
+  /// عدّاد يُدخَل في مفتاح الشبكة لإعادة بنائها من الصفر.
+  ///
+  /// تغيير عرض عمود يسكن حالةَ الشبكة الداخلية لا الأعمدة المُعلَنة، فلا
+  /// سبيل لإرجاعه إلّا ببناء شبكة جديدة. وزيادة هذا العدّاد تُغيّر المفتاح
+  /// فتُستبدَل الشبكة بعروضها المُعلَنة — وحالة الأسطر محفوظة في `_lines`
+  /// لا في الشبكة، فلا يضيع شيء.
+  int _gridEpoch = 0;
+
   /// آخر قيم بناء يحتاجها الحفظ/الإضافة من خارج دورة البناء (الاختصارات).
   List<Medicine> _lastCatalog = const [];
   String? _lastWarehouseId;
@@ -194,9 +203,10 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
       ShortcutAction.invoiceSave: () => _submit(_lastWarehouseId, _lastBase),
       ShortcutAction.invoiceCancel: _clearInvoice,
       ShortcutAction.invoiceAddItem: () =>
-          _pickMedicineForLine(_lastCatalog, null, mergeIfSame: true),
+          _pickMedicineForLine(_lastCatalog, null),
       ShortcutAction.invoiceDeleteLine: _deleteCurrentLine,
       ShortcutAction.invoiceEditQty: _editCurrentQuantity,
+      ShortcutAction.invoiceEditPrice: _editCurrentPrice,
       ShortcutAction.invoicePickCustomer: _pickCustomerByShortcut,
       ShortcutAction.invoicePickCurrency: _pickCurrencyByShortcut,
       ShortcutAction.invoicePrescription: () =>
@@ -271,11 +281,20 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
     TrinaGridStateManager grid,
     String lineId, {
     required bool startEditing,
+  }) =>
+      _focusCell(grid, lineId, _fQty, startEditing: startEditing);
+
+  /// ينقل الخلية الحالية إلى حقلٍ بعينه في السطر [lineId].
+  bool _focusCell(
+    TrinaGridStateManager grid,
+    String lineId,
+    String field, {
+    required bool startEditing,
   }) {
     final index = grid.refRows
         .indexWhere((r) => r.cells[_fId]?.value?.toString() == lineId);
     if (index < 0) return false;
-    final cell = grid.refRows[index].cells[_fQty];
+    final cell = grid.refRows[index].cells[field];
     if (cell == null) return false;
 
     // الشبكة قد تكون بلا تركيز (أُغلق منتقي الدواء للتو)، وبلا تركيزها لا
@@ -305,6 +324,17 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
         : (_lines.length > 1 ? _lines[index + 1] : null);
     setState(() => _lines.remove(line));
     _currentLineId = next == null ? null : _lineId(next);
+  }
+
+  /// ينقل التحرير إلى خلية **سعر** السطر المحدَّد.
+  void _editCurrentPrice() {
+    final grid = _grid;
+    final line = _currentLine;
+    if (grid == null || line == null) {
+      AppSnackbar.info(context, 'لا توجد أسطر في الفاتورة');
+      return;
+    }
+    _focusCell(grid, _lineId(line), _fPrice, startEditing: true);
   }
 
   /// ينقل التحرير إلى خلية الكمية في السطر المحدَّد.
@@ -420,17 +450,25 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
     }
   }
 
+  /// [fromScanner] = قراءة بالماسح لا اختيار يدويّ.
+  ///
+  /// الماسح **يزيد الكمية** على سطرٍ قائم للمادة نفسها بدل إنشاء سطر: مسحُ
+  /// عشر علب يعني كمية ١٠ لا عشرة سطور. والاختيار اليدوي بالعكس يُنشئ سطراً
+  /// مستقلاً دائماً — فمَن يفتح المنتقي ويختار المادة ثانيةً قصد سطراً
+  /// ثانياً بسعره ودفعته.
+  ///
+  /// والدمج **مشروط بتطابق الوحدة**: الباركود للمادة لا للوحدة، فزيادةُ
+  /// سطرٍ بالعلبة من مسحٍ يقصد حبّة تُفسد الكمية والكلفة. فإن لم يوجد سطر
+  /// بالوحدة الافتراضية أُنشئ سطر جديد.
   Future<void> _addMedicine(Medicine medicine,
-      {bool mergeWithLast = true}) async {
-    // نفس المادة مباشرة بعد بعضها (آخر سطر هو نفسها) → زيادة الكمية بدل سطر
-    // جديد. أما إن دخلت مادة أخرى بينهما فتُضاف كسطر مستقل (خصم مستقل مثلاً).
-    if (mergeWithLast &&
-        _lines.isNotEmpty &&
-        _lines.last.medicine.id == medicine.id) {
-      setState(() => _lines.last.quantity += 1);
-      _selectLine(_lines.last);
-      return;
-    }
+      {bool fromScanner = false}) async {
+    // ── كل سطر مادةٌ لحالها ──────────────────────────────────────────
+    // لا دمج بحال: نفس المادة تُضاف سطراً ثانياً مستقلاً.
+    //
+    // كان ثمّة دمجان: «نفس آخر سطر» و«أي سطر بنفس المادة والوحدة» — والثاني
+    // كان يجعل إضافة المادة مرّةً ثانية **ترفع كمية سطرٍ قديم** حتى لو كان
+    // أعلى الفاتورة. والسطران قد يختلفان في السعر أو الحسم أو الدفعة
+    // المختارة، فدمجُهما يُفقد ذلك بلا رجعة ويُخفي قصد المستخدم.
     if (medicine.units.isEmpty) {
       AppSnackbar.error(context, AppStrings.noPricedUnitForProduct);
       return;
@@ -481,14 +519,25 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
 
     // A5/F1: convert the base-currency price into the selected sale currency.
     final price = convertFromBase(unit.salePrice, base, _selectedCurrency(base, currencies));
-    final existing = _lines
-        .where((l) => l.medicine.id == med.id && l.unit.unitId == unit.unitId)
-        .firstOrNull;
-    if (existing != null) {
-      setState(() => existing.quantity += 1);
-      _selectLine(existing);
-      return;
+    if (fromScanner) {
+      // آخر سطر مطابق لا أوّله: المستخدم يعمل على أسفل الفاتورة.
+      // بلا حزمة collection: البحث من آخر القائمة يدوياً.
+      _PosLine? match;
+      for (var i = _lines.length - 1; i >= 0; i--) {
+        final l = _lines[i];
+        if (l.medicine.id == med.id && l.unit.unitId == unit.unitId) {
+          match = l;
+          break;
+        }
+      }
+      if (match != null) {
+        final found = match;
+        setState(() => found.quantity += 1);
+        _selectLine(found);
+        return;
+      }
     }
+
     final line = _PosLine(medicine: med, unit: unit, unitPrice: price);
     setState(() => _lines.add(line));
     // السطر المضاف يصير المحدَّد فوراً — فاختصار تعديل الكمية يعمل عليه مباشرة.
@@ -523,7 +572,7 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
       ref: ref,
       catalog: catalog,
       code: code,
-      onFound: _addMedicine,
+      onFound: (m) => _addMedicine(m, fromScanner: true),
     );
   }
 
@@ -950,6 +999,11 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
       appBar: AppBar(
         title: Text(_isEdit || _isQueuedEdit ? AppStrings.editSale : ''),
         actions: [
+          IconButton(
+            tooltip: 'إعادة محاذاة الأعمدة',
+            icon: const Icon(Icons.view_column_outlined),
+            onPressed: () => setState(() => _gridEpoch++),
+          ),
           if (isMainPos && pending > 0)
             // The "cloud" of un-synced invoices — shown ONLY when some exist.
             IconButton(
@@ -1001,7 +1055,11 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
               AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.sm),
           child: Column(
             children: [
-              if (warehouseId == null || warehouseId.isEmpty) ...[
+              // لا يظهر أثناء التحميل: المزوّد يبدأ بلا قيمة، فكان
+              // التنويه يومض عند كل فتح للشاشة وكأن المستودع مفقود ثم
+              // يختفي — إنذارٌ كاذب يُفقد التنويهَ مصداقيته حين يصحّ.
+              if (!ref.watch(defaultWarehouseIdProvider).isLoading &&
+                  (warehouseId == null || warehouseId.isEmpty)) ...[
                 InfoCard(
                   icon: Icons.warehouse_outlined,
                   color: theme.colorScheme.error,
@@ -1089,6 +1147,7 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
         // فاصل حقيقي بين الشريط العلوي وبنود الفاتورة — خطّ بلون الحدود
         // المحايد نفسه لا لون الـ divider الباهت، فيُقرأ الشريطان كمنطقتين.
         Container(height: 1, color: toolbarFieldBorderColor(context)),
+        const ShortcutHintsBar(),
         // الجدول دائم الظهور ويملأ المساحة كاملة: آخر صف فيه هو "صف جديد"
         // تُختار المادة من خليته.
         Expanded(
@@ -1107,28 +1166,21 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
   /// اختيار المادة من خلية الجدول مباشرة (أسلوب وكيد).
   /// [line] == null → إضافة سطر جديد.
   ///
-  /// [mergeIfSame] يفرّق بين مدخلين:
-  ///
-  /// * **زرّ/اختصار «إضافة مادة»** (`true`): اختيار المادة نفسها مرّتين يزيد
-  ///   كمية آخر سطر — سلوك نقطة البيع المعتاد للتكرار السريع.
-  /// * **خليّة الصفّ الجاهز** (`false`): تُضاف **سطراً مستقلاً** دائماً وإن
-  ///   كانت نفس المادة، لأن المستخدم قصد سطراً ثانياً لها — وقد يختلف سعره
-  ///   أو كلفته أو دفعته عن الأول، ودمجُه يُفقد ذلك بلا رجعة.
-  /// وغير ذلك: تُستبدل مادة الصف الموجود بسطر جديد في موضعه (بنقل الكمية).
+  /// كل اختيار يُنتج **سطراً مستقلاً**؛ و[line] غير null يعني استبدال مادة
+  /// صفٍّ قائم في موضعه (بنقل الكمية).
   Future<void> _pickMedicineForLine(
-      List<Medicine> catalog, _PosLine? line,
-      {bool mergeIfSame = false}) async {
+      List<Medicine> catalog, _PosLine? line) async {
     final picked = await showMedicinePicker(context, catalog);
     if (picked == null || !mounted) return;
     if (line == null) {
-      await _addMedicine(picked, mergeWithLast: mergeIfSame);
+      await _addMedicine(picked);
       return;
     }
     // استبدال مادة صف موجود: دائماً سطر جديد في نفس الموضع، بلا دمج.
     final index = _lines.indexOf(line);
     if (index < 0) return;
     final before = _lines.length;
-    await _addMedicine(picked, mergeWithLast: false);
+    await _addMedicine(picked);
     if (!mounted) return;
     // _addMedicine يضيف في النهاية عند النجاح — ننقل السطر الجديد إلى موضعه.
     if (_lines.length > before) {
@@ -1158,6 +1210,7 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
   /// بناء الشبكة بقيم محدثة. التحرير داخل الخلية يلتزم عند الخروج منها ثم
   /// يُعاد البناء — آمن لأن قوائم نقطة البيع قصيرة.
   Key _gridKey(Currency? base) => ValueKey(Object.hashAll([
+        _gridEpoch,
         _effectiveCurrencyId(base),
         for (final l in _lines) ...[
           identityHashCode(l),
@@ -1459,9 +1512,10 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
     );
   }
 
-  /// مفتاح «وصفة طبية» — زرّ حالة لا حقل، لكنه مبنيّ يدوياً بنفس مقاسات حقول
-  /// الشريط (الارتفاع والزاوية والحدّ ولون النص) لأن `FilterChip` يفرض زاوية
-  /// ثيم الشرائح وحشوتها فيخرج أكثر استدارة من جيرانه على السطر نفسه.
+  /// مفتاح «وصفة طبية» — زرّ حالة لا حقل: يشارك الحقولَ زاويتها وحدّها ولون
+  /// نصّها، و**يقصر عنها** بقصدٍ (`toolbarToggleHeight`) فيُقرأ خياراً لا
+  /// مدخلاً. وبُني يدوياً لأن `FilterChip` يفرض زاوية ثيم الشرائح وحشوتها
+  /// فيخرج أكثر استدارة من جيرانه على السطر نفسه.
   Widget _prescriptionToggle(ThemeData theme) {
     return _PrescriptionToggle(
       selected: _isPrescription,
@@ -2084,8 +2138,9 @@ class _AddStockDialogState extends State<_AddStockDialog> {
 }
 
 
-/// مفتاح «وصفة طبية» بمقاسات [AppToolbarField] نفسها: الحالة المحدَّدة أخضر
-/// هادئ (حدّ + تعبئة 8%)، والتمرير يُلمّح بالحدّ كبقية عناصر الشريط.
+/// مفتاح «وصفة طبية» بأسلوب [AppToolbarField] وبارتفاع أقصر: الحالة
+/// المحدَّدة أخضر هادئ (حدّ + تعبئة 8%)، والتمرير يُلمّح بالحدّ كبقية عناصر
+/// الشريط.
 class _PrescriptionToggle extends StatefulWidget {
   const _PrescriptionToggle({required this.selected, required this.onChanged});
 
@@ -2123,7 +2178,7 @@ class _PrescriptionToggleState extends State<_PrescriptionToggle> {
       child: GestureDetector(
         onTap: () => widget.onChanged(!selected),
         child: Container(
-          height: AppSizes.toolbarFieldHeight,
+          height: AppSizes.toolbarToggleHeight,
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm + 2),
           decoration: BoxDecoration(
             color: selected
@@ -2140,8 +2195,8 @@ class _PrescriptionToggleState extends State<_PrescriptionToggle> {
               const SizedBox(width: AppSpacing.sm),
               Text(
                 AppStrings.prescriptionLabel,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  height: 1.25,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  height: 1.2,
                   color: selected ? primary : toolbarFieldTextColor(context),
                 ),
               ),

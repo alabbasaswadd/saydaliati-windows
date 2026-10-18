@@ -58,8 +58,8 @@ class _SalesReportPageState extends ConsumerState<SalesReportPage> {
       title: AppStrings.salesReport,
       period: _period,
       onPeriodChanged: (p) => setState(() => _period = p),
-      onRefresh: () => ref.invalidate(
-          salesGridProvider(_period.startUtcIso, _period.endUtcIso)),
+      onRefresh: () => ref.refresh(
+          salesGridProvider(_period.startUtcIso, _period.endUtcIso).future),
       body: async.when(
         loading: () => const LoadingState(),
         error: (e, _) => ErrorState.fromError(

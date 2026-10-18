@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:saydaliati/features/tutorials/presentation/tutorial_help.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:saydaliati/shared/widgets/buttons/add_entity_button.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/features/medicine_units/domain/entities/unit.dart';
 import 'package:saydaliati/features/medicine_units/unit_providers.dart';
+import 'package:saydaliati/features/tutorials/presentation/tutorial_help.dart';
 import 'package:saydaliati/shared/widgets/dialogs/app_dialogs.dart';
 import 'package:saydaliati/shared/widgets/dialogs/entity_form_dialog.dart';
 import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
@@ -78,9 +79,8 @@ class UnitsPage extends ConsumerWidget {
       appBar: AppBar(
         title: const Text(AppStrings.unitsList),
         actions: [
-          IconButton(
-            tooltip: AppStrings.addNew,
-            icon: const Icon(Icons.add),
+          AddEntityButton(
+            label: 'إضافة وحدة',
             onPressed: () => _addOrEdit(context, ref),
           ),
           const TutorialHelpButton(TutorialTopic.unitsAndPrices),

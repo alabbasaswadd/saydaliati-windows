@@ -9,6 +9,7 @@ import 'package:saydaliati/features/reports/domain/entities/medicine_report.dart
 import 'package:saydaliati/features/reports/report_providers.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
 import 'package:saydaliati/shared/widgets/async_value_widget.dart';
+import 'package:saydaliati/shared/widgets/buttons/app_refresh_button.dart';
 import 'package:saydaliati/shared/widgets/cards/stat_chips_bar.dart';
 import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
 import 'package:trina_grid/trina_grid.dart';
@@ -27,9 +28,9 @@ class MedicineReportPage extends ConsumerWidget {
       appBar: AppBar(
         title: const Text(AppStrings.medicineReport),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(medicineReportProvider(medicineId)),
+          AppRefreshButton(
+            onRefresh: () =>
+                ref.refresh(medicineReportProvider(medicineId).future),
           ),
         ],
       ),

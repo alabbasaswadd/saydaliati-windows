@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:saydaliati/app/shell/widgets/window_controls.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/core/theme/app_colors.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
@@ -45,14 +46,30 @@ class AuthScaffold extends StatelessWidget {
             )
           else
             _CompactLayout(title: title, subtitle: subtitle, child: child),
-          // Auth screens have no title bar (TitleBarStyle.hidden) — keep a thin
-          // invisible strip at the top so the window can still be dragged.
+          // شاشات الدخول بلا شريط عنوان (TitleBarStyle.hidden) — شريطٌ شفّاف
+          // يُبقي النافذة قابلة للسحب.
           const Positioned(
             top: 0,
             left: 0,
             right: 0,
-            height: 28,
+            height: 32,
             child: DragToMoveArea(child: SizedBox.expand()),
+          ),
+          // وأزرار النافذة فوقه: بدونها لا يجد مَن يقف عند تسجيل الدخول
+          // سبيلاً إلى تصغير النافذة ولا تكبيرها ولا إغلاقها إلّا بـAlt+F4.
+          //
+          // لونها يتبع ما تحتها: في العرض الواسع أعلى اليمين لوحةُ النموذج
+          // (سطحٌ فاتح)، وفي الضيّق تدرّجُ العلامة الأخضر — فأيقونةٌ داكنة
+          // هناك تذوب فيه.
+          Positioned(
+            top: 0,
+            right: 0,
+            child: WindowControls(
+              height: 32,
+              foreground: wide
+                  ? Theme.of(context).colorScheme.onSurface
+                  : Colors.white,
+            ),
           ),
         ],
       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:saydaliati/shared/widgets/buttons/add_entity_button.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/features/catalog/presentation/pages/catalog_page.dart';
 import 'package:saydaliati/features/manufacturers/domain/entities/manufacturer.dart';
@@ -83,9 +84,8 @@ class ManufacturersPage extends ConsumerWidget {
         appBar: AppBar(
           title: const Text(AppStrings.manufacturers),
           actions: [
-            IconButton(
-              tooltip: AppStrings.addNew,
-              icon: const Icon(Icons.add),
+            AddEntityButton(
+              label: 'إضافة شركة',
               onPressed: () => _addOrEdit(context, ref),
             ),
           ],

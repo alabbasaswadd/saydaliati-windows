@@ -5,7 +5,6 @@ import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/features/customers/customer_providers.dart';
 import 'package:saydaliati/features/customers/domain/entities/customer.dart';
 import 'package:saydaliati/shared/widgets/dialogs/entity_form_dialog.dart';
-import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_search_field.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_toolbar_field.dart';

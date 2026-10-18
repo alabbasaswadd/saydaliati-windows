@@ -4,10 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:saydaliati/app/shell/tabs/app_tab.dart';
 import 'package:saydaliati/app/shell/tabs/tabs_controller.dart';
 import 'package:saydaliati/app/shell/widgets/bottom_tab_strip.dart';
-import 'package:saydaliati/app/shell/widgets/new_tab_page.dart';
 import 'package:saydaliati/app/shell/widgets/desktop_sidebar.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:saydaliati/app/shell/widgets/desktop_title_bar.dart';
+import 'package:saydaliati/app/shell/widgets/new_tab_page.dart';
 import 'package:saydaliati/app/sync/data_sync_controller.dart';
 import 'package:saydaliati/core/network/server_capabilities.dart';
 import 'package:saydaliati/features/announcements/announcements_providers.dart';
@@ -19,6 +18,7 @@ import 'package:saydaliati/features/medicines/presentation/widgets/catalog_loadi
 import 'package:saydaliati/features/onboarding/presentation/welcome_tour.dart';
 import 'package:saydaliati/features/shortcuts/presentation/shortcuts_scope.dart';
 import 'package:saydaliati/shared/widgets/offline_banner.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// The desktop shell: custom title bar + collapsible sidebar + content area.
 ///

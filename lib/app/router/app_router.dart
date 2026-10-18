@@ -7,7 +7,6 @@ import 'package:saydaliati/core/session/session_controller.dart';
 import 'package:saydaliati/core/session/session_state.dart';
 import 'package:saydaliati/features/about/presentation/pages/about_page.dart';
 import 'package:saydaliati/features/accounts/presentation/pages/accounts_page.dart';
-import 'package:saydaliati/features/vouchers/presentation/pages/vouchers_list_page.dart';
 import 'package:saydaliati/features/auth/presentation/pages/account_page.dart';
 import 'package:saydaliati/features/auth/presentation/pages/login_page.dart';
 import 'package:saydaliati/features/auth/presentation/pages/register_page.dart';
@@ -27,6 +26,7 @@ import 'package:saydaliati/features/medicines/presentation/pages/medicines_page.
 import 'package:saydaliati/features/notifications/presentation/pages/notifications_page.dart';
 import 'package:saydaliati/features/purchases/presentation/pages/purchase_create_page.dart';
 import 'package:saydaliati/features/purchases/presentation/pages/purchase_returns_list_page.dart';
+import 'package:saydaliati/features/purchases/presentation/pages/purchases_list_page.dart';
 import 'package:saydaliati/features/reports/domain/report_period.dart';
 import 'package:saydaliati/features/reports/presentation/pages/expiry_report_page.dart';
 import 'package:saydaliati/features/reports/presentation/pages/inventory_report_page.dart';
@@ -36,16 +36,16 @@ import 'package:saydaliati/features/reports/presentation/pages/purchases_report_
 import 'package:saydaliati/features/reports/presentation/pages/sales_report_page.dart';
 import 'package:saydaliati/features/reports/presentation/pages/stocktake_report_page.dart';
 import 'package:saydaliati/features/sales/presentation/pages/sale_returns_list_page.dart';
+import 'package:saydaliati/features/sales/presentation/pages/sales_list_page.dart';
 import 'package:saydaliati/features/sales/presentation/pages/sales_page.dart';
 import 'package:saydaliati/features/settings/presentation/pages/settings_page.dart';
 import 'package:saydaliati/features/shortcuts/presentation/pages/shortcuts_page.dart';
-import 'package:saydaliati/features/sales/presentation/pages/sales_list_page.dart';
-import 'package:saydaliati/features/purchases/presentation/pages/purchases_list_page.dart';
 import 'package:saydaliati/features/splash/splash_page.dart';
 import 'package:saydaliati/features/stock/presentation/pages/stock_page.dart';
 import 'package:saydaliati/features/stock_movements/presentation/pages/stock_movements_page.dart';
 import 'package:saydaliati/features/suppliers/presentation/pages/suppliers_page.dart';
 import 'package:saydaliati/features/tutorials/presentation/tutorials_page.dart';
+import 'package:saydaliati/features/vouchers/presentation/pages/vouchers_list_page.dart';
 
 part 'app_router.g.dart';
 

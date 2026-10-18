@@ -6,6 +6,7 @@ extension PurchaseDtoMapper on PurchaseDto {
         id: id ?? '',
         invoiceNumber: invoiceNumber ?? 0,
         purchaseDate: purchaseDate ?? DateTime.now(),
+        supplierName: supplierName ?? '',
         totalAmount: (totalAmount ?? 0).toDouble(),
         paymentAccountId: paymentAccountId ?? '',
         items: (items ?? const []).map((i) => i.toEntity()).toList(),

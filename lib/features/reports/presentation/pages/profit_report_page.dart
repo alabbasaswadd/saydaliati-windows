@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:saydaliati/features/tutorials/presentation/tutorial_help.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
@@ -11,6 +10,7 @@ import 'package:saydaliati/features/reports/domain/entities/profit_report.dart';
 import 'package:saydaliati/features/reports/domain/report_period.dart';
 import 'package:saydaliati/features/reports/presentation/widgets/report_scaffold.dart';
 import 'package:saydaliati/features/reports/report_providers.dart';
+import 'package:saydaliati/features/tutorials/presentation/tutorial_help.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
 import 'package:saydaliati/shared/widgets/cards/stat_chips_bar.dart';
 import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
@@ -61,8 +61,9 @@ class _ProfitReportPageState extends ConsumerState<ProfitReportPage> {
       actions: const [TutorialHelpButton(TutorialTopic.profitReport)],
       period: _period,
       onPeriodChanged: (p) => setState(() => _period = p),
-      onRefresh: () => ref.invalidate(profitReportProvider(
-          _period.startUtcIso, _period.endUtcIso, null)),
+      onRefresh: () => ref.refresh(profitReportProvider(
+              _period.startUtcIso, _period.endUtcIso, null)
+          .future),
       endDrawerExtra: [
         if (currencies.isNotEmpty)
           AppDropdown<String>(

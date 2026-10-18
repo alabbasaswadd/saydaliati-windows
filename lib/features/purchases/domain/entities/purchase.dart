@@ -8,6 +8,7 @@ abstract class Purchase with _$Purchase {
   const factory Purchase({
     required String id,
     required DateTime purchaseDate,
+    @Default('') String supplierName,
     required double totalAmount,
     @Default(0) int invoiceNumber,
     @Default('') String paymentAccountId,

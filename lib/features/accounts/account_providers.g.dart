@@ -8,12 +8,14 @@ part of 'account_providers.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// Composition root for دليل الحسابات — online-only (see [AccountRepository] doc).
+/// Composition root for دليل الحسابات — الخادم أوّلاً مع نسخةٍ محلّية
+/// احتياطية (انظر [AccountRepositoryImpl]).
 
 @ProviderFor(accountRemoteDataSource)
 final accountRemoteDataSourceProvider = AccountRemoteDataSourceProvider._();
 
-/// Composition root for دليل الحسابات — online-only (see [AccountRepository] doc).
+/// Composition root for دليل الحسابات — الخادم أوّلاً مع نسخةٍ محلّية
+/// احتياطية (انظر [AccountRepositoryImpl]).
 
 final class AccountRemoteDataSourceProvider
     extends
@@ -23,7 +25,8 @@ final class AccountRemoteDataSourceProvider
           AccountRemoteDataSource
         >
     with $Provider<AccountRemoteDataSource> {
-  /// Composition root for دليل الحسابات — online-only (see [AccountRepository] doc).
+  /// Composition root for دليل الحسابات — الخادم أوّلاً مع نسخةٍ محلّية
+  /// احتياطية (انظر [AccountRepositoryImpl]).
   AccountRemoteDataSourceProvider._()
     : super(
         from: null,
@@ -60,6 +63,54 @@ final class AccountRemoteDataSourceProvider
 
 String _$accountRemoteDataSourceHash() =>
     r'363608143ccdacd17a6156684a25b86651df3f64';
+
+@ProviderFor(accountLocalDataSource)
+final accountLocalDataSourceProvider = AccountLocalDataSourceProvider._();
+
+final class AccountLocalDataSourceProvider
+    extends
+        $FunctionalProvider<
+          AccountLocalDataSource,
+          AccountLocalDataSource,
+          AccountLocalDataSource
+        >
+    with $Provider<AccountLocalDataSource> {
+  AccountLocalDataSourceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'accountLocalDataSourceProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$accountLocalDataSourceHash();
+
+  @$internal
+  @override
+  $ProviderElement<AccountLocalDataSource> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  AccountLocalDataSource create(Ref ref) {
+    return accountLocalDataSource(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AccountLocalDataSource value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AccountLocalDataSource>(value),
+    );
+  }
+}
+
+String _$accountLocalDataSourceHash() =>
+    r'c90a229ad236ed6bad251473f74e849e539c8e96';
 
 @ProviderFor(accountRepository)
 final accountRepositoryProvider = AccountRepositoryProvider._();
@@ -106,7 +157,7 @@ final class AccountRepositoryProvider
   }
 }
 
-String _$accountRepositoryHash() => r'd74f0477af833f87cbc9cc7e600e4dd5d7ca9f8b';
+String _$accountRepositoryHash() => r'412af6e6caaf14c895263d164098dbaeb1e48d0b';
 
 @ProviderFor(accountsList)
 final accountsListProvider = AccountsListProvider._();

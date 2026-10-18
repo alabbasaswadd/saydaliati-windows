@@ -74,13 +74,17 @@ class GridLineFocus {
     _grid = null;
   }
 
-  /// ينقل التركيز إلى خلية كمية السطر النشِط، ويفتحها للتحرير عند
-  /// [startEditing]. يعيد `false` إن لم يوجد سطر أو خلية.
-  bool focusQty({required bool startEditing}) {
+  /// ينقل التركيز إلى خلية كمية السطر النشِط.
+  bool focusQty({required bool startEditing}) =>
+      focusField(qtyField, startEditing: startEditing);
+
+  /// ينقل التركيز إلى **أي** خليّة في السطر النشِط — للكمية أو للسعر أو
+  /// لغيرهما. يعيد `false` إن لم يوجد سطر أو خليّة بهذا الحقل.
+  bool focusField(String field, {required bool startEditing}) {
     final id = currentId;
     final grid = _grid;
     if (id == null || grid == null) return false;
-    return _focus(grid, id, startEditing: startEditing);
+    return _focus(grid, id, field, startEditing: startEditing);
   }
 
   /// بعد حذف سطر: ينقل التحديد إلى ما قبله (أو ما بعده) فيبقى الحذف
@@ -113,19 +117,20 @@ class GridLineFocus {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!isMounted() || !identical(_grid, grid)) return;
-      _focus(grid, id, startEditing: false);
+      _focus(grid, id, qtyField, startEditing: false);
     });
   }
 
   bool _focus(
     TrinaGridStateManager grid,
-    String id, {
+    String id,
+    String field, {
     required bool startEditing,
   }) {
     final index =
         grid.refRows.indexWhere((r) => r.cells[idField]?.value?.toString() == id);
     if (index < 0) return false;
-    final cell = grid.refRows[index].cells[qtyField];
+    final cell = grid.refRows[index].cells[field];
     if (cell == null) return false;
 
     // الشبكة قد تكون بلا تركيز (أُغلق منتقي الدواء للتوّ)، وبلا تركيزها لا

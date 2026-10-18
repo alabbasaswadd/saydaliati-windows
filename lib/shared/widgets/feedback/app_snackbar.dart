@@ -7,58 +7,57 @@ import 'package:saydaliati/core/theme/app_spacing.dart';
 abstract final class AppSnackbar {
   const AppSnackbar._();
 
-  /// آخر إشعار نجاح معروض — يُزال فوراً عند استدعاء [success] مرة أخرى حتى لا
-  /// تتراكم إشعارات فوق بعضها.
-  static OverlayEntry? _activeSuccessEntry;
+  /// الإشعار المعروض الآن — يُزال فور وصول غيره فلا تتراكم إشعارات فوق بعضها.
+  static OverlayEntry? _active;
 
-  // النجاح إشعار عائم بالزاوية اليسرى السفلى (بدل شريط أسفل الشاشة) بوميض
-  // لحظي عند الظهور يجذب العين دون أن يحجب شيئاً، ثم يخفت ويغيب تلقائياً.
-  static void success(BuildContext context, String message) {
-    _activeSuccessEntry?.remove();
-    _activeSuccessEntry = null;
+  /// نجاح.
+  static void success(BuildContext context, String message) =>
+      _toast(context, message, AppColors.success, Icons.check_circle_outline);
+
+  /// خطأ أو فشل تحقّق — يصل عبر `showFailureSnackbar` أيضاً.
+  static void error(BuildContext context, String message) =>
+      _toast(context, message, AppColors.error, Icons.error_outline);
+
+  static void info(BuildContext context, String message) =>
+      _toast(context, message, AppColors.info, Icons.info_outline);
+
+  /// إشعار عائم **أعلى وسط الشاشة**.
+  ///
+  /// كان النجاح في الزاوية اليسرى السفلى والخطأ شريطاً أسفل الشاشة — وكلاهما
+  /// بعيد عن موضع نظر مَن يكتب فاتورة أو نموذجاً: العين على الحقول والأزرار
+  /// في الوسط والأعلى، فيمرّ إشعار الفشل دون أن يُرى ويُعاد الحفظ ظنّاً أنه
+  /// لم يُرسَل.
+  ///
+  /// وموضعٌ واحد لكل الأنواع يجعل المستخدم يتعلّم مكاناً واحداً ينظر إليه.
+  static void _toast(
+      BuildContext context, String message, Color color, IconData icon) {
+    _active?.remove();
+    _active = null;
 
     final overlay = Overlay.of(context, rootOverlay: true);
     late final OverlayEntry entry;
     entry = OverlayEntry(
       builder: (_) => Positioned(
-        left: 24,
-        bottom: 24,
-        child: _FlashToast(
-          message: message,
-          icon: Icons.check_circle_outline,
-          color: AppColors.success,
-          onDone: () {
-            entry.remove();
-            if (_activeSuccessEntry == entry) _activeSuccessEntry = null;
-          },
+        // يُترك فراغٌ لشريط العنوان المخصَّص فلا يغطّيه الإشعار.
+        top: AppSpacing.lg + 8,
+        left: 0,
+        right: 0,
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: _FlashToast(
+            message: message,
+            icon: icon,
+            color: color,
+            onDone: () {
+              entry.remove();
+              if (_active == entry) _active = null;
+            },
+          ),
         ),
       ),
     );
-    _activeSuccessEntry = entry;
+    _active = entry;
     overlay.insert(entry);
-  }
-
-  static void error(BuildContext context, String message) =>
-      _show(context, message, AppColors.error, Icons.error_outline);
-
-  static void info(BuildContext context, String message) =>
-      _show(context, message, AppColors.info, Icons.info_outline);
-
-  static void _show(
-      BuildContext context, String message, Color color, IconData icon) {
-    final messenger = ScaffoldMessenger.of(context)..hideCurrentSnackBar();
-    messenger.showSnackBar(
-      SnackBar(
-        backgroundColor: color,
-        content: Row(
-          children: [
-            Icon(icon, color: Colors.white, size: 20),
-            const SizedBox(width: 8),
-            Expanded(child: Text(message)),
-          ],
-        ),
-      ),
-    );
   }
 }
 
@@ -90,22 +89,17 @@ class _FlashToastState extends State<_FlashToast>
   void initState() {
     super.initState();
     _controller =
-        AnimationController(vsync: this, duration: const Duration(milliseconds: 2200));
+        AnimationController(vsync: this, duration: const Duration(milliseconds: 2600));
+    // ظهورٌ سريع، ثبات، ثم خفوت. وكان قبلها وميضٌ ثلاثيّ (سطوع ← خفوت ←
+    // سطوع) يجذب العين مرّتين للرسالة نفسها — حركةٌ بلا معنى تُقرأ كعُطل.
     _opacity = TweenSequence<double>([
-      // وميض: صعود سريع، خفوت جزئي، ثم ثبات على السطوع الكامل.
       TweenSequenceItem(
           tween: Tween(begin: 0.0, end: 1.0).chain(CurveTween(curve: Curves.easeOut)),
-          weight: 7),
-      TweenSequenceItem(
-          tween: Tween(begin: 1.0, end: 0.3).chain(CurveTween(curve: Curves.easeIn)),
-          weight: 7),
-      TweenSequenceItem(
-          tween: Tween(begin: 0.3, end: 1.0).chain(CurveTween(curve: Curves.easeOut)),
-          weight: 7),
-      TweenSequenceItem(tween: ConstantTween(1.0), weight: 54),
+          weight: 8),
+      TweenSequenceItem(tween: ConstantTween(1.0), weight: 74),
       TweenSequenceItem(
           tween: Tween(begin: 1.0, end: 0.0).chain(CurveTween(curve: Curves.easeIn)),
-          weight: 25),
+          weight: 18),
     ]).animate(_controller);
     _controller.forward().whenComplete(widget.onDone);
   }
@@ -126,26 +120,38 @@ class _FlashToastState extends State<_FlashToast>
           opacity: _opacity.value.clamp(0.0, 1.0),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            // لونٌ **مصمَت** لا تلوينٌ بشفافية 12%.
+            //
+            // الأخضر عند 12% على خلفيةٍ فاتحة يكاد يكون أبيض، فرسالة النجاح
+            // ورسالة الخطأ تبدوان بطاقةً شاحبةً واحدة ولا يُميَّز بينهما إلّا
+            // بقراءة النصّ — وهو عكس الغرض من اللون. والآن: أخضر للنجاح،
+            // أحمر للفشل، أزرق للتنويه — يُعرَف كلٌّ منها بلمحة واحدة.
             decoration: BoxDecoration(
-              color: widget.color.withValues(alpha: 0.12),
+              color: widget.color,
               borderRadius: AppRadius.brMd,
-              border: Border.all(color: widget.color.withValues(alpha: 0.4)),
               boxShadow: [
                 BoxShadow(
-                  color: widget.color.withValues(alpha: 0.25),
-                  blurRadius: 12,
-                  spreadRadius: 1,
+                  color: widget.color.withValues(alpha: 0.35),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(widget.icon, color: widget.color, size: 20),
-                const SizedBox(width: 8),
-                Text(widget.message,
-                    style:
-                        TextStyle(color: widget.color, fontWeight: FontWeight.w600)),
+                Icon(widget.icon, color: Colors.white, size: 20),
+                const SizedBox(width: 10),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 560),
+                  child: Text(
+                    widget.message,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),

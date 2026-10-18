@@ -8,6 +8,7 @@ class PurchaseDto {
     this.id,
     this.invoiceNumber,
     this.purchaseDate,
+    this.supplierName,
     this.totalAmount,
     this.paymentAccountId,
     this.items,
@@ -16,6 +17,7 @@ class PurchaseDto {
   final String? id;
   final int? invoiceNumber;
   final DateTime? purchaseDate;
+  final String? supplierName;
   final num? totalAmount;
   final String? paymentAccountId;
   final List<PurchaseItemDto>? items;

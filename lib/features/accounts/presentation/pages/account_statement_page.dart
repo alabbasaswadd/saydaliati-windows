@@ -111,7 +111,9 @@ class _AccountStatementPageState extends ConsumerState<AccountStatementPage> {
           const Spacer(),
           // وحدة القياس تُقال صريحةً: كل أرقام الكشف بالعملة الأساسية، وعملة
           // الحساب الخاصة (إن كان صندوق عملة) شيء آخر يُعرض في عمودَيه.
-          if (statement.accountCurrencyCode != null)
+          // تُذكَر فقط إن خالفت الأساسية — وإلّا فهي تكرارٌ لما في العناوين.
+          if (statement.accountCurrencyCode != null &&
+              statement.accountCurrencyCode != statement.baseCurrencyCode)
             _currencyNote(theme,
                 'عملة الحساب: ${statement.accountCurrencyCode}'),
         ],
@@ -166,13 +168,19 @@ class _AccountStatementPageState extends ConsumerState<AccountStatementPage> {
 
   Widget _grid(BuildContext context, AccountStatement statement) {
     final base = statement.baseCurrencyCode;
-    final own = statement.accountCurrencyCode;
+    // عملة الحساب تُعرَض **فقط إن خالفت الأساسية**: صندوق الليرة في صيدلية
+    // أساسُها الليرة يعرض العمودين نفسيهما مرّتين بالأرقام نفسها — عرضٌ لا
+    // يضيف معلومةً ويُضيّق الشبكة ويجعل القارئ يبحث عن فرقٍ غير موجود.
+    final ownRaw = statement.accountCurrencyCode;
+    final own = (ownRaw == null || ownRaw == base) ? null : ownRaw;
     String amountTitle(String label) => base == null ? label : '$label ($base)';
 
     return AppGrid(
       columns: [
+        // التاريخ **بوقته**: حركات اليوم الواحد تُقرأ بترتيبها الفعليّ،
+        // والرصيد المتراكم يصير متتبَّعاً سطراً بسطر لا قفزاتٍ بلا سبب.
         appGridTextColumn('التاريخ', _fDate,
-            width: 110, textAlign: TrinaColumnTextAlign.center),
+            width: 150, textAlign: TrinaColumnTextAlign.center),
         appGridTextColumn('البيان', _fDesc, width: 260, flexible: true),
         // عملة إدخال السند — تُميّز سنداً كُتب بالدولار عن آخر كُتب بالأساسية
         // رغم أن كلا المبلغين معروضان بالأساسية.
@@ -217,13 +225,13 @@ class _AccountStatementPageState extends ConsumerState<AccountStatementPage> {
       rows: [
         for (final e in statement.entries)
           TrinaRow(cells: {
-            _fDate: TrinaCell(value: AppDate.ymd(e.date)),
+            _fDate: TrinaCell(value: AppDate.ymdHm(e.date.toLocal())),
             _fDesc: TrinaCell(value: e.description),
             _fCurrency: TrinaCell(value: e.currencyCode ?? ''),
             _fDebit: TrinaCell(value: e.debit),
             _fCredit: TrinaCell(value: e.credit),
             _fBalance: TrinaCell(value: e.runningBalance),
-            if (statement.accountCurrencyCode != null) ...{
+            if (own != null) ...{
               _fOrigDebit: TrinaCell(value: e.originalDebit),
               _fOrigCredit: TrinaCell(value: e.originalCredit),
             },

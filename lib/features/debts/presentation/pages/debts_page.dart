@@ -6,6 +6,7 @@ import 'package:saydaliati/features/debts/debt_providers.dart';
 import 'package:saydaliati/features/debts/domain/party_debt.dart';
 import 'package:saydaliati/features/debts/presentation/widgets/settle_debt_dialog.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
+import 'package:saydaliati/shared/widgets/buttons/app_refresh_button.dart';
 import 'package:saydaliati/shared/widgets/cards/stat_chips_bar.dart';
 import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
 import 'package:saydaliati/shared/widgets/states/app_states.dart';
@@ -60,13 +61,10 @@ class _DebtsGridPageState extends ConsumerState<_DebtsGridPage> {
       ? ref.watch(customerDebtsProvider)
       : ref.watch(supplierDebtsProvider);
 
-  void _refresh() {
-    if (_isCustomer) {
-      ref.invalidate(customerDebtsProvider);
-    } else {
-      ref.invalidate(supplierDebtsProvider);
-    }
-  }
+  /// يُعيد `Future` لا `void`: زرّ التحديث ينتظره ليدور إلى أن تصل البيانات.
+  Future<void> _refresh() => _isCustomer
+      ? ref.refresh(customerDebtsProvider.future)
+      : ref.refresh(supplierDebtsProvider.future);
 
   Future<void> _settle(PartyDebt debt) async {
     final done = await showSettleDebtDialog(
@@ -88,11 +86,7 @@ class _DebtsGridPageState extends ConsumerState<_DebtsGridPage> {
       appBar: AppBar(
         title: Text(_isCustomer ? 'ديون العملاء' : 'ديون الموردين'),
         actions: [
-          IconButton(
-            tooltip: 'تحديث',
-            icon: const Icon(Icons.refresh),
-            onPressed: _refresh,
-          ),
+          AppRefreshButton(onRefresh: _refresh),
         ],
       ),
       body: async.when(

@@ -1,20 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:saydaliati/features/tutorials/presentation/tutorial_help.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:saydaliati/features/accounts/account_providers.dart';
-import 'package:saydaliati/features/accounts/domain/entities/account.dart';
-import 'package:saydaliati/features/accounts/presentation/widgets/account_picker_field.dart';
-import 'package:saydaliati/features/currencies/presentation/widgets/currency_picker_field.dart';
-import 'package:saydaliati/features/suppliers/presentation/widgets/supplier_picker_field.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/core/enums/payment_method.dart';
 import 'package:saydaliati/core/network/server_capabilities.dart';
 import 'package:saydaliati/core/theme/app_semantic_colors.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
+import 'package:saydaliati/core/utils/app_date.dart';
+import 'package:saydaliati/features/accounts/account_providers.dart';
+import 'package:saydaliati/features/accounts/domain/entities/account.dart';
+import 'package:saydaliati/features/accounts/presentation/widgets/account_picker_field.dart';
 import 'package:saydaliati/features/currencies/domain/currency_conversion.dart';
 import 'package:saydaliati/features/currencies/domain/entities/currency.dart';
 import 'package:saydaliati/features/currencies/presentation/providers/currencies_provider.dart';
 import 'package:saydaliati/features/currencies/presentation/providers/currency_freshness.dart';
+import 'package:saydaliati/features/currencies/presentation/widgets/currency_picker_field.dart';
 import 'package:saydaliati/features/dashboard/presentation/providers/dashboard_provider.dart';
 import 'package:saydaliati/features/medicines/domain/entities/medicine.dart';
 import 'package:saydaliati/features/medicines/medicine_providers.dart';
@@ -26,8 +25,15 @@ import 'package:saydaliati/features/purchases/domain/entities/purchase.dart';
 import 'package:saydaliati/features/purchases/presentation/pages/purchases_page.dart';
 import 'package:saydaliati/features/purchases/purchase_providers.dart';
 import 'package:saydaliati/features/settings/settings_providers.dart';
+import 'package:saydaliati/features/shortcuts/domain/shortcut_action.dart';
+import 'package:saydaliati/features/shortcuts/presentation/shortcuts_scope.dart';
+import 'package:saydaliati/features/shortcuts/presentation/widgets/save_shortcut.dart';
+import 'package:saydaliati/features/shortcuts/presentation/widgets/shortcut_hints_bar.dart';
 import 'package:saydaliati/features/suppliers/domain/entities/supplier.dart';
+import 'package:saydaliati/features/suppliers/presentation/widgets/supplier_picker_field.dart';
 import 'package:saydaliati/features/suppliers/supplier_providers.dart';
+import 'package:saydaliati/features/tutorials/presentation/tutorial_help.dart';
+import 'package:saydaliati/services/barcode_scanner.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
 import 'package:saydaliati/shared/widgets/buttons/app_button.dart';
 import 'package:saydaliati/shared/widgets/cards/app_cards.dart';
@@ -36,12 +42,9 @@ import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
 import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
 import 'package:saydaliati/shared/widgets/grids/grid_line_focus.dart';
-import 'package:saydaliati/features/shortcuts/domain/shortcut_action.dart';
-import 'package:saydaliati/features/shortcuts/presentation/shortcuts_scope.dart';
-import 'package:trina_grid/trina_grid.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_dropdown.dart';
-import 'package:saydaliati/services/barcode_scanner.dart';
-import 'package:saydaliati/features/shortcuts/presentation/widgets/save_shortcut.dart';
+import 'package:saydaliati/shared/widgets/inputs/app_toolbar_field.dart';
+import 'package:trina_grid/trina_grid.dart';
 
 /// Plain, parse-safe number string (no thousands separators) — the price/qty
 /// fields are read back with `double.tryParse`, which rejects grouped values.
@@ -122,6 +125,49 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
   double _suggestedCost(MedicineUnit unit, Currency? base, Currency? selected) =>
       convertFromBase(unit.salePrice * _costPercent / 100, base, selected);
 
+  /// تبديل عملة الفاتورة: يُحوِّل أسعار الأسطر المكتوبة بسعر الصرف.
+  ///
+  /// الكلفة المكتوبة قيمةٌ اقتصادية لا رقمٌ مجرَّد: مَن كتب ١٥٠٠ ليرة ثم
+  /// بدّل إلى الدولار يقصد **ما يعادلها**، لا ١٥٠٠ دولاراً. وكان الرقم يبقى
+  /// كما هو فيُضاعَف ثمن الفاتورة آلاف المرّات بتبديل حقلٍ واحد — ولا شيء
+  /// يُنبّه.
+  ///
+  /// والأسطر التي ما زالت تحمل الكلفة المقترَحة تُحسَب من جديد بالعملة
+  /// الجديدة (لا تُحوَّل) فتبقى مطابقة للنسبة بالضبط بلا انحراف تدوير.
+  void _changeCurrency(String newCurrencyId, Currency? base) {
+    final currencies = ref.read(currenciesProvider).value ?? const <Currency>[];
+    final from = currencies
+        .where((c) => c.id == _effectiveCurrencyId(base))
+        .firstOrNull;
+    final to = currencies.where((c) => c.id == newCurrencyId).firstOrNull;
+
+    setState(() {
+      _currencyId = newCurrencyId;
+
+      if (from == null || to == null || from.id == to.id) return;
+
+      for (final line in _lines) {
+        final unit =
+            line.medicine.units.where((u) => u.unitId == line.unitId).firstOrNull;
+
+        if (line.holdsSuggestion && unit != null) {
+          final cost = _suggestedCost(unit, base, to);
+          line.price.text = cost == 0 ? '' : _plainNum(cost);
+          line.suggested = cost;
+          continue;
+        }
+
+        final typed = double.tryParse(line.price.text.trim());
+        if (typed == null || typed == 0) continue;
+
+        // من عملة إلى أخرى عبر الأساسية — نفس مسار بقية التحويلات.
+        final converted =
+            convertFromBase(convertToBase(typed, base, from), base, to);
+        line.price.text = _plainNum(converted);
+      }
+    });
+  }
+
   /// تغيير النسبة يعيد تسعير الأسطر التي ما زالت تحمل القيمة المقترَحة فقط —
   /// أي سطر عدّله المستخدم يدوياً يبقى كما تركه.
   void _applyPercent(double percent) {
@@ -167,6 +213,14 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
   late final ShortcutRegistration _shortcuts = ShortcutRegistration(ref, this);
 
   String? _supplierId; // المورّد (اختياري)
+
+  /// تاريخ الفاتورة ووقتها.
+  ///
+  /// كان `DateTime.now()` يُحقَن لحظةَ الحفظ بلا حقلٍ ولا عرض: فاتورةُ أمسِ
+  /// تُدخَل اليوم فتُقيَّد باليوم، ويختلّ ترتيب الكشف والرصيد المتراكم ولا
+  /// سبيل إلى تصحيحها. الافتراضي الآن لحظةُ الفتح — وهو الغالب — ويبقى
+  /// قابلاً للتغيير.
+  DateTime _purchaseDate = DateTime.now();
   PaymentMethod _payMethod = PaymentMethod.cash;
   String? _paymentAccountId;
   String? _lastSuggestedPaymentAccountId;
@@ -180,6 +234,7 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
     // اختصارات السطر — كانت تعمل في المبيعات وحدها.
     _shortcuts.bind({
       ShortcutAction.invoiceEditQty: _editCurrentQuantity,
+      ShortcutAction.invoiceEditPrice: _editCurrentPrice,
       ShortcutAction.invoiceDeleteLine: _deleteCurrentLine,
     });
     // الفاتورة تُسعَّر بسعر الصرف — نُحدِّثه إن قَدُم قبل أن يبدأ الإدخال.
@@ -211,6 +266,8 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
   /// base currency, so the editor stays in base and shows them as-is).
   void _prefillFromPurchase(Purchase p, List<Medicine> catalog) {
     _prefilled = true;
+    // تاريخ الفاتورة الأصليّ لا تاريخ اليوم: تعديلُ فاتورةٍ لا يُغيّر يومها.
+    _purchaseDate = p.purchaseDate;
     _currencyId = null; // base
     _paymentAccountId =
         p.paymentAccountId.isNotEmpty ? p.paymentAccountId : null;
@@ -263,18 +320,24 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
     _paymentAccountId = suggested.id;
   }
 
-  void _add(Medicine m, {bool mergeWithLast = true}) {
-    // نفس المادة مباشرة بعد بعضها (آخر سطر هو نفسها) → زيادة الكمية بدل سطر
-    // جديد. أما إن دخلت مادة أخرى بينهما فتُضاف كسطر مستقل (خصم مستقل مثلاً).
-    if (mergeWithLast &&
-        _lines.isNotEmpty &&
-        _lines.last.medicine.id == m.id) {
-      final last = _lines.last;
-      final q = double.tryParse(last.qty.text.trim()) ?? 0;
-      setState(() => last.qty.text = _plainNum(q + 1));
-      _focus.select(_lineId(last));
-      return;
-    }
+  /// [fromScanner] = قراءة بالماسح لا اختيار يدويّ.
+  ///
+  /// الماسح **يزيد الكمية** على سطرٍ قائم للمادة نفسها بدل إنشاء سطر: مسحُ
+  /// عشر علب يعني كمية ١٠ لا عشرة سطور. والاختيار اليدوي بالعكس يُنشئ سطراً
+  /// مستقلاً دائماً — فمَن يفتح المنتقي ويختار المادة ثانيةً قصد سطراً
+  /// ثانياً بسعره ودفعته.
+  ///
+  /// والدمج **مشروط بتطابق الوحدة**: الباركود للمادة لا للوحدة، فزيادةُ
+  /// سطرٍ بالعلبة من مسحٍ يقصد حبّة تُفسد الكمية والكلفة. فإن لم يوجد سطر
+  /// بالوحدة الافتراضية أُنشئ سطر جديد.
+  void _add(Medicine m, {bool fromScanner = false}) {
+    // ── كل سطر مادةٌ لحالها ──────────────────────────────────────────
+    // لا دمج بحال: نفس المادة تُضاف سطراً ثانياً مستقلاً.
+    //
+    // كان ثمّة دمجان: «نفس آخر سطر» و«أي سطر بنفس المادة والوحدة» — والثاني
+    // كان يجعل إضافة المادة مرّةً ثانية **ترفع كمية سطرٍ قديم** حتى لو كان
+    // أعلى الفاتورة. والسطران قد يختلفان في السعر أو الحسم أو الدفعة
+    // المختارة، فدمجُهما يُفقد ذلك بلا رجعة ويُخفي قصد المستخدم.
     if (m.units.isEmpty) {
       AppSnackbar.error(context, AppStrings.noPricedUnitForProduct);
       return;
@@ -290,6 +353,24 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
     // لعملة الفاتورة. مجرّد اقتراح — التنويه أعلى الفاتورة يشرحه، والمستخدم
     // يغيّر النسبة أو يكتب القيمة مباشرة في خلية السعر.
     final cost = _suggestedCost(unit, base, selected);
+    if (fromScanner) {
+      _PurLine? match;
+      for (var i = _lines.length - 1; i >= 0; i--) {
+        final l = _lines[i];
+        if (l.medicine.id == m.id && l.unitId == unit.unitId) {
+          match = l;
+          break;
+        }
+      }
+      if (match != null) {
+        final found = match;
+        final q = double.tryParse(found.qty.text.trim()) ?? 0;
+        setState(() => found.qty.text = _plainNum(q + 1));
+        _focus.select(_lineId(found));
+        return;
+      }
+    }
+
     final line = _PurLine(medicine: m, unitId: unit.unitId, unitPrice: cost);
     setState(() => _lines.add(line));
     // السطر الجديد يصبح النشِط فوراً، فلا نقرة قبل اختصار الكمية.
@@ -342,7 +423,7 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
       amountsInOriginalCurrency: serverConverts,
       warehouseId: warehouseId,
       supplierId: _supplierId,
-      purchaseDate: DateTime.now(),
+      purchaseDate: _purchaseDate,
       totalAmount: serverConverts ? _total : toBase(_total),
       paymentMethod: _payMethod,
       paymentAccountId: _payMethod == PaymentMethod.credit ? null : _paymentAccountId,
@@ -385,10 +466,67 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
         // Editing changes stock + the medicine's weighted-average cost.
         ref.invalidate(medicineCatalogProvider);
         AppSnackbar.success(context, AppStrings.purchaseSavedSuccess);
-        Navigator.of(context).pop(true);
+
+        // تُغلَق الشاشة **إن كانت مدفوعة فوق غيرها** فقط (تعديل فاتورة من
+        // قائمة الفواتير أو تفاصيلها). وهي في تبويب المشتريات جذرُ الفرع
+        // نفسه، فإغلاقها يسحب آخر صفحة من مكدّس `go_router` فتنكسر مسلّمة
+        // `currentConfiguration.isNotEmpty`، ويفشل بناء الشجرة بعدها
+        // (`!_debugLocked`) — فتُسوَّد الشاشة ويُقفل التطبيق بعد كل حفظ.
+        //
+        // وهذا ما تفعله شاشة المبيعات أصلاً: تُغلِق في التعديل وتُصفّر في
+        // الإنشاء. والتصفير هو الصواب سلوكياً أيضاً: مَن يُدخل فواتير
+        // متتابعة يحتاج فاتورةً جديدة جاهزة لا شاشةً تُغلَق.
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop(true);
+          return;
+        }
+        _resetForNextInvoice();
       },
       (failure) => showFailureSnackbar(context, failure),
     );
+  }
+
+  /// يختار تاريخ الفاتورة ووقتها — اليومُ والساعة افتراضاً.
+  Future<void> _pickPurchaseDate() async {
+    final day = await showDatePicker(
+      context: context,
+      initialDate: _purchaseDate,
+      firstDate: DateTime(2020),
+      // لا فاتورة بتاريخ مستقبليّ: تُفسد الترتيب ويرفضها الخادم.
+      lastDate: DateTime.now(),
+    );
+    if (day == null || !mounted) return;
+
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_purchaseDate),
+    );
+    final t = time ?? TimeOfDay.fromDateTime(_purchaseDate);
+
+    var picked = DateTime(day.year, day.month, day.day, t.hour, t.minute);
+    final now = DateTime.now();
+    if (picked.isAfter(now)) picked = now;
+    setState(() => _purchaseDate = picked);
+  }
+
+  /// يُفرِغ الفاتورة لإدخال التالية — بعد حفظٍ ناجح في تبويب المشتريات.
+  ///
+  /// يُحتفَظ بالمورّد والعملة وطريقة الدفع وحساب الصندوق: مَن يُدخل دفعة
+  /// فواتير من مورّدٍ واحد لا يريد إعادة اختيارها في كل مرّة. وتُتلَف
+  /// متحكّمات الأسطر صراحةً وإلّا بقيت مفتوحةً بلا مالك.
+  void _resetForNextInvoice() {
+    final old = List<_PurLine>.of(_lines);
+    setState(() {
+      _lines.clear();
+      // الفاتورة التالية بتاريخ اللحظة لا بتاريخ سابقتها.
+      _purchaseDate = DateTime.now();
+      // عمود البونص والإجمالي يختفيان مع فراغ الفاتورة، وتبديل الحقبة
+      // يُجبر الشبكة على إعادة بناء أعمدتها.
+      _gridEpoch++;
+    });
+    for (final l in old) {
+      l.dispose();
+    }
   }
 
   @override
@@ -396,7 +534,8 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
     final catalog = ref.watch(medicineCatalogProvider).value ?? const [];
     final currencies = ref.watch(currenciesProvider).value ?? const <Currency>[];
     final base = ref.watch(baseCurrencyProvider);
-    final warehouseId = ref.watch(defaultWarehouseIdProvider).value;
+    final warehouseAsync = ref.watch(defaultWarehouseIdProvider);
+    final warehouseId = warehouseAsync.value;
     final selectedCurrency = currencies
         .where((c) => c.id == _effectiveCurrencyId(base))
         .firstOrNull;
@@ -413,7 +552,7 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
         ref: ref,
         catalog: catalog,
         code: code,
-        onFound: _add,
+        onFound: (m) => _add(m, fromScanner: true),
       ),
       child: SaveShortcut(
       onSave: () => _save(warehouseId, base),
@@ -429,6 +568,11 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
                 onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(builder: (_) => const PurchasesPage())),
               ),
+            IconButton(
+              tooltip: 'إعادة محاذاة الأعمدة',
+              icon: const Icon(Icons.view_column_outlined),
+              onPressed: () => setState(() => _gridEpoch++),
+            ),
             const TutorialHelpButton(TutorialTopic.firstPurchase),
           ]),
       body: Column(
@@ -438,7 +582,11 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
                 AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.sm),
             child: Column(
               children: [
-                if (warehouseId == null || warehouseId.isEmpty) ...[
+                // لا يظهر أثناء التحميل: المزوّد يبدأ بلا قيمة، فكان
+                // التنويه يومض عند كل فتح للشاشة وكأن المستودع مفقود ثم
+                // يختفي — إنذارٌ كاذب يُفقد التنويهَ مصداقيته حين يصحّ.
+                if (!warehouseAsync.isLoading &&
+                    (warehouseId == null || warehouseId.isEmpty)) ...[
                   InfoCard(
                     icon: Icons.warehouse_outlined,
                     color: Theme.of(context).colorScheme.error,
@@ -469,7 +617,16 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
                         selectedId: _effectiveCurrencyId(base).isEmpty
                             ? null
                             : _effectiveCurrencyId(base),
-                        onSelected: (c) => setState(() => _currencyId = c.id),
+                        onSelected: (c) => _changeCurrency(c.id, base),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: AppToolbarField(
+                        label: 'تاريخ الفاتورة',
+                        icon: Icons.event_outlined,
+                        value: AppDate.ymdHm(_purchaseDate),
+                        onTap: _pickPurchaseDate,
                       ),
                     ),
                     const SizedBox(width: AppSpacing.sm),
@@ -544,6 +701,7 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
               ],
             ),
           ),
+          const ShortcutHintsBar(),
           const Divider(height: 1),
           // الجدول دائم الظهور: آخر صف فيه هو "صف جديد" تُختار المادة من خليته.
           Expanded(
@@ -562,28 +720,21 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
 
   /// اختيار المادة من خليّة الجدول.
   ///
-  /// [mergeIfSame] يفرّق بين مدخلين:
-  ///
-  /// * **زرّ «إضافة مادة»** (`true`): المادة نفسها مرّتين تزيد كمية آخر سطر.
-  /// * **خليّة الصفّ الجاهز** (`false`): تُضاف **سطراً مستقلاً** دائماً وإن
-  ///   كانت نفس المادة — فقد تختلف كلفتها أو دفعتها أو صلاحيتها عن الأوّل،
-  ///   ودمجُها يُفقد ذلك بلا رجعة.
-  ///
-  /// و[line] غير null يعني استبدال مادة صفٍّ قائم في موضعه.
+  /// كل اختيار يُنتج **سطراً مستقلاً** — فقد تختلف كلفة السطر الثاني أو
+  /// دفعته أو صلاحيته. و[line] غير null يعني استبدال مادة صفٍّ قائم.
   Future<void> _pickMedicineForLine(
-      List<Medicine> catalog, _PurLine? line,
-      {bool mergeIfSame = false}) async {
+      List<Medicine> catalog, _PurLine? line) async {
     final picked = await showMedicinePicker(context, catalog);
     if (picked == null || !mounted) return;
     if (line == null) {
-      _add(picked, mergeWithLast: mergeIfSame);
+      _add(picked);
       return;
     }
     // استبدال مادة صف موجود: دائماً سطر جديد في نفس الموضع، بلا دمج.
     final index = _lines.indexOf(line);
     if (index < 0) return;
     final before = _lines.length;
-    _add(picked, mergeWithLast: false);
+    _add(picked);
     if (_lines.length > before) {
       setState(() {
         final fresh = _lines.removeLast();
@@ -616,6 +767,15 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
     return _lines.where((l) => _lineId(l) == id).firstOrNull;
   }
 
+  /// ينقل التحرير إلى خلية **سعر** السطر النشِط.
+  void _editCurrentPrice() {
+    if (_lines.isEmpty) {
+      AppSnackbar.info(context, 'لا توجد أسطر في الفاتورة');
+      return;
+    }
+    _focus.focusField(_fCost, startEditing: true);
+  }
+
   /// ينقل التحرير إلى خلية الكمية في السطر النشِط.
   void _editCurrentQuantity() {
     if (_lines.isEmpty) {
@@ -642,7 +802,16 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
 
   /// بصمة بنيوية للأسطر: أي تغيير يعيد بناء الشبكة بقيم محدّثة
   /// (التحرير داخل الخلية يلتزم عند الخروج منها).
+  /// عدّاد يُدخَل في مفتاح الشبكة لإعادة بنائها من الصفر.
+  ///
+  /// تغيير عرض عمود يسكن حالةَ الشبكة الداخلية لا الأعمدة المُعلَنة، فلا
+  /// سبيل لإرجاعه إلّا ببناء شبكة جديدة. وزيادة هذا العدّاد تُغيّر المفتاح
+  /// فتُستبدَل الشبكة بعروضها المُعلَنة — وحالة الأسطر محفوظة في `_lines`
+  /// لا في الشبكة، فلا يضيع شيء.
+  int _gridEpoch = 0;
+
   Key _gridKey() => ValueKey(Object.hashAll([
+        _gridEpoch,
         for (final l in _lines) ...[
           identityHashCode(l),
           l.unitId,

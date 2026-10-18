@@ -1,20 +1,38 @@
 import 'package:saydaliati/core/errors/failure_mapper.dart';
 import 'package:saydaliati/core/result/result.dart';
+import 'package:saydaliati/features/accounts/data/datasources/account_local_data_source.dart';
 import 'package:saydaliati/features/accounts/data/datasources/account_remote_data_source.dart';
 import 'package:saydaliati/features/accounts/domain/entities/account.dart';
 import 'package:saydaliati/features/accounts/domain/repositories/account_repository.dart';
 
+/// دليل الحسابات: **الخادم ما دام متاحاً، والنسخة المحلّية عند تعذُّره.**
+///
+/// كان القراءة من الخادم وحده، فانقطاعُ الشبكة يُفرِغ قائمة الحسابات: لا
+/// سند قبضٍ ولا دفعٍ ولا فاتورةٍ آجلة — والصيدلية تعمل بلا إنترنت كثيراً.
+///
+/// والخادم يبقى المرجع متى أجاب: الأرصدة تتغيّر مع كل حركة، فنسخةٌ محلّية
+/// تُقدَّم على إجابةٍ حيّة تعرض رصيداً قديماً. والكتابة (إنشاء/تعديل/حذف)
+/// تبقى متّصلةً وحدها — حسابٌ يُنشَأ محلياً يُنتج رمزاً يصطدم بما يُنشئه
+/// جهازٌ آخر.
 class AccountRepositoryImpl implements AccountRepository {
-  const AccountRepositoryImpl(this.remote);
+  const AccountRepositoryImpl(this.remote, this.local);
 
   final AccountRemoteDataSource remote;
+  final AccountLocalDataSource local;
 
   @override
   Future<Result<List<Account>>> getAll() async {
     try {
       final raw = await remote.list();
+      // تحديث النسخة المحلّية بكل قراءةٍ ناجحة — فآخر ما رآه المستخدم
+      // متّصلاً هو ما يجده عند الانقطاع.
+      await local.replaceAll(raw);
       return Result.success(raw.map(_accountFromJson).toList());
     } catch (error) {
+      final cached = await local.getAll();
+      if (cached.isNotEmpty) {
+        return Result.success(cached.map(_accountFromJson).toList());
+      }
       return Result.failure(mapExceptionToFailure(error));
     }
   }
@@ -49,6 +67,8 @@ class AccountRepositoryImpl implements AccountRepository {
     }
   }
 
+  /// كشف الحساب يبقى متّصلاً: رصيدٌ متراكمٌ يحسبه الخادم من قيوده، وكشفٌ
+  /// قديمٌ معروضٌ على أنه الحالي أسوأ من رسالة «لا اتصال».
   @override
   Future<Result<AccountStatement>> getStatement(
     String accountId, {

@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:saydaliati/core/theme/app_breakpoints.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/features/reports/domain/report_period.dart';
 import 'package:saydaliati/features/reports/presentation/widgets/period_menu_chip.dart';
 import 'package:saydaliati/features/reports/presentation/widgets/period_side_sheet.dart';
+import 'package:saydaliati/shared/widgets/buttons/app_refresh_button.dart';
 import 'package:saydaliati/shared/widgets/filters/filter_bar.dart';
 
 /// Shared chrome for report screens.
@@ -35,7 +38,8 @@ class ReportScaffold extends StatelessWidget {
   /// end-drawer chip on compact).
   final ReportPeriod? period;
   final ValueChanged<ReportPeriod>? onPeriodChanged;
-  final VoidCallback? onRefresh;
+  /// عمل التحديث — يُنتظَر، فيدور الزرّ إلى أن تصل البيانات.
+  final FutureOr<void> Function()? onRefresh;
 
   /// Extra controls appended inside the period side sheet (compact widths).
   final List<Widget> endDrawerExtra;
@@ -69,11 +73,7 @@ class ReportScaffold extends StatelessWidget {
                 ),
               ),
             ),
-          if (onRefresh != null)
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: onRefresh,
-            ),
+          if (onRefresh != null) AppRefreshButton(onRefresh: onRefresh!),
         ],
       ),
       endDrawer: hasPeriod

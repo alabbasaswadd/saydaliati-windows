@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:saydaliati/shared/widgets/buttons/add_entity_button.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/features/customers/customer_providers.dart';
@@ -94,10 +95,9 @@ class CustomersPage extends ConsumerWidget {
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-            child: FilledButton.icon(
+            child: AddEntityButton(
+              label: 'إضافة زبون',
               onPressed: () => _addOrEdit(context, ref),
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('إضافة زبون'),
             ),
           ),
         ],

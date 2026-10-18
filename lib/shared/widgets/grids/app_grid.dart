@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:saydaliati/core/theme/app_semantic_colors.dart';
+import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
 import 'package:trina_grid/trina_grid.dart';
 
@@ -126,7 +127,7 @@ class _AppColumnMenuDelegate implements TrinaColumnMenuDelegate<dynamic> {
   }
 }
 
-class AppGrid extends StatelessWidget {
+class AppGrid extends StatefulWidget {
   const AppGrid({
     required this.columns,
     required this.rows,
@@ -134,7 +135,9 @@ class AppGrid extends StatelessWidget {
     this.rowColorCallback,
     this.onRowDoubleTap,
     this.onChanged,
-    this.showColumnFilter = true,
+    this.showColumnFilter = false,
+    this.searchable = true,
+    this.searchHint,
     this.tree = false,
     super.key,
   });
@@ -154,14 +157,94 @@ class AppGrid extends StatelessWidget {
   /// تلوين صف حسب حالته (بيع بخسارة…) — يسبق التخطيط.
   final TrinaRowColorCallback? rowColorCallback;
 
-  /// صف الفلترة «يحتوي» تحت رؤوس الأعمدة.
+  /// صفّ الفلترة «يحتوي» تحت رؤوس الأعمدة — **مُطفأ افتراضياً**.
+  ///
+  /// كان يشغل سطراً كاملاً من كل جدول بمربّع بحثٍ لكل عمود: مساحةٌ كبيرة
+  /// مقابل أداةٍ تُلزم المستخدم أن يعرف **في أيّ عمود** يقع ما يبحث عنه قبل
+  /// أن يكتبه. وحقل البحث العامّ أدناه يغني عنه: كلمةٌ واحدة تُطابَق على كل
+  /// الأعمدة الظاهرة.
   final bool showColumnFilter;
+
+  /// حقل بحثٍ عامّ فوق الجدول يُصفّي على كل الأعمدة.
+  final bool searchable;
+
+  /// نصّ إرشاديّ للبحث — يصف محتوى الجدول («ابحث في الأدوية…»).
+  final String? searchHint;
 
   /// شجرة: صفوف `TrinaRowType.group` تتوسّع لأبنائها بأيقونة على أول عمود.
   final bool tree;
 
   @override
+  State<AppGrid> createState() => _AppGridState();
+}
+
+class _AppGridState extends State<AppGrid> {
+  final _search = TextEditingController();
+  TrinaGridStateManager? _manager;
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  /// يُطابق الكلمة على **قيم كل الأعمدة الظاهرة** لا على عمودٍ بعينه.
+  ///
+  /// والمقارنة على النصّ المعروض لا على القيمة الخام: المستخدم يبحث عمّا
+  /// يراه. وصفوف المجموعات في الشجرة تبقى ظاهرة إن طابق أحد أبنائها، وإلّا
+  /// اختفت الشجرة كلّها عند أوّل حرف.
+  void _applySearch(String raw) {
+    final m = _manager;
+    if (m == null) return;
+    final term = raw.trim().toLowerCase();
+
+    if (term.isEmpty) {
+      m.setFilter(null);
+      return;
+    }
+
+    final fields = [
+      for (final c in widget.columns)
+        if (!c.hide) c.field,
+    ];
+
+    bool matches(TrinaRow<dynamic> row) {
+      for (final f in fields) {
+        final v = row.cells[f]?.value;
+        if (v == null) continue;
+        if (v.toString().toLowerCase().contains(term)) return true;
+      }
+      // صفّ مجموعة: يكفي أن يطابق أحد أبنائه.
+      final group = row.type.isGroup ? row.type.group.children : null;
+      if (group != null) {
+        for (final child in group) {
+          if (matches(child)) return true;
+        }
+      }
+      return false;
+    }
+
+    m.setFilter(matches);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final grid = _buildGrid(context);
+    if (!widget.searchable) return grid;
+
+    return Column(
+      children: [
+        _SearchBar(
+          controller: _search,
+          hint: widget.searchHint,
+          onChanged: _applySearch,
+        ),
+        Expanded(child: grid),
+      ],
+    );
+  }
+
+  Widget _buildGrid(BuildContext context) {
     // خلايا التحرير داخل الغريد تستخدم TextField عادي (بلا Decoration خاصة من
     // الحزمة)، فيرث شكل حقول الإدخال العام للتطبيق (خلفية مملوءة وحواف دائرية
     // بيضوية بدل خط مستقيم رفيع) فيبرز كخلية غريبة وسط الجدول. نلغي هذا
@@ -181,17 +264,21 @@ class AppGrid extends StatelessWidget {
         ),
       ),
       child: TrinaGrid(
-        columns: columns,
-        rows: rows,
+        columns: widget.columns,
+        rows: widget.rows,
         configuration: appGridConfiguration(context),
         columnMenuDelegate: const _AppColumnMenuDelegate(),
-        rowColorCallback: rowColorCallback,
-        onRowDoubleTap: onRowDoubleTap,
-        onChanged: onChanged,
+        rowColorCallback: widget.rowColorCallback,
+        onRowDoubleTap: widget.onRowDoubleTap,
+        onChanged: widget.onChanged,
         onLoaded: (TrinaGridOnLoadedEvent event) {
           final m = event.stateManager;
-          m.setShowColumnFilter(showColumnFilter);
-          if (tree) {
+          _manager = m;
+          m.setShowColumnFilter(widget.showColumnFilter);
+          // نقرةٌ واحدة تفتح الخلية للتحرير بدل نقرتين أو Enter. الأعمدة
+          // المقروءة فقط (`enableEditingMode: false`) لا يمسّها هذا.
+          m.setAutoEditing(true);
+          if (widget.tree) {
             m.setRowGroup(
               TrinaRowGroupTreeDelegate(
                 resolveColumnDepth: (column) => m.columnIndex(column),
@@ -200,8 +287,61 @@ class AppGrid extends StatelessWidget {
               ),
             );
           }
-          onLoaded?.call(m);
+          widget.onLoaded?.call(m);
         },
+      ),
+    );
+  }
+}
+
+/// شريط البحث العامّ فوق الجدول.
+class _SearchBar extends StatelessWidget {
+  const _SearchBar({
+    required this.controller,
+    required this.onChanged,
+    this.hint,
+  });
+
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+  final String? hint;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: SizedBox(
+        height: 36,
+        child: TextField(
+          controller: controller,
+          onChanged: onChanged,
+          textAlignVertical: TextAlignVertical.center,
+          style: theme.textTheme.bodyMedium,
+          decoration: InputDecoration(
+            isDense: true,
+            hintText: hint ?? 'بحث…',
+            prefixIcon: const Icon(Icons.search, size: 18),
+            prefixIconConstraints:
+                const BoxConstraints(minWidth: 34, minHeight: 34),
+            suffixIcon: ValueListenableBuilder<TextEditingValue>(
+              valueListenable: controller,
+              builder: (context, value, _) => value.text.isEmpty
+                  ? const SizedBox.shrink()
+                  : IconButton(
+                      icon: const Icon(Icons.close, size: 16),
+                      tooltip: 'مسح البحث',
+                      onPressed: () {
+                        controller.clear();
+                        onChanged('');
+                      },
+                    ),
+            ),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+            border: const OutlineInputBorder(borderRadius: AppRadius.brSm),
+          ),
+        ),
       ),
     );
   }

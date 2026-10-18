@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:saydaliati/features/tutorials/presentation/tutorial_help.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:saydaliati/shared/widgets/buttons/add_entity_button.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/core/theme/app_semantic_colors.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
@@ -8,6 +8,7 @@ import 'package:saydaliati/core/utils/app_date.dart';
 import 'package:saydaliati/features/currencies/currency_providers.dart';
 import 'package:saydaliati/features/currencies/domain/entities/currency.dart';
 import 'package:saydaliati/features/currencies/presentation/providers/currencies_provider.dart';
+import 'package:saydaliati/features/tutorials/presentation/tutorial_help.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
 import 'package:saydaliati/shared/widgets/dialogs/adaptive_modal.dart';
 import 'package:saydaliati/shared/widgets/dialogs/app_dialogs.dart';
@@ -175,9 +176,8 @@ class _CurrenciesPageState extends ConsumerState<CurrenciesPage> {
         title: const Text(AppStrings.currenciesList),
         actions: [
           AppGridColumnsButton(managerGetter: () => _gridManager),
-          IconButton(
-            tooltip: AppStrings.addNew,
-            icon: const Icon(Icons.add),
+          AddEntityButton(
+            label: 'إضافة عملة',
             onPressed: () => _addOrEdit(context, ref),
           ),
           const TutorialHelpButton(TutorialTopic.currencies),
@@ -435,9 +435,7 @@ class _CurrencyFormDialogState extends State<_CurrencyFormDialog> {
   void _submit() {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     if (!_isBase && (_rate == null || _rate! <= 0)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AppStrings.rateEnterPositive)),
-      );
+      AppSnackbar.info(context, AppStrings.rateEnterPositive);
       return;
     }
     Navigator.of(context).pop(_CurrencyDraft(

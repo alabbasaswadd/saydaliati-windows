@@ -17,6 +17,7 @@ import 'package:saydaliati/features/vouchers/domain/entities/voucher.dart';
 import 'package:saydaliati/features/vouchers/presentation/pages/voucher_form_dialog.dart';
 import 'package:saydaliati/features/vouchers/voucher_providers.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
+import 'package:saydaliati/shared/widgets/buttons/app_refresh_button.dart';
 import 'package:saydaliati/shared/widgets/dialogs/app_dialogs.dart';
 import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
@@ -27,6 +28,18 @@ import 'package:trina_grid/trina_grid.dart';
 /// السندات (قيود محاسبية) — يدوية أو تابعة لفاتورة/مصروف/مرتجع. السندات
 /// التابعة (علامة القفل) لا تُحذَف من هنا — فقط من مصدرها؛ أيقونة خاصة بها
 /// تفتح المستند الأصلي.
+
+/// الأحدث أولاً — **بترتيبٍ كليّ لا يترك المتساوين للصدفة.**
+///
+/// `List.sort` في Dart غير مستقرّ، والمقارنة بالتاريخ وحده تجعل سندات اليوم
+/// الواحد (وكثيرٌ منها يُكتب بمُنتقي تاريخٍ بلا وقت فتتطابق إلى الثانية)
+/// تتبادل أماكنها بين بناءٍ وآخر بلا سبب ظاهر. المعرّف يحسم ما تبقّى: لا
+/// معنى له في ذاته، لكنه يُثبّت الترتيب.
+int _newestFirst(Voucher a, Voucher b) {
+  final byDate = b.date.compareTo(a.date);
+  return byDate != 0 ? byDate : b.id.compareTo(a.id);
+}
+
 class VouchersListPage extends ConsumerWidget {
   const VouchersListPage({super.key});
 
@@ -112,10 +125,8 @@ class VouchersListPage extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('السندات'),
         actions: [
-          IconButton(
-            tooltip: 'تحديث',
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(vouchersListProvider),
+          AppRefreshButton(
+            onRefresh: () => ref.refresh(vouchersListProvider.future),
           ),
           Padding(
             padding: const EdgeInsetsDirectional.only(end: 12),
@@ -146,7 +157,7 @@ class VouchersListPage extends ConsumerWidget {
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 child: _VouchersGrid(
                   // الأحدث تاريخاً ووقتاً أولاً.
-                  vouchers: [...vouchers]..sort((a, b) => b.date.compareTo(a.date)),
+                  vouchers: [...vouchers]..sort(_newestFirst),
                   onDelete: (v) => _delete(context, ref, v),
                   onOpenOrigin: (v) => _openOrigin(context, ref, v),
                 ),
