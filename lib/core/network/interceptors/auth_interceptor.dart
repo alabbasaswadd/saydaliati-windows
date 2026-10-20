@@ -3,15 +3,20 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:saydaliati/core/session/session_controller.dart';
+import 'package:saydaliati/features/auth/auth_providers.dart';
 
-/// Attaches the bearer token to every request and reacts to 401s.
+/// Attaches the bearer token to every request and reacts to 401/403s.
 ///
 /// * **onRequest** — reads the in-memory token from [SessionController] and adds
 ///   `Authorization: Bearer <token>` when present. Anonymous endpoints simply
 ///   have no token, so nothing is added.
 /// * **onError** — a **401 is the auth contract's signal** that the token is
 ///   invalid/expired, so the session is cleared (→ router sends the user to
-///   login). No other status ends the session.
+///   login). A **403** means the token is valid but the *role's permissions*
+///   don't allow this action — permissions may have changed server-side since
+///   login (e.g. an admin edited the role), so instead of ending the session
+///   we just invalidate [currentUserProvider] to pick up the latest
+///   role/permissions on the next read.
 class AuthInterceptor extends Interceptor {
   AuthInterceptor(this._ref);
 
@@ -39,10 +44,14 @@ class AuthInterceptor extends Interceptor {
     // must NOT clear a freshly-created session — that caused a log-in-then-out loop.
     final sentToken =
         err.requestOptions.headers.containsKey('Authorization');
-    if (err.response?.statusCode == 401 && sentToken) {
+    final status = err.response?.statusCode;
+    if (status == 401 && sentToken) {
       // Fire-and-forget: clearing persisted secrets is async, but the error must
       // continue to propagate to the caller as an UnauthorizedException.
       unawaited(_ref.read(sessionControllerProvider.notifier).clear());
+    } else if (status == 403 && sentToken) {
+      // Session stays alive — only the cached role/permissions are stale.
+      _ref.invalidate(currentUserProvider);
     }
     handler.next(err);
   }

@@ -74,4 +74,9 @@ abstract final class AppRoutes {
   static const String notifications = '/more/notifications';
   static const String debtsCustomers = '/more/debts/customers';
   static const String debtsSuppliers = '/more/debts/suppliers';
+
+  // Staff management — users & roles/permissions (Admin only; gated by
+  // PermissionCodes.usersView / rolesView in the router redirect + sidebar).
+  static const String users = '/more/users';
+  static const String roles = '/more/roles';
 }

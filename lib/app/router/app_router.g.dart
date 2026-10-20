@@ -36,6 +36,8 @@ part of 'app_router.dart';
 ///  18  /more/tutorials        – Tutorials
 ///  19  /more/settings         – Settings
 ///  20  /more/profile          – Account / profile
+///  25  /more/users            – Staff users (Admin only)
+///  26  /more/roles            – Roles & permissions (Admin only)
 
 @ProviderFor(goRouter)
 final goRouterProvider = GoRouterProvider._();
@@ -68,6 +70,8 @@ final goRouterProvider = GoRouterProvider._();
 ///  18  /more/tutorials        – Tutorials
 ///  19  /more/settings         – Settings
 ///  20  /more/profile          – Account / profile
+///  25  /more/users            – Staff users (Admin only)
+///  26  /more/roles            – Roles & permissions (Admin only)
 
 final class GoRouterProvider
     extends $FunctionalProvider<GoRouter, GoRouter, GoRouter>
@@ -100,6 +104,8 @@ final class GoRouterProvider
   ///  18  /more/tutorials        – Tutorials
   ///  19  /more/settings         – Settings
   ///  20  /more/profile          – Account / profile
+  ///  25  /more/users            – Staff users (Admin only)
+  ///  26  /more/roles            – Roles & permissions (Admin only)
   GoRouterProvider._()
     : super(
         from: null,
@@ -133,4 +139,4 @@ final class GoRouterProvider
   }
 }
 
-String _$goRouterHash() => r'13439bb3435a823f599d29e7df4641d5c1027716';
+String _$goRouterHash() => r'5d4075245e7ccbf28a1792e16b22cb70141824d5';

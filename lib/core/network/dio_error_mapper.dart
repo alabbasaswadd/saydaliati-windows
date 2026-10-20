@@ -8,6 +8,7 @@ import 'package:saydaliati/core/network/api_envelope.dart';
 /// | ------ | --------- |
 /// | 400 | [ValidationException] (errors keyed by field) |
 /// | 401 | [UnauthorizedException] |
+/// | 403 | [BusinessException] (permission denied — session stays alive) |
 /// | 404 | [NotFoundException] |
 /// | 409 | [BusinessException] (conflict — e.g. delete blocked / duplicate) |
 /// | 422 | [BusinessException] (errors keyed by business code) |
@@ -55,6 +56,11 @@ abstract final class DioErrorMapper {
     return switch (status) {
       400 => ValidationException(errors: env.errors, message: first?.message),
       401 => UnauthorizedException(first?.message),
+      403 => BusinessException(
+          code: first?.key ?? 'Forbidden',
+          message: first?.message ?? 'ليس لديك صلاحية لتنفيذ هذا الإجراء',
+          errors: env.errors,
+        ),
       404 => NotFoundException(first?.message),
       409 || 422 => BusinessException(
           code: first?.key ?? 'BusinessRule',

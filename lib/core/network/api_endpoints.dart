@@ -170,6 +170,17 @@ abstract final class ApiEndpoints {
   static const String customers = '$_base/Customer';
   static String customerById(String id) => '$_base/Customer/$id';
 
+  // ---- Roles & permissions (staff/role management) ----
+  static const String roles = '$_base/Roles';
+  static String roleById(String id) => '$_base/Roles/$id';
+  static String rolePermissions(String id) => '$_base/Roles/$id/permissions';
+  static const String permissions = '$_base/Permissions';
+
+  // ---- Users (staff accounts under the tenant) ----
+  static const String users = '$_base/Users';
+  static String userRole(String id) => '$_base/Users/$id/role';
+  static String userActive(String id) => '$_base/Users/$id/active';
+
   // ---- Settings ----
   static const String settings = '$_base/Setting';
 

@@ -4,6 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:saydaliati/app/router/app_routes.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/core/offline/connectivity/work_mode.dart';
+import 'package:saydaliati/core/permissions/current_user_permissions.dart';
+import 'package:saydaliati/core/permissions/permission_codes.dart';
+import 'package:saydaliati/core/permissions/permission_providers.dart';
 import 'package:saydaliati/core/theme/app_semantic_colors.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
 
@@ -16,6 +19,7 @@ class _NavItem {
     required this.icon,
     required this.selectedIcon,
     this.route,
+    this.requiredPermission,
   });
 
   /// Branch index in the StatefulShellRoute (selection + goBranch).
@@ -28,7 +32,19 @@ class _NavItem {
   /// the individual reports) and selection matches the location, not the
   /// branch index.
   final String? route;
+
+  /// When set, the item is hidden unless the current user holds this
+  /// permission code (see [CurrentUserPermissions]).
+  final String? requiredPermission;
 }
+
+/// يرشّح عناصر قسم بحسب صلاحيات المستخدم الحالي.
+List<_NavItem> _allowedItems(
+        List<_NavItem> items, CurrentUserPermissions perms) =>
+    items
+        .where((i) =>
+            i.requiredPermission == null || perms.has(i.requiredPermission!))
+        .toList();
 
 class _NavSection {
   const _NavSection(this.label, this.items);
@@ -256,6 +272,27 @@ const _mainSections = <_NavSection>[
       route: AppRoutes.expenses,
     ),
   ]),
+
+  // المستخدمون والأدوار — ظاهر فقط لمن يملك صلاحية العرض المطابقة (عادة
+  // الأدمن وحده). راجع lib/core/permissions/.
+  _NavSection('المستخدمون والصلاحيات', [
+    _NavItem(
+      index: 25,
+      label: 'المستخدمون',
+      icon: Icons.manage_accounts_outlined,
+      selectedIcon: Icons.manage_accounts,
+      route: AppRoutes.users,
+      requiredPermission: PermissionCodes.usersView,
+    ),
+    _NavItem(
+      index: 26,
+      label: 'الأدوار والصلاحيات',
+      icon: Icons.admin_panel_settings_outlined,
+      selectedIcon: Icons.admin_panel_settings,
+      route: AppRoutes.roles,
+      requiredPermission: PermissionCodes.rolesView,
+    ),
+  ]),
 ];
 
 // عناصر النظام السفلية — قسمان منفصلان بحدّ بينهما: البقية أولاً، ثم مفتاح
@@ -361,6 +398,12 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final perms = ref.watch(currentUserPermissionsProvider);
+    final visibleSections = [
+      for (final section in _mainSections)
+        _NavSection(section.label, _allowedItems(section.items, perms)),
+    ].where((s) => s.items.isNotEmpty).toList();
+    final visibleBottomItems = _allowedItems(_bottomItems, perms);
 
     return Listener(
       // تُسجَّل حالة Ctrl عند نزول المؤشّر، فيقرأها `_onTap` بعدها.
@@ -402,9 +445,9 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        for (var i = 0; i < _mainSections.length; i++) ...[
+                        for (var i = 0; i < visibleSections.length; i++) ...[
                           if (i > 0) _sectionDivider(context),
-                          _buildSection(_mainSections[i], showLabels),
+                          _buildSection(visibleSections[i], showLabels),
                         ],
                       ],
                     ),
@@ -421,7 +464,7 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
                   ),
                   child: Column(
                     children: [
-                      for (final item in _bottomItems)
+                      for (final item in visibleBottomItems)
                         _NavItemTile(
                           item: item,
                           isSelected: _isSelected(item),

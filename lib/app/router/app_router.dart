@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:saydaliati/app/router/app_routes.dart';
 import 'package:saydaliati/app/shell/desktop_shell.dart';
+import 'package:saydaliati/core/permissions/permission_codes.dart';
+import 'package:saydaliati/core/permissions/permission_providers.dart';
 import 'package:saydaliati/core/session/session_controller.dart';
 import 'package:saydaliati/core/session/session_state.dart';
 import 'package:saydaliati/features/about/presentation/pages/about_page.dart';
@@ -35,6 +37,7 @@ import 'package:saydaliati/features/reports/presentation/pages/profit_report_pag
 import 'package:saydaliati/features/reports/presentation/pages/purchases_report_page.dart';
 import 'package:saydaliati/features/reports/presentation/pages/sales_report_page.dart';
 import 'package:saydaliati/features/reports/presentation/pages/stocktake_report_page.dart';
+import 'package:saydaliati/features/roles/presentation/pages/roles_page.dart';
 import 'package:saydaliati/features/sales/presentation/pages/sale_returns_list_page.dart';
 import 'package:saydaliati/features/sales/presentation/pages/sales_list_page.dart';
 import 'package:saydaliati/features/sales/presentation/pages/sales_page.dart';
@@ -45,11 +48,19 @@ import 'package:saydaliati/features/stock/presentation/pages/stock_page.dart';
 import 'package:saydaliati/features/stock_movements/presentation/pages/stock_movements_page.dart';
 import 'package:saydaliati/features/suppliers/presentation/pages/suppliers_page.dart';
 import 'package:saydaliati/features/tutorials/presentation/tutorials_page.dart';
+import 'package:saydaliati/features/users/presentation/pages/users_page.dart';
 import 'package:saydaliati/features/vouchers/presentation/pages/vouchers_list_page.dart';
 
 part 'app_router.g.dart';
 
 final _rootKey = GlobalKey<NavigatorState>();
+
+/// Route → required permission, checked in the redirect below (the sidebar
+/// already hides these entries; this is the second line of defense).
+const _routePermissions = <String, String>{
+  AppRoutes.users: PermissionCodes.usersView,
+  AppRoutes.roles: PermissionCodes.rolesView,
+};
 
 /// The app's [GoRouter] — desktop edition.
 ///
@@ -79,6 +90,8 @@ final _rootKey = GlobalKey<NavigatorState>();
 ///  18  /more/tutorials        – Tutorials
 ///  19  /more/settings         – Settings
 ///  20  /more/profile          – Account / profile
+///  25  /more/users            – Staff users (Admin only)
+///  26  /more/roles            – Roles & permissions (Admin only)
 @Riverpod(keepAlive: true)
 GoRouter goRouter(Ref ref) {
   GoRoute rootRoute(String path, Widget Function(GoRouterState) build) =>
@@ -96,6 +109,9 @@ GoRouter goRouter(Ref ref) {
   final refresh = ValueNotifier<int>(0);
   ref.listen(sessionControllerProvider, (_, _) => refresh.value++);
   ref.listen(introSeenProvider, (_, _) => refresh.value++);
+  // Permissions resolve asynchronously (right after login, via /auth/me) — a
+  // route that was blocked at first render must re-evaluate once they land.
+  ref.listen(currentUserPermissionsProvider, (_, _) => refresh.value++);
   ref.onDispose(refresh.dispose);
 
   return GoRouter(
@@ -118,7 +134,15 @@ GoRouter goRouter(Ref ref) {
       final onAuth = loc == AppRoutes.login || loc == AppRoutes.register;
 
       if (authed) {
-        return (onAuth || onIntro || onSplash) ? AppRoutes.sales : null;
+        if (onAuth || onIntro || onSplash) return AppRoutes.sales;
+        // Defense-in-depth below the sidebar filtering: a direct/typed URL
+        // or a restored tab must not reach a page the current role can't see.
+        final requiredPermission = _routePermissions[loc];
+        if (requiredPermission != null) {
+          final perms = ref.read(currentUserPermissionsProvider);
+          if (!perms.has(requiredPermission)) return AppRoutes.sales;
+        }
+        return null;
       }
       if (!seenIntro) return onIntro ? null : AppRoutes.intro;
       if (onSplash || onIntro) return AppRoutes.login;
@@ -267,6 +291,10 @@ GoRouter goRouter(Ref ref) {
               ),
             ],
           ),
+          // ── Staff management (indices 25-26) ──────────────────────────
+          // تُضاف في النهاية عمداً (نفس سبب shortcuts/salesInvoices أعلاه).
+          branch(AppRoutes.users, const UsersPage()),
+          branch(AppRoutes.roles, const RolesPage()),
         ],
       ),
     ],

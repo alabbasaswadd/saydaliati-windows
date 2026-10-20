@@ -5,6 +5,7 @@ import 'package:saydaliati/core/offline/offline_providers.dart';
 import 'package:saydaliati/core/providers/core_providers.dart';
 import 'package:saydaliati/core/session/session_state.dart';
 import 'package:saydaliati/core/storage/key_value_store.dart';
+import 'package:saydaliati/features/auth/auth_providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 part 'session_controller.g.dart';
@@ -121,6 +122,10 @@ class SessionController extends _$SessionController {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kHasSessionPref, false);
     _tokenLoad = Future.value(null);
+
+    // Drop the cached identity/role/permissions so a next login (possibly a
+    // different account) never briefly sees the previous user's data.
+    ref.invalidate(currentUserProvider);
 
     // On logout, wipe the per-tenant local cache (medicines, customers,
     // categories, units, currencies, stock…) and its sync timestamps — so no
