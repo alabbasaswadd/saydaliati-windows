@@ -9,27 +9,32 @@ import 'package:saydaliati/features/accounts/domain/entities/account.dart';
 import 'package:saydaliati/features/shortcuts/presentation/widgets/save_shortcut.dart';
 import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_date_picker.dart';
+import 'package:saydaliati/shared/widgets/inputs/app_dropdown.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_text_field.dart';
 
 /// رصيد افتتاحي لصندوق عملة — سند قيد مزدوج (مدين الصندوق، دائن رأس المال)
 /// بعملة الصندوق نفسها حصراً؛ لا حقل عملة هنا عمداً — القيمة المدخلة تُسجَّل
-/// بعملة [account] كما هي، والخادم يرفض أي حساب بلا عملة خاصة.
+/// بعملة الصندوق المختار كما هي، والخادم يرفض أي حساب بلا عملة خاصة.
+///
+/// [accounts] القائمة المؤهَّلة فقط (مُصفّاة مسبقاً بحسب وجود عملة) — الحوار
+/// لا يُعاد تصفيتها، فلا داعي لتمرير `currencies`/التحقق هنا مجدداً.
 ///
 /// تاريخ الرصيد مهمّ لمن يُدخل فواتير قديمة بالرجوع: يجب أن يسبق أقدم فاتورة
 /// سيُدخلها، وإلا ظهر رصيد الصندوق سالباً أثناء الإدخال الرجعي — القيود تُرتَّب
 /// بتاريخها المحاسبي لا بوقت إدخالها الفعلي.
-Future<bool?> showOpeningBalanceDialog(BuildContext context, {required Account account}) {
+Future<bool?> showOpeningBalanceDialog(BuildContext context,
+    {required List<Account> accounts}) {
   return showDialog<bool>(
     context: context,
     barrierDismissible: false,
-    builder: (_) => _OpeningBalanceDialog(account: account),
+    builder: (_) => _OpeningBalanceDialog(accounts: accounts),
   );
 }
 
 class _OpeningBalanceDialog extends ConsumerStatefulWidget {
-  const _OpeningBalanceDialog({required this.account});
+  const _OpeningBalanceDialog({required this.accounts});
 
-  final Account account;
+  final List<Account> accounts;
 
   @override
   ConsumerState<_OpeningBalanceDialog> createState() => _OpeningBalanceDialogState();
@@ -41,6 +46,10 @@ class _OpeningBalanceDialogState extends ConsumerState<_OpeningBalanceDialog> {
   final _noteController = TextEditingController();
   DateTime _date = DateTime.now();
   bool _saving = false;
+  late String? _accountId = widget.accounts.first.id;
+
+  Account? get _account =>
+      widget.accounts.where((a) => a.id == _accountId).firstOrNull;
 
   @override
   void dispose() {
@@ -51,11 +60,13 @@ class _OpeningBalanceDialogState extends ConsumerState<_OpeningBalanceDialog> {
 
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    final account = _account;
+    if (account == null) return;
     final amount = double.tryParse(_amountController.text.trim()) ?? 0;
     setState(() => _saving = true);
 
     final result = await ref.read(accountRepositoryProvider).setOpeningBalance(
-          widget.account.id,
+          account.id,
           amount: amount,
           date: _date,
           note: _noteController.text.trim(),
@@ -74,7 +85,7 @@ class _OpeningBalanceDialogState extends ConsumerState<_OpeningBalanceDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final currencyCode = widget.account.currencyCode ?? '';
+    final currencyCode = _account?.currencyCode ?? '';
 
     return SaveShortcut(
       onSave: _submit,
@@ -105,7 +116,7 @@ class _OpeningBalanceDialogState extends ConsumerState<_OpeningBalanceDialog> {
                           child: Padding(
                             padding: const EdgeInsets.only(top: 2),
                             child: Text(
-                              'رصيد افتتاحي — ${widget.account.name}',
+                              'رصيد افتتاحي',
                               style: theme.textTheme.titleMedium
                                   ?.copyWith(fontWeight: FontWeight.w600),
                             ),
@@ -125,6 +136,19 @@ class _OpeningBalanceDialogState extends ConsumerState<_OpeningBalanceDialog> {
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    AppDropdown<String?>(
+                      label: 'الصندوق',
+                      isRequired: true,
+                      enabled: !_saving,
+                      value: _accountId,
+                      items: [
+                        for (final a in widget.accounts)
+                          AppDropdownItem(
+                              value: a.id, label: '${a.name} (${a.currencyCode})'),
+                      ],
+                      onChanged: (v) => setState(() => _accountId = v),
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     // العملة ثابتة — لا يملك المستخدم اختيارها، فيُوضَّح ذلك
