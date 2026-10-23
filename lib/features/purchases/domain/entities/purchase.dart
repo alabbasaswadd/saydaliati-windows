@@ -13,6 +13,9 @@ abstract class Purchase with _$Purchase {
     @Default(0) int invoiceNumber,
     @Default('') String paymentAccountId,
     @Default(<PurchaseLine>[]) List<PurchaseLine> items,
+
+    /// فاتورة أول المدة — مخزون افتتاحي بلا مورّد، مقيَّدة مقابل رأس المال.
+    @Default(false) bool isOpeningBalance,
   }) = _Purchase;
 }
 

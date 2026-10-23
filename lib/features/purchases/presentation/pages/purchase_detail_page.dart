@@ -43,7 +43,10 @@ class PurchaseDetailPage extends StatelessWidget {
             onPressed: () async {
               final ok = await Navigator.of(context).push<bool>(
                 MaterialPageRoute(
-                  builder: (_) => PurchaseCreatePage(purchaseToEdit: purchase),
+                  builder: (_) => PurchaseCreatePage(
+                    purchaseToEdit: purchase,
+                    isOpeningBalance: purchase.isOpeningBalance,
+                  ),
                 ),
               );
               // On a successful edit, close the (now-stale) detail → back to

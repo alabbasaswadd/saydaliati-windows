@@ -26,6 +26,7 @@ import 'package:saydaliati/features/manufacturers/presentation/pages/manufacture
 import 'package:saydaliati/features/medicine_units/presentation/pages/units_page.dart';
 import 'package:saydaliati/features/medicines/presentation/pages/medicines_page.dart';
 import 'package:saydaliati/features/notifications/presentation/pages/notifications_page.dart';
+import 'package:saydaliati/features/purchases/presentation/pages/opening_balance_invoices_page.dart';
 import 'package:saydaliati/features/purchases/presentation/pages/purchase_create_page.dart';
 import 'package:saydaliati/features/purchases/presentation/pages/purchase_returns_list_page.dart';
 import 'package:saydaliati/features/purchases/presentation/pages/purchases_list_page.dart';
@@ -295,6 +296,10 @@ GoRouter goRouter(Ref ref) {
           // تُضاف في النهاية عمداً (نفس سبب shortcuts/salesInvoices أعلاه).
           branch(AppRoutes.users, const UsersPage()),
           branch(AppRoutes.roles, const RolesPage()),
+          // ── Opening balance invoices (index 27) ─────────────────────────
+          // تُضاف في النهاية عمداً (نفس سبب shortcuts/salesInvoices أعلاه).
+          branch(AppRoutes.openingBalanceInvoices,
+              const OpeningBalanceInvoicesPage()),
         ],
       ),
     ],

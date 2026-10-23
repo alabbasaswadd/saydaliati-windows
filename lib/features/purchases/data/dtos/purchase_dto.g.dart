@@ -18,6 +18,7 @@ PurchaseDto _$PurchaseDtoFromJson(Map<String, dynamic> json) => PurchaseDto(
   items: (json['items'] as List<dynamic>?)
       ?.map((e) => PurchaseItemDto.fromJson(e as Map<String, dynamic>))
       .toList(),
+  isOpeningBalance: json['isOpeningBalance'] as bool?,
 );
 
 PurchaseItemDto _$PurchaseItemDtoFromJson(Map<String, dynamic> json) =>

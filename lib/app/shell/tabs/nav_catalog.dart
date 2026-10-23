@@ -36,6 +36,7 @@ const List<NavEntry> navCatalog = [
   NavEntry(AppRoutes.units, 'الوحدات', Icons.straighten_outlined),
   NavEntry(AppRoutes.currencies, 'العملات', Icons.currency_exchange_outlined),
   NavEntry(AppRoutes.accounts, 'الحسابات', Icons.account_balance_outlined),
+  NavEntry(AppRoutes.openingBalanceInvoices, 'أول المدة', Icons.account_balance_wallet_outlined),
   NavEntry(AppRoutes.vouchers, 'السندات', Icons.description_outlined),
   NavEntry(AppRoutes.expenses, 'المصاريف', Icons.payments_outlined),
   NavEntry(AppRoutes.expenseCategories, 'تصنيفات المصاريف', Icons.category_outlined),

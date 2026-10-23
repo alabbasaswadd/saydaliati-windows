@@ -15,6 +15,7 @@ class CreatePurchaseInput {
     this.paymentAccountId,
     this.originalCurrencyId,
     this.amountsInOriginalCurrency = false,
+    this.isOpeningBalance = false,
   });
 
   final String currencyId;
@@ -40,6 +41,10 @@ class CreatePurchaseInput {
   /// مختلفين يُنتجان تكلفتين مختلفتين للصنف نفسه.
   final bool amountsInOriginalCurrency;
 
+  /// فاتورة أول المدة: بلا مورّد ولا حساب دفع — المبلغ يُقيَّد مقابل رأس
+  /// المال مباشرة (CreatePurchaseHandler)، لا كشراء عادي.
+  final bool isOpeningBalance;
+
   Map<String, dynamic> toJson() => {
         'supplierId': supplierId,
         'userId': null,
@@ -52,6 +57,7 @@ class CreatePurchaseInput {
         'paymentAccountId': paymentAccountId,
         'originalCurrencyId': originalCurrencyId,
         'amountsInOriginalCurrency': amountsInOriginalCurrency,
+        'isOpeningBalance': isOpeningBalance,
         'items': lines.map((l) => l.toJson(warehouseId)).toList(),
       };
 

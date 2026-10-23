@@ -12,6 +12,7 @@ class PurchaseDto {
     this.totalAmount,
     this.paymentAccountId,
     this.items,
+    this.isOpeningBalance,
   });
 
   final String? id;
@@ -21,6 +22,7 @@ class PurchaseDto {
   final num? totalAmount;
   final String? paymentAccountId;
   final List<PurchaseItemDto>? items;
+  final bool? isOpeningBalance;
 
   factory PurchaseDto.fromJson(Map<String, dynamic> json) =>
       _$PurchaseDtoFromJson(json);

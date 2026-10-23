@@ -111,11 +111,21 @@ class _PurLine {
 /// Create a purchase invoice (POS-style): pick medicines, set cost + quantity +
 /// expiry per line, then save. Feeds stock on the backend.
 class PurchaseCreatePage extends ConsumerStatefulWidget {
-  const PurchaseCreatePage({this.purchaseToEdit, super.key});
+  const PurchaseCreatePage({
+    this.purchaseToEdit,
+    this.isOpeningBalance = false,
+    super.key,
+  });
 
   /// When set, the page edits this existing invoice (prefills its lines and saves
   /// via update) instead of creating a new one.
   final Purchase? purchaseToEdit;
+
+  /// وضع "فاتورة أول المدة": بلا مورّد ولا عملة ولا حساب دفع — المبلغ يُقيَّد
+  /// مقابل رأس المال مباشرة (راجع `CreatePurchaseHandler`)، فلا معنى لهذه
+  /// الحقول هنا أصلاً. عند التعديل تُشتقّ القيمة من `purchaseToEdit.isOpeningBalance`
+  /// في نقطة الفتح (قائمة الفواتير)، لا هنا.
+  final bool isOpeningBalance;
 
   @override
   ConsumerState<PurchaseCreatePage> createState() => _PurchaseCreatePageState();
@@ -406,10 +416,13 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
       AppSnackbar.error(context, AppStrings.selectCurrency);
       return;
     }
-    if (_payMethod != PaymentMethod.credit &&
-        (_paymentAccountId == null || _paymentAccountId!.isEmpty)) {
-      AppSnackbar.error(context, AppStrings.selectAccount);
-      return;
+    // فاتورة أول المدة: بلا حساب دفع ولا مورّد — القيمة مقابل رأس المال.
+    if (!widget.isOpeningBalance) {
+      if (_payMethod != PaymentMethod.credit &&
+          (_paymentAccountId == null || _paymentAccountId!.isEmpty)) {
+        AppSnackbar.error(context, AppStrings.selectAccount);
+        return;
+      }
     }
     if (_lines.isEmpty) {
       AppSnackbar.error(context, AppStrings.purchaseEmptyHint);
@@ -423,7 +436,9 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
       return;
     }
     // الشراء الآجل يتطلب مورّداً إجبارياً (يُنشئ حركة ذمّة بدل دفع فوري بالخادم).
-    if (_payMethod.requiresParty && (_supplierId == null || _supplierId!.isEmpty)) {
+    if (!widget.isOpeningBalance &&
+        _payMethod.requiresParty &&
+        (_supplierId == null || _supplierId!.isEmpty)) {
       AppSnackbar.error(context, AppStrings.creditPurchaseNeedsSupplier);
       return;
     }
@@ -447,11 +462,14 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
       originalCurrencyId: isForeign ? selected.id : null,
       amountsInOriginalCurrency: serverConverts,
       warehouseId: warehouseId,
-      supplierId: _supplierId,
+      supplierId: widget.isOpeningBalance ? null : _supplierId,
       purchaseDate: _purchaseDate,
       totalAmount: serverConverts ? _total : toBase(_total),
       paymentMethod: _payMethod,
-      paymentAccountId: _payMethod == PaymentMethod.credit ? null : _paymentAccountId,
+      paymentAccountId: widget.isOpeningBalance || _payMethod == PaymentMethod.credit
+          ? null
+          : _paymentAccountId,
+      isOpeningBalance: widget.isOpeningBalance,
       lines: [
         for (final l in _lines)
           CreatePurchaseLineInput(
@@ -585,7 +603,9 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
       enabled: !_saving,
       child: Scaffold(
       appBar: AppBar(
-          title: Text(_isEdit ? AppStrings.editPurchase : AppStrings.newPurchase),
+          title: Text(widget.isOpeningBalance
+              ? (_isEdit ? 'تعديل فاتورة أول المدة' : 'فاتورة أول المدة')
+              : (_isEdit ? AppStrings.editPurchase : AppStrings.newPurchase)),
           actions: [
             if (!_isEdit)
               IconButton(
@@ -620,110 +640,126 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
                   ),
                   const SizedBox(height: AppSpacing.sm),
                 ],
-                _CostSuggestionNotice(
-                  percent: _costPercent,
-                  isDefault: _costPercent == _defaultCostPercent,
-                  onEdit: _editPercent,
-                  onReset: _costPercent == _defaultCostPercent
-                      ? null
-                      : () => _applyPercent(_defaultCostPercent),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Expanded(
-                      child: CurrencyPickerField(
-                        label: AppStrings.selectCurrency,
-                        // عملات قابلة للاختيار فقط: الأساسية + أي عملة سعر صرفها موجب
-                        // (عملة بلا سعر صرف تُخفى لأن التحويل يُرجِع المبلغ دون تحويل).
-                        currencies: currencies
-                            .where((c) => c.isBaseCurrency || c.exchangeRate > 0)
-                            .toList(),
-                        selectedId: _effectiveCurrencyId(base).isEmpty
-                            ? null
-                            : _effectiveCurrencyId(base),
-                        onSelected: (c) => _changeCurrency(c.id, base),
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: AppToolbarField(
-                        label: 'تاريخ الفاتورة',
-                        icon: Icons.event_outlined,
-                        value: AppDate.ymdHm(_purchaseDate),
-                        onTap: _pickPurchaseDate,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: AppDropdown<PaymentMethod>(
-                        label: AppStrings.paymentMethod,
-                        value: _payMethod,
-                        items: [
-                          for (final m in PaymentMethod.values)
-                            AppDropdownItem(value: m, label: m.label),
-                        ],
-                        onChanged: (v) =>
-                            setState(() => _payMethod = v ?? PaymentMethod.cash),
-                      ),
-                    ),
-                    if (_payMethod != PaymentMethod.credit) ...[
-                      const SizedBox(width: AppSpacing.sm),
+                if (widget.isOpeningBalance) ...[
+                  const InfoCard(
+                    icon: Icons.account_balance_outlined,
+                    message: 'فاتورة أول المدة: تُقيَّد قيمتها مقابل حساب '
+                        '«رأس المال» مباشرة — بلا مورّد ولا حساب دفع. اختاري '
+                        'تاريخاً سابقاً لأقدم فاتورة قديمة ستُدخلينها لاحقاً.',
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  AppToolbarField(
+                    label: 'تاريخ أول المدة',
+                    icon: Icons.event_outlined,
+                    value: AppDate.ymdHm(_purchaseDate),
+                    onTap: _pickPurchaseDate,
+                  ),
+                ] else ...[
+                  _CostSuggestionNotice(
+                    percent: _costPercent,
+                    isDefault: _costPercent == _defaultCostPercent,
+                    onEdit: _editPercent,
+                    onReset: _costPercent == _defaultCostPercent
+                        ? null
+                        : () => _applyPercent(_defaultCostPercent),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
                       Expanded(
-                        child: AccountPickerField(
-                          // «حساب الدفع» لا «الحساب»: هو الصندوق أو البنك
-                          // الذي يخرج منه المال، ويُقيَّد دائناً في القيد.
-                          label: 'حساب الدفع',
-                          hint: 'الصندوق أو البنك',
-                          accounts: accounts,
-                          selectedId: _paymentAccountId,
-                          onSelected: (a) =>
-                              setState(() => _paymentAccountId = a.id),
+                        child: CurrencyPickerField(
+                          label: AppStrings.selectCurrency,
+                          // عملات قابلة للاختيار فقط: الأساسية + أي عملة سعر صرفها موجب
+                          // (عملة بلا سعر صرف تُخفى لأن التحويل يُرجِع المبلغ دون تحويل).
+                          currencies: currencies
+                              .where((c) => c.isBaseCurrency || c.exchangeRate > 0)
+                              .toList(),
+                          selectedId: _effectiveCurrencyId(base).isEmpty
+                              ? null
+                              : _effectiveCurrencyId(base),
+                          onSelected: (c) => _changeCurrency(c.id, base),
                         ),
                       ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: AppToolbarField(
+                          label: 'تاريخ الفاتورة',
+                          icon: Icons.event_outlined,
+                          value: AppDate.ymdHm(_purchaseDate),
+                          onTap: _pickPurchaseDate,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: AppDropdown<PaymentMethod>(
+                          label: AppStrings.paymentMethod,
+                          value: _payMethod,
+                          items: [
+                            for (final m in PaymentMethod.values)
+                              AppDropdownItem(value: m, label: m.label),
+                          ],
+                          onChanged: (v) =>
+                              setState(() => _payMethod = v ?? PaymentMethod.cash),
+                        ),
+                      ),
+                      if (_payMethod != PaymentMethod.credit) ...[
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: AccountPickerField(
+                            // «حساب الدفع» لا «الحساب»: هو الصندوق أو البنك
+                            // الذي يخرج منه المال، ويُقيَّد دائناً في القيد.
+                            label: 'حساب الدفع',
+                            hint: 'الصندوق أو البنك',
+                            accounts: accounts,
+                            selectedId: _paymentAccountId,
+                            onSelected: (a) =>
+                                setState(() => _paymentAccountId = a.id),
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
-                ),
-                // المورّد يبقى **ظاهراً دائماً**.
-                //
-                // كان يُخفى كلياً إن لم يكن في الصيدلية موردون
-                // (`if (suppliers.isEmpty) return SizedBox.shrink()`) — فمَن
-                // لم يُضف مورّداً بعد لا يرى الحقل ولا يعرف أن الفاتورة
-                // تقبل مورّداً أصلاً، ولا يُرشده شيء إلى إضافته.
-                Padding(
-                  padding: const EdgeInsets.only(top: AppSpacing.md),
-                  child: Builder(builder: (_) {
-                    final suppliers =
-                        ref.watch(suppliersProvider).value ?? const <Supplier>[];
-                    final isCredit = _payMethod == PaymentMethod.credit;
+                  ),
+                  // المورّد يبقى **ظاهراً دائماً**.
+                  //
+                  // كان يُخفى كلياً إن لم يكن في الصيدلية موردون
+                  // (`if (suppliers.isEmpty) return SizedBox.shrink()`) — فمَن
+                  // لم يُضف مورّداً بعد لا يرى الحقل ولا يعرف أن الفاتورة
+                  // تقبل مورّداً أصلاً، ولا يُرشده شيء إلى إضافته.
+                  Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.md),
+                    child: Builder(builder: (_) {
+                      final suppliers =
+                          ref.watch(suppliersProvider).value ?? const <Supplier>[];
+                      final isCredit = _payMethod == PaymentMethod.credit;
 
-                    if (suppliers.isEmpty) {
-                      return InfoCard(
-                        icon: Icons.local_shipping_outlined,
-                        color: isCredit
-                            ? Theme.of(context).colorScheme.error
-                            : null,
-                        message: isCredit
-                            ? 'الشراء الآجل يتطلّب مورّداً — أضف مورّداً من '
-                                '«إدارة البيانات ← الموردون» أولاً.'
-                            : 'لا موردون مسجَّلون — أضف مورّداً من «إدارة '
-                                'البيانات ← الموردون» لربط الفاتورة به.',
+                      if (suppliers.isEmpty) {
+                        return InfoCard(
+                          icon: Icons.local_shipping_outlined,
+                          color: isCredit
+                              ? Theme.of(context).colorScheme.error
+                              : null,
+                          message: isCredit
+                              ? 'الشراء الآجل يتطلّب مورّداً — أضف مورّداً من '
+                                  '«إدارة البيانات ← الموردون» أولاً.'
+                              : 'لا موردون مسجَّلون — أضف مورّداً من «إدارة '
+                                  'البيانات ← الموردون» لربط الفاتورة به.',
+                        );
+                      }
+
+                      return SupplierPickerField(
+                        // الآجل يُنشئ ذمّة على مورّد بعينه، فلا يصحّ بلا مورّد.
+                        label: isCredit ? 'المورّد (إلزامي للآجل)' : 'المورّد',
+                        hint: '— بلا مورّد —',
+                        suppliers: suppliers,
+                        selectedId: _supplierId,
+                        allowClear: !isCredit,
+                        onCleared: () => setState(() => _supplierId = null),
+                        onSelected: (s) => setState(() => _supplierId = s.id),
                       );
-                    }
-
-                    return SupplierPickerField(
-                      // الآجل يُنشئ ذمّة على مورّد بعينه، فلا يصحّ بلا مورّد.
-                      label: isCredit ? 'المورّد (إلزامي للآجل)' : 'المورّد',
-                      hint: '— بلا مورّد —',
-                      suppliers: suppliers,
-                      selectedId: _supplierId,
-                      allowClear: !isCredit,
-                      onCleared: () => setState(() => _supplierId = null),
-                      onSelected: (s) => setState(() => _supplierId = s.id),
-                    );
-                  }),
-                ),
+                    }),
+                  ),
+                ],
               ],
             ),
           ),

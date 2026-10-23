@@ -37,6 +37,9 @@ abstract final class AppRoutes {
   static const String salesInvoices = '/more/invoices/sales';
   static const String purchaseInvoices = '/more/invoices/purchases';
 
+  // فواتير أول المدة — مخزون افتتاحي بلا مورّد، مقيَّد مقابل رأس المال.
+  static const String openingBalanceInvoices = '/more/invoices/opening-balance';
+
   static const String salesReturns = '/more/returns/sales';
   static const String purchaseReturns = '/more/returns/purchases';
 

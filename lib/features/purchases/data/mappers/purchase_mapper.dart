@@ -10,6 +10,7 @@ extension PurchaseDtoMapper on PurchaseDto {
         totalAmount: (totalAmount ?? 0).toDouble(),
         paymentAccountId: paymentAccountId ?? '',
         items: (items ?? const []).map((i) => i.toEntity()).toList(),
+        isOpeningBalance: isOpeningBalance ?? false,
       );
 }
 

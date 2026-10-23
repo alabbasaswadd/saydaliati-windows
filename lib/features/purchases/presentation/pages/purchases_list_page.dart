@@ -46,8 +46,10 @@ class _PurchasesListPageState extends ConsumerState<PurchasesListPage> {
         _bonusOnly = false;
       });
 
-  Future<void> _edit(Purchase purchase) =>
-      _open(PurchaseCreatePage(purchaseToEdit: purchase));
+  Future<void> _edit(Purchase purchase) => _open(PurchaseCreatePage(
+        purchaseToEdit: purchase,
+        isOpeningBalance: purchase.isOpeningBalance,
+      ));
 
   Future<void> _open(Widget page) async {
     await Navigator.of(context).push(
@@ -59,6 +61,9 @@ class _PurchasesListPageState extends ConsumerState<PurchasesListPage> {
   }
 
   bool _matches(Purchase p) {
+    // فواتير أول المدة لها شاشتها الخاصة (ليست شراءً حقيقياً من مورّد) —
+    // تظهر هناك لا هنا.
+    if (p.isOpeningBalance) return false;
     final period = _period;
     if (period != null) {
       final d = p.purchaseDate;
