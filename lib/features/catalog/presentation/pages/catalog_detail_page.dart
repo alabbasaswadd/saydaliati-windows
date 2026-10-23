@@ -5,7 +5,6 @@ import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/features/catalog/catalog_providers.dart';
 import 'package:saydaliati/features/catalog/domain/catalog_item.dart';
 import 'package:saydaliati/features/catalog/presentation/medicine_share.dart';
-import 'package:saydaliati/features/catalog/presentation/pages/add_catalog_to_stock_page.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
 import 'package:saydaliati/shared/widgets/dialogs/adaptive_modal.dart';
 import 'package:saydaliati/shared/widgets/states/app_states.dart';
@@ -110,15 +109,6 @@ class _CatalogDetailPageState extends ConsumerState<CatalogDetailPage> {
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
-          FilledButton.icon(
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
-              builder: (_) => AddCatalogToStockPage(item: item),
-            )),
-            icon: const Icon(Icons.add_business_outlined),
-            label: const Text('إضافة إلى مخزوني'),
-            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
-          ),
-          const SizedBox(height: AppSpacing.sm),
           OutlinedButton.icon(
             onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
               builder: (_) => _CatalogAlternativesPage(item: item),

@@ -6,7 +6,6 @@ import 'package:saydaliati/core/theme/app_semantic_colors.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/features/catalog/catalog_providers.dart';
 import 'package:saydaliati/features/catalog/domain/catalog_item.dart';
-import 'package:saydaliati/features/catalog/presentation/pages/add_catalog_to_stock_page.dart';
 import 'package:saydaliati/features/catalog/presentation/pages/catalog_detail_page.dart';
 import 'package:saydaliati/features/currencies/domain/currency_conversion.dart';
 import 'package:saydaliati/features/currencies/domain/entities/currency.dart';
@@ -15,6 +14,7 @@ import 'package:saydaliati/features/medicines/presentation/price_sync_action.dar
 import 'package:saydaliati/features/medicines/presentation/providers/medicines_provider.dart';
 import 'package:saydaliati/services/barcode_scanner.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
+import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
 import 'package:saydaliati/shared/widgets/states/app_states.dart';
 import 'package:trina_grid/trina_grid.dart';
@@ -321,7 +321,6 @@ class _CatalogGridState extends ConsumerState<CatalogGrid> {
   /// الأساسية) إن وُجدا وإلا صفر.
   Future<void> _quickAdd(CatalogItem item) async {
     if (_quickAdding.contains(item.id)) return;
-    final messenger = ScaffoldMessenger.of(context);
     setState(() => _quickAdding.add(item.id));
 
     try {
@@ -370,12 +369,12 @@ class _CatalogGridState extends ConsumerState<CatalogGrid> {
         } catch (_) {/* أفضل جهد — لا يُفشل الإضافة */}
       }
       if (!mounted) return;
-      messenger.showSnackBar(SnackBar(
-          content: Text(
-              'أُضيف «${item.displayName}» إلى أدويتك بلا مخزون — زوّده بكمية من «استلام مخزون» حين تصل')));
+      // نفس إشعار نجاح فواتير المبيعات (أخضر أعلى الشاشة).
+      AppSnackbar.success(context,
+          'أُضيف «${item.displayName}» إلى أدويتك بلا مخزون — زوّده بكمية من «استلام مخزون» حين تصل');
     } catch (e) {
       if (!mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text('تعذّرت الإضافة: $e')));
+      AppSnackbar.error(context, 'تعذّرت الإضافة: $e');
     } finally {
       if (mounted) setState(() => _quickAdding.remove(item.id));
     }
@@ -385,6 +384,7 @@ class _CatalogGridState extends ConsumerState<CatalogGrid> {
   Widget build(BuildContext context) {
     final byId = {for (final it in widget.items) it.id: it};
     final myBarcodes = ref.watch(myMedicineBarcodesProvider);
+    final myNameKeys = ref.watch(myMedicineNameManufacturerKeysProvider);
     return Padding(
       padding:
           const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
@@ -405,8 +405,9 @@ class _CatalogGridState extends ConsumerState<CatalogGrid> {
               // إضافة حتى بحثٍ جديد يُجبر الشبكة على التجدّد.
               key: ValueKey(Object.hash(
                   widget.items.length ^ widget.items.hashCode,
-                  Object.hashAllUnordered(myBarcodes))),
-              columns: _columns(byId, myBarcodes),
+                  Object.hashAllUnordered(myBarcodes),
+                  Object.hashAllUnordered(myNameKeys))),
+              columns: _columns(byId, myBarcodes, myNameKeys),
               rows: [for (final it in widget.items) _row(it)],
               onLoaded: (m) => _manager = m,
               onRowDoubleTap: (e) {
@@ -420,20 +421,14 @@ class _CatalogGridState extends ConsumerState<CatalogGrid> {
     );
   }
 
-  /// هل هذا الصنف مضاف أصلاً إلى أدويتي؟ — مطابقةً بالباركود (الرابط الوحيد
-  /// المتاح)، يُستعمَل لشارة الاسم ولاستبدال زرّ الإضافة السريعة بإشارة صحّ.
-  bool _isAdded(CatalogItem item, Set<String> myBarcodes) {
-    final barcode = item.barcode.trim();
-    return barcode.isNotEmpty && myBarcodes.contains(barcode);
-  }
-
-  List<TrinaColumn> _columns(
-      Map<String, CatalogItem> byId, Set<String> myBarcodes) {
+  List<TrinaColumn> _columns(Map<String, CatalogItem> byId,
+      Set<String> myBarcodes, Set<String> myNameKeys) {
     return [
       appGridTextColumn('الاسم', _fName, width: 220, renderer: (ctx) {
         final item = byId[ctx.row.cells[_fId]?.value];
         final name = ctx.cell.value?.toString() ?? '';
-        final added = item != null && _isAdded(item, myBarcodes);
+        final added = item != null &&
+            isCatalogItemAdded(item, myBarcodes, myNameKeys);
         if (!added) return Text(name, overflow: TextOverflow.ellipsis);
         return Row(
           children: [
@@ -487,7 +482,7 @@ class _CatalogGridState extends ConsumerState<CatalogGrid> {
           final item = byId[ctx.row.cells[_fId]?.value];
           if (item == null) return const SizedBox.shrink();
           final adding = _quickAdding.contains(item.id);
-          final added = _isAdded(item, myBarcodes);
+          final added = isCatalogItemAdded(item, myBarcodes, myNameKeys);
           return Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -525,14 +520,6 @@ class _CatalogGridState extends ConsumerState<CatalogGrid> {
                   tooltip: 'إضافة سريعة إلى أدويتي (بلا مخزون)',
                   onPressed: () => _quickAdd(item),
                 ),
-              IconButton(
-                icon: const Icon(Icons.add_business_outlined, size: 16),
-                visualDensity: VisualDensity.compact,
-                tooltip: 'إضافة للمخزون (نموذج كامل)',
-                onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                        builder: (_) => AddCatalogToStockPage(item: item))),
-              ),
             ],
           );
         },
