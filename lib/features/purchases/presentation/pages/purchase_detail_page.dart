@@ -35,10 +35,14 @@ class PurchaseDetailPage extends StatelessWidget {
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text(AppStrings.purchaseDetails),
+        title: Text(purchase.isOpeningBalance
+            ? 'تفاصيل فاتورة أول المدة'
+            : AppStrings.purchaseDetails),
         actions: [
           IconButton(
-            tooltip: AppStrings.editPurchase,
+            tooltip: purchase.isOpeningBalance
+                ? 'تعديل فاتورة أول المدة'
+                : AppStrings.editPurchase,
             icon: const Icon(Icons.edit_outlined),
             onPressed: () async {
               final ok = await Navigator.of(context).push<bool>(
