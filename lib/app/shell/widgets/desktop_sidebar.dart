@@ -304,30 +304,14 @@ const _mainSections = <_NavSection>[
 
 // عناصر النظام السفلية — قسمان منفصلان بحدّ بينهما: البقية أولاً، ثم مفتاح
 // وضع الاتصال وحده في القسم الأخير (الإشعارات انتقلت لشريط العنوان العلوي).
+// الشروحات والحساب الشخصي والاختصارات انتقلت إلى داخل الإعدادات — قائمة
+// جانبية أقصر وأوضح بدل أربعة عناصر سفلية متفرّقة.
 const _bottomItems = <_NavItem>[
-  _NavItem(
-    index: 18,
-    label: 'الشروحات',
-    icon: Icons.school_outlined,
-    selectedIcon: Icons.school,
-  ),
   _NavItem(
     index: 19,
     label: 'الإعدادات',
     icon: Icons.settings_outlined,
     selectedIcon: Icons.settings,
-  ),
-  _NavItem(
-    index: 20,
-    label: 'الحساب الشخصي',
-    icon: Icons.person_outline,
-    selectedIcon: Icons.person,
-  ),
-  _NavItem(
-    index: 21,
-    label: 'الاختصارات',
-    icon: Icons.keyboard_outlined,
-    selectedIcon: Icons.keyboard,
   ),
 ];
 
@@ -700,8 +684,7 @@ class _OfflineToggleTileState extends ConsumerState<_OfflineToggleTile> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final offline = !ref.watch(effectiveOnlineProvider);
-    final warning = context.semantic.warning;
-    final color = offline ? warning : theme.colorScheme.onSurfaceVariant;
+    final color = offline ? theme.colorScheme.error : context.semantic.success;
 
     final icon = Icon(
       offline ? Icons.cloud_off : Icons.cloud_done_outlined,
@@ -727,7 +710,7 @@ class _OfflineToggleTileState extends ConsumerState<_OfflineToggleTile> {
             margin: const EdgeInsets.symmetric(vertical: 1),
             decoration: BoxDecoration(
               color: offline
-                  ? warning.withValues(alpha: 0.12)
+                  ? color.withValues(alpha: 0.12)
                   : _hovered
                       ? theme.colorScheme.primary.withValues(alpha: 0.06)
                       : Colors.transparent,
@@ -749,7 +732,7 @@ class _OfflineToggleTileState extends ConsumerState<_OfflineToggleTile> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodyLarge?.copyWith(
-                        color: offline ? warning : theme.colorScheme.onSurface,
+                        color: color,
                         fontWeight:
                             offline ? FontWeight.w600 : FontWeight.w400,
                       ),

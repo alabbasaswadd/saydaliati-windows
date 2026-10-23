@@ -6,8 +6,10 @@ import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/core/offline/connectivity/work_mode.dart';
 import 'package:saydaliati/core/offline/sync/sync_service.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
+import 'package:saydaliati/features/auth/presentation/pages/account_page.dart';
 import 'package:saydaliati/features/onboarding/onboarding_controller.dart';
 import 'package:saydaliati/features/settings/settings_providers.dart';
+import 'package:saydaliati/features/shortcuts/presentation/pages/shortcuts_page.dart';
 import 'package:saydaliati/features/tutorials/presentation/tutorial_help.dart';
 import 'package:saydaliati/shared/widgets/dialogs/entity_form_dialog.dart';
 import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
@@ -34,6 +36,14 @@ class SettingsPage extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
+          const _Section(
+            title: AppStrings.account,
+            children: [
+              _AccountTile(),
+              Divider(height: 1),
+              _ShortcutsTile(),
+            ],
+          ),
           const _Section(
             title: AppStrings.generalSettings,
             footnote: AppStrings.changeWarehouseSoon,
@@ -309,6 +319,40 @@ class _SyncDataTile extends ConsumerWidget {
 
   static String _fmtTime(DateTime t) =>
       '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+}
+
+// ═══════════════════════ الحساب ═══════════════════════
+
+class _AccountTile extends StatelessWidget {
+  const _AccountTile();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: const Icon(Icons.person_outline),
+      title: const Text(AppStrings.account),
+      trailing: const Icon(Icons.chevron_left),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => const AccountPage()),
+      ),
+    );
+  }
+}
+
+class _ShortcutsTile extends StatelessWidget {
+  const _ShortcutsTile();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: const Icon(Icons.keyboard_outlined),
+      title: const Text('الاختصارات'),
+      trailing: const Icon(Icons.chevron_left),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => const ShortcutsPage()),
+      ),
+    );
+  }
 }
 
 // ═══════════════════════ المساعدة ═══════════════════════
