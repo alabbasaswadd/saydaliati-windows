@@ -62,6 +62,14 @@ String _$authRemoteDataSourceHash() =>
 /// مزوّد لا `FutureBuilder` في `initState`: الأوّل قابل للتحديث
 /// (`ref.invalidate`) ومشترك بين الشاشات، والثاني يُعيد النداء مع كل إعادة
 /// بناء للحالة ولا سبيل لتحديثه دون `setState`.
+///
+/// `keepAlive`: يُقرَأ من عدّة أماكن متزامنة (الشريط الجانبي لكل عنصر
+/// صلاحية، مُستمِع إعادة توجيه الراوتر، شاشة الحساب...)، فبلا `keepAlive`
+/// كان يُهدَم ويُعاد بناؤه بتسارع مع كل تبديل مستمعين — وتحت ذلك التزامن
+/// رصد Riverpod المزوّد يعتمد على نفسه (`CircularDependencyError`)، فتفشل
+/// كل العمليات التي يعبر طلبها نفس سلسلة الاعتراض (حتى طلبات لا علاقة لها
+/// بالصلاحيات، كحفظ مصروف) وتختفي عناصر الشريط المقيّدة بصلاحية لأن
+/// [currentUserPermissionsProvider] يرتدّ لصلاحيات فارغة عند فشل القراءة.
 
 @ProviderFor(currentUser)
 final currentUserProvider = CurrentUserProvider._();
@@ -71,6 +79,14 @@ final currentUserProvider = CurrentUserProvider._();
 /// مزوّد لا `FutureBuilder` في `initState`: الأوّل قابل للتحديث
 /// (`ref.invalidate`) ومشترك بين الشاشات، والثاني يُعيد النداء مع كل إعادة
 /// بناء للحالة ولا سبيل لتحديثه دون `setState`.
+///
+/// `keepAlive`: يُقرَأ من عدّة أماكن متزامنة (الشريط الجانبي لكل عنصر
+/// صلاحية، مُستمِع إعادة توجيه الراوتر، شاشة الحساب...)، فبلا `keepAlive`
+/// كان يُهدَم ويُعاد بناؤه بتسارع مع كل تبديل مستمعين — وتحت ذلك التزامن
+/// رصد Riverpod المزوّد يعتمد على نفسه (`CircularDependencyError`)، فتفشل
+/// كل العمليات التي يعبر طلبها نفس سلسلة الاعتراض (حتى طلبات لا علاقة لها
+/// بالصلاحيات، كحفظ مصروف) وتختفي عناصر الشريط المقيّدة بصلاحية لأن
+/// [currentUserPermissionsProvider] يرتدّ لصلاحيات فارغة عند فشل القراءة.
 
 final class CurrentUserProvider
     extends
@@ -87,13 +103,21 @@ final class CurrentUserProvider
   /// مزوّد لا `FutureBuilder` في `initState`: الأوّل قابل للتحديث
   /// (`ref.invalidate`) ومشترك بين الشاشات، والثاني يُعيد النداء مع كل إعادة
   /// بناء للحالة ولا سبيل لتحديثه دون `setState`.
+  ///
+  /// `keepAlive`: يُقرَأ من عدّة أماكن متزامنة (الشريط الجانبي لكل عنصر
+  /// صلاحية، مُستمِع إعادة توجيه الراوتر، شاشة الحساب...)، فبلا `keepAlive`
+  /// كان يُهدَم ويُعاد بناؤه بتسارع مع كل تبديل مستمعين — وتحت ذلك التزامن
+  /// رصد Riverpod المزوّد يعتمد على نفسه (`CircularDependencyError`)، فتفشل
+  /// كل العمليات التي يعبر طلبها نفس سلسلة الاعتراض (حتى طلبات لا علاقة لها
+  /// بالصلاحيات، كحفظ مصروف) وتختفي عناصر الشريط المقيّدة بصلاحية لأن
+  /// [currentUserPermissionsProvider] يرتدّ لصلاحيات فارغة عند فشل القراءة.
   CurrentUserProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
         name: r'currentUserProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -113,4 +137,4 @@ final class CurrentUserProvider
   }
 }
 
-String _$currentUserHash() => r'05c517aa7d4240b5e6ba1c814c55262017831f9e';
+String _$currentUserHash() => r'911594234766f800e32f1dec803b1ba3a5e3367c';

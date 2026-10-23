@@ -51,7 +51,20 @@ class AuthInterceptor extends Interceptor {
       unawaited(_ref.read(sessionControllerProvider.notifier).clear());
     } else if (status == 403 && sentToken) {
       // Session stays alive — only the cached role/permissions are stale.
-      _ref.invalidate(currentUserProvider);
+      //
+      // Deferred to a microtask: this `_ref` belongs to `dioProvider`, and
+      // `currentUserProvider` is a *transitive dependent* of `dioProvider`
+      // (dioProvider → apiClientProvider → authRemoteDataSourceProvider →
+      // currentUserProvider). Invalidating it synchronously from inside this
+      // interceptor — itself running as part of dioProvider's own request
+      // pipeline — trips Riverpod's debug-mode circular-dependency guard
+      // (`CircularDependencyError: currentUserProvider`), which then surfaces
+      // to the caller as a generic "DioException [unknown]" instead of the
+      // real 403 — turning a correct "no permission" rejection (e.g. saving a
+      // setting or an expense without the right role) into a confusing
+      // network-error toast. Scheduling the invalidate for the next microtask
+      // runs it outside that request's dependency-resolution frame.
+      scheduleMicrotask(() => _ref.invalidate(currentUserProvider));
     }
     handler.next(err);
   }

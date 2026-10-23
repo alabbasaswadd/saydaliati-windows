@@ -65,6 +65,14 @@ AuthRemoteDataSource authRemoteDataSource(Ref ref) =>
 /// مزوّد لا `FutureBuilder` في `initState`: الأوّل قابل للتحديث
 /// (`ref.invalidate`) ومشترك بين الشاشات، والثاني يُعيد النداء مع كل إعادة
 /// بناء للحالة ولا سبيل لتحديثه دون `setState`.
-@riverpod
+///
+/// `keepAlive`: يُقرَأ من عدّة أماكن متزامنة (الشريط الجانبي لكل عنصر
+/// صلاحية، مُستمِع إعادة توجيه الراوتر، شاشة الحساب...)، فبلا `keepAlive`
+/// كان يُهدَم ويُعاد بناؤه بتسارع مع كل تبديل مستمعين — وتحت ذلك التزامن
+/// رصد Riverpod المزوّد يعتمد على نفسه (`CircularDependencyError`)، فتفشل
+/// كل العمليات التي يعبر طلبها نفس سلسلة الاعتراض (حتى طلبات لا علاقة لها
+/// بالصلاحيات، كحفظ مصروف) وتختفي عناصر الشريط المقيّدة بصلاحية لأن
+/// [currentUserPermissionsProvider] يرتدّ لصلاحيات فارغة عند فشل القراءة.
+@Riverpod(keepAlive: true)
 Future<Map<String, dynamic>> currentUser(Ref ref) =>
     ref.watch(authRemoteDataSourceProvider).me();
