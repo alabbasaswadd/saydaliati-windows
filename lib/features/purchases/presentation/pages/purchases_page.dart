@@ -49,7 +49,10 @@ class _PurchasesPageState extends ConsumerState<PurchasesPage> {
 
   @override
   Widget build(BuildContext context) {
-    final async = ref.watch(purchasesListProvider);
+    // فواتير أول المدة لها شاشتها الخاصة (ليست شراءً حقيقياً من مورّد) —
+    // نفس الاستبعاد في PurchasesListPage.
+    final async = ref.watch(purchasesListProvider).whenData(
+        (list) => list.where((p) => !p.isOpeningBalance).toList());
     ref.watch(onboardingControllerProvider);
     _maybeShowCoach();
     return Scaffold(

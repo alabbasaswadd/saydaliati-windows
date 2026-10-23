@@ -89,6 +89,13 @@ const _mainSections = <_NavSection>[
       route: AppRoutes.purchaseInvoices,
     ),
     _NavItem(
+      index: 27,
+      label: 'أول المدة',
+      icon: Icons.account_balance_wallet_outlined,
+      selectedIcon: Icons.account_balance_wallet,
+      route: AppRoutes.openingBalanceInvoices,
+    ),
+    _NavItem(
       index: 7,
       label: 'مرتجع مبيعات',
       icon: Icons.assignment_return_outlined,
@@ -256,13 +263,6 @@ const _mainSections = <_NavSection>[
       icon: Icons.description_outlined,
       selectedIcon: Icons.description,
       route: AppRoutes.vouchers,
-    ),
-    _NavItem(
-      index: 27,
-      label: 'أول المدة',
-      icon: Icons.account_balance_wallet_outlined,
-      selectedIcon: Icons.account_balance_wallet,
-      route: AppRoutes.openingBalanceInvoices,
     ),
     _NavItem(
       index: 15,

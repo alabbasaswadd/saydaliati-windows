@@ -641,13 +641,6 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
                   const SizedBox(height: AppSpacing.sm),
                 ],
                 if (widget.isOpeningBalance) ...[
-                  const InfoCard(
-                    icon: Icons.account_balance_outlined,
-                    message: 'فاتورة أول المدة: تُقيَّد قيمتها مقابل حساب '
-                        '«رأس المال» مباشرة — بلا مورّد ولا حساب دفع. اختاري '
-                        'تاريخاً سابقاً لأقدم فاتورة قديمة ستُدخلينها لاحقاً.',
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
                   AppToolbarField(
                     label: 'تاريخ أول المدة',
                     icon: Icons.event_outlined,
