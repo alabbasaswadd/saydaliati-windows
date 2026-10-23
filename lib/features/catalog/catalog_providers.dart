@@ -5,6 +5,7 @@ import 'package:saydaliati/features/catalog/data/catalog_local_data_source.dart'
 import 'package:saydaliati/features/catalog/data/catalog_remote_data_source.dart';
 import 'package:saydaliati/features/catalog/data/catalog_sync_service.dart';
 import 'package:saydaliati/features/catalog/domain/catalog_item.dart';
+import 'package:saydaliati/features/medicines/presentation/providers/medicines_provider.dart';
 
 part 'catalog_providers.g.dart';
 
@@ -73,3 +74,37 @@ Future<List<CatalogItem>> catalogByManufacturer(
 @riverpod
 Future<List<CatalogItem>> catalogItemAlternatives(Ref ref, String id) =>
     ref.watch(catalogRemoteDataSourceProvider).alternatives(id);
+
+/// باركودات أدويتي الخاصة — مفروزة من قيم `Medicine.barcode` (قد يحمل الحقل
+/// عدّة رموز مفصولة بفاصلة لدواء واحد، انظر `AddCatalogToStockHandler`
+/// بالخادم) — لمطابقة أصناف الكاتلوغ المضافة أصلاً إلى أدويتي.
+///
+/// الباركود هو الرابط الوحيد المتاح بين صنف الكاتلوغ ودواء الصيدلية: لا حقل
+/// يربطهما مباشرة (لا بالخادم ولا بالواجهة)، فصنفٌ بلا باركود لن يُكتشَف
+/// كـ«مضاف» حتى لو كان فعلاً — نفس قصور المطابقة المعتمَد أصلاً بالخادم.
+@riverpod
+Set<String> myMedicineBarcodes(Ref ref) {
+  final meds = ref.watch(medicineCatalogProvider).value ?? const [];
+  final out = <String>{};
+  for (final m in meds) {
+    for (final token in m.barcode.split(',')) {
+      final t = token.trim();
+      if (t.isNotEmpty) out.add(t);
+    }
+  }
+  return out;
+}
+
+/// تقدّم «المضاف من الكاتلوغ إلى أدويتي» — عدد أصناف الكتالوغ المحلي التي
+/// باركودها يطابق أحد أدويتي، من أصل حجم الكتالوغ المحلي الكامل.
+/// `null` إن لم تُزامَن النسخة المحلية بعد (لا معنى لنسبة من صفر).
+@riverpod
+Future<({int added, int total})?> catalogAddedProgress(Ref ref) async {
+  final local = ref.watch(catalogLocalDataSourceProvider);
+  final total = await local.count();
+  if (total == 0) return null;
+  final barcodes = ref.watch(myMedicineBarcodesProvider);
+  final added =
+      barcodes.isEmpty ? 0 : await local.countByBarcodes(barcodes);
+  return (added: added, total: total);
+}

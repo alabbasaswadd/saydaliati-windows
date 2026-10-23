@@ -14,6 +14,7 @@ abstract final class ApiEndpoints {
 
   // ---- Dashboard ----
   static const String dashboard = '$_base/Dashboard';
+  static const String dashboardProfit = '$_base/Dashboard/profit';
 
   // ---- Medicines ----
   // Auth
@@ -95,6 +96,8 @@ abstract final class ApiEndpoints {
   static String stockById(String id) => '$_base/Stock/$id';
   static String stockWarehousesForMedicine(String medicineId) =>
       '$_base/Stock/medicine/$medicineId/warehouses';
+  // تسوية جرد دفعة (دواء + صلاحية + مستودع) — يُنشئ حركة إدخال/إخراج تلقائياً.
+  static const String stockAdjust = '$_base/Stock/adjust';
 
   // ---- Stock movements (read-only) ----
   static const String stockMovements = '$_base/StockMovement';

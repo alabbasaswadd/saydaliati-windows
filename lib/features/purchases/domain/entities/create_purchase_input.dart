@@ -74,6 +74,10 @@ class CreatePurchaseInput {
               'unitId': l.unitId,
               'unitPrice': l.unitPrice,
               'quantity': l.quantity,
+              // كانت غائبة فتصل صفراً دائماً إلى الخادم (UpdatePurchaseItemRequest
+              // بلا قيمة = صفر)، فيُفقَد بونص كل سطر عند أي تعديل لفاتورة شراء
+              // قائمة — بما فيها أقلام البونص الخالصة (كمية صفر + بونص).
+              'bonusQuantity': l.bonusQuantity,
               'note': l.note ?? '',
               'expiryDate': l.expiryDate?.toIso8601String(),
             },

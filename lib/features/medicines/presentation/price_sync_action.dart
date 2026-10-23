@@ -29,7 +29,13 @@ Future<void> runMedicinePriceSync(BuildContext context, WidgetRef ref) async {
     summary = await ref.read(medicineRemoteDataSourceProvider).syncPrices();
     // Backend updated → refresh the local cache from the server so offline matches.
     final fresh = await ref.read(medicineRemoteDataSourceProvider).list();
-    await ref.read(medicineLocalDataSourceProvider).replaceAll(fresh);
+    // ردٌّ ناجح بقائمة فارغة غالباً عطل مؤقت لا كتالوغاً فُرِّغ فعلاً — هذا
+    // المسار يكتب مباشرة لمصدر البيانات المحلي متجاوزاً حماية
+    // MedicineRepositoryImpl.getCatalog، فيحتاج نفس الحماية هنا.
+    final local = ref.read(medicineLocalDataSourceProvider);
+    if (fresh.isNotEmpty || (await local.getAll()).isEmpty) {
+      await local.replaceAll(fresh);
+    }
   } catch (e) {
     if (context.mounted) {
       Navigator.of(context, rootNavigator: true).pop(); // close overlay

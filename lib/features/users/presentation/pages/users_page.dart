@@ -8,6 +8,7 @@ import 'package:saydaliati/features/users/domain/entities/staff_user.dart';
 import 'package:saydaliati/features/users/presentation/pages/staff_user_form_dialog.dart';
 import 'package:saydaliati/features/users/user_providers.dart';
 import 'package:saydaliati/shared/widgets/buttons/add_entity_button.dart';
+import 'package:saydaliati/shared/widgets/buttons/app_refresh_button.dart';
 import 'package:saydaliati/shared/widgets/dialogs/app_dialogs.dart';
 import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
@@ -103,6 +104,9 @@ class UsersPage extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('المستخدمون'),
         actions: [
+          AppRefreshButton(
+            onRefresh: () => ref.refresh(staffUsersProvider.future),
+          ),
           PermissionGate(
             permission: PermissionCodes.usersCreate,
             child: AddEntityButton(

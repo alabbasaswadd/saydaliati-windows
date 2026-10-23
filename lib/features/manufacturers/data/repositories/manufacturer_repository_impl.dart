@@ -20,6 +20,13 @@ class ManufacturerRepositoryImpl implements ManufacturerRepository {
   Future<Result<List<Manufacturer>>> getManufacturers() async {
     try {
       final raw = await _remote.list();
+      // رجوعٌ ناجح (200) بقائمة فارغة غالباً عطل مؤقت بالتوكن أو الخادم، لا
+      // شركات فُرِّغت فعلاً — فلا يُستبدَل به الكاش الصحيح إلا أن يكن فارغاً
+      // أصلاً.
+      if (raw.isEmpty) {
+        final cached = await _local.getAll();
+        if (cached.isNotEmpty) return Result.success(cached.map(_decode).toList());
+      }
       await _local.replaceAll(raw);
       return Result.success(raw.map(_decode).toList());
     } catch (error) {

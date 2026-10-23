@@ -24,8 +24,17 @@ class AccountRepositoryImpl implements AccountRepository {
   Future<Result<List<Account>>> getAll() async {
     try {
       final raw = await remote.list();
-      // تحديث النسخة المحلّية بكل قراءةٍ ناجحة — فآخر ما رآه المستخدم
-      // متّصلاً هو ما يجده عند الانقطاع.
+      // رجوعٌ ناجح (200) بقائمة فارغة ليس بالضرورة أن دليل الحسابات فُرِّغ
+      // فعلاً — غالباً عطل مؤقت بالتوكن أو الخادم. لا تُستبدَل به النسخة
+      // المحلّية الصحيحة إلا أن تكن فارغة أصلاً (أول تشغيل)، وإلا امتُحي دليل
+      // سليم فتُعطَّل شاشات السندات والفواتير الآجلة بلا اتصال — وتُعاد
+      // النسخة المحلّية نفسها بدل قائمة فارغة لا تصف شيئاً حقيقياً.
+      if (raw.isEmpty) {
+        final cached = await local.getAll();
+        if (cached.isNotEmpty) {
+          return Result.success(cached.map(_accountFromJson).toList());
+        }
+      }
       await local.replaceAll(raw);
       return Result.success(raw.map(_accountFromJson).toList());
     } catch (error) {

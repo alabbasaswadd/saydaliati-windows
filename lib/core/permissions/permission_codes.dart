@@ -11,4 +11,6 @@ abstract final class PermissionCodes {
 
   static const String rolesView = 'roles.view';
   static const String rolesManage = 'roles.manage';
+
+  static const String inventoryAdjust = 'inventory.adjust';
 }

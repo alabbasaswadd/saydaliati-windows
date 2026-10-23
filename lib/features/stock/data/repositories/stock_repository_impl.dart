@@ -19,8 +19,20 @@ class StockRepositoryImpl implements StockRepository {
   Future<Result<List<Stock>>> getStocks({int? limit, int? offset}) async {
     try {
       final raw = await _remote.list(limit: limit, offset: offset);
+      final unpaged = offset == null || offset == 0;
+      // رجوعٌ ناجح (200) بقائمة فارغة بتحميل غير مُرقَّم ليس بالضرورة أن
+      // المخزون فُرِّغ فعلاً — غالباً عطل مؤقت بالتوكن أو الخادم. لا يُستبدَل
+      // به الكاش المحلي الصحيح إلا أن يكن فارغاً أصلاً، وإلا امتُحي مخزونٌ
+      // سليم وتُعاد قائمة فارغة بدلاً من الكاش الصحيح.
+      if (unpaged && raw.isEmpty) {
+        final cached = await _local.getAll();
+        if (cached.isNotEmpty) {
+          return Result.success(
+              cached.map((m) => StockDto.fromJson(m).toEntity()).toList());
+        }
+      }
       // Warm the whole cache only on an unpaged load, so paging can't wipe it.
-      if (offset == null || offset == 0) {
+      if (unpaged) {
         await _local.replaceAll(raw);
       }
       return Result.success(

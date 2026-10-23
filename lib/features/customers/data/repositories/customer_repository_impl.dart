@@ -20,6 +20,16 @@ class CustomerRepositoryImpl implements CustomerRepository {
   Future<Result<List<Customer>>> getCustomers() async {
     try {
       final raw = await _remote.list();
+      // رجوعٌ ناجح (200) بقائمة فارغة غالباً عطل مؤقت بالتوكن أو الخادم، لا
+      // قائمة عملاء فُرِّغت فعلاً — فلا يُستبدَل به الكاش الصحيح إلا أن يكن
+      // فارغاً أصلاً.
+      if (raw.isEmpty) {
+        final cached = await _local.getAll();
+        if (cached.isNotEmpty) {
+          return Result.success(
+              cached.map((m) => CustomerDto.fromJson(m).toEntity()).toList());
+        }
+      }
       await _local.replaceAll(raw);
       return Result.success(
           raw.map((m) => CustomerDto.fromJson(m).toEntity()).toList());

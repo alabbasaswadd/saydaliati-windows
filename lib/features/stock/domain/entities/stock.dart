@@ -26,6 +26,7 @@ class CreateStockInput {
     required this.purchasePrice,
     this.expiryDate,
     this.dateReceived,
+    this.bonusQuantity = 0,
   });
 
   final String medicineId;
@@ -34,6 +35,10 @@ class CreateStockInput {
   final double purchasePrice;
   final DateTime? expiryDate;
   final DateTime? dateReceived;
+
+  /// كمية بونص (مجّانية) — دفعة مستقلّة بكلفة صفر بالخادم، لا تمسّ
+  /// [purchasePrice] ولا تدخل أي حساب كلفة.
+  final double bonusQuantity;
 
   Map<String, dynamic> toJson() {
     final now = DateTime.now();
@@ -46,6 +51,7 @@ class CreateStockInput {
           (expiryDate ?? DateTime(now.year + 2, now.month, now.day))
               .toIso8601String(),
       'dateReceived': (dateReceived ?? now).toIso8601String(),
+      'bonusQuantity': bonusQuantity,
     };
   }
 }

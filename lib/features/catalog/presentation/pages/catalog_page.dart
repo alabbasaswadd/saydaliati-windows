@@ -2,12 +2,17 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:saydaliati/core/theme/app_semantic_colors.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/features/catalog/catalog_providers.dart';
 import 'package:saydaliati/features/catalog/domain/catalog_item.dart';
 import 'package:saydaliati/features/catalog/presentation/pages/add_catalog_to_stock_page.dart';
 import 'package:saydaliati/features/catalog/presentation/pages/catalog_detail_page.dart';
+import 'package:saydaliati/features/currencies/domain/currency_conversion.dart';
+import 'package:saydaliati/features/currencies/domain/entities/currency.dart';
+import 'package:saydaliati/features/currencies/presentation/providers/currencies_provider.dart';
 import 'package:saydaliati/features/medicines/presentation/price_sync_action.dart';
+import 'package:saydaliati/features/medicines/presentation/providers/medicines_provider.dart';
 import 'package:saydaliati/services/barcode_scanner.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
 import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
@@ -155,10 +160,56 @@ class _SearchTab extends ConsumerWidget {
             ),
           ),
         ),
+        const _AddedProgressBar(),
         // Empty query → browse the WHOLE mirror lazily (all ~22.5k, paged on
         // scroll). A typed query → narrowed search results.
         Expanded(child: query.isEmpty ? const _BrowseAllList() : _SearchResults(query: query)),
       ],
+    );
+  }
+}
+
+/// «١١٠ مضاف من أصل ٢٢٬٥٠٠» — كم من الكتالوغ العام صار عندي بأدويتي، مطابقةً
+/// بالباركود مع النسخة المحلية الكاملة. لا تظهر إن لم تُزامَن النسخة المحلية
+/// بعد (لا معنى لنسبة من كتالوغ فارغ).
+class _AddedProgressBar extends ConsumerWidget {
+  const _AddedProgressBar();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final async = ref.watch(catalogAddedProgressProvider);
+    final progress = async.value;
+    if (progress == null) return const SizedBox.shrink();
+
+    final ratio = progress.total == 0 ? 0.0 : progress.added / progress.total;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.md, 0, AppSpacing.md, AppSpacing.sm),
+      child: Row(
+        children: [
+          Icon(Icons.check_circle_outline,
+              size: 16, color: theme.colorScheme.primary),
+          const SizedBox(width: AppSpacing.xs),
+          Text(
+            '${Formatters.integer(progress.added)} مضاف من أصل '
+            '${Formatters.integer(progress.total)}',
+            style: theme.textTheme.bodySmall
+                ?.copyWith(color: theme.hintColor),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: ratio.clamp(0, 1),
+                minHeight: 4,
+                backgroundColor: theme.colorScheme.surfaceContainerHighest,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -232,16 +283,16 @@ class _BrowseAllListState extends ConsumerState<_BrowseAllList> {
 /// قالب غريد الكتالوغ — جاهز لإعادة الاستخدام في أي شاشة تعرض أدوية الكتالوغ:
 /// أعمدة بفلترة «يحتوي»، إظهار/إخفاء أعمدة، نقرة مزدوجة للتفاصيل، وعمود
 /// إجراءات (تفاصيل / إضافة للمخزون).
-class CatalogGrid extends StatefulWidget {
+class CatalogGrid extends ConsumerStatefulWidget {
   const CatalogGrid({required this.items, super.key});
 
   final List<CatalogItem> items;
 
   @override
-  State<CatalogGrid> createState() => _CatalogGridState();
+  ConsumerState<CatalogGrid> createState() => _CatalogGridState();
 }
 
-class _CatalogGridState extends State<CatalogGrid> {
+class _CatalogGridState extends ConsumerState<CatalogGrid> {
   TrinaGridStateManager? _manager;
 
   static const _fId = 'id';
@@ -254,14 +305,86 @@ class _CatalogGridState extends State<CatalogGrid> {
   static const _fPharmacist = 'pricePharmacist';
   static const _fActions = 'actions';
 
+  /// معرّفات أصناف قيد الإضافة السريعة الآن — تمنع نقرتين على نفس الصف وتُظهر
+  /// دورانَ تحميل مكانَ الأيقونة.
+  final Set<String> _quickAdding = {};
+
   void _openDetail(CatalogItem item) {
     Navigator.of(context).push(MaterialPageRoute<void>(
         builder: (_) => CatalogDetailPage(item: item)));
   }
 
+  /// تسجيل فوري بلا نموذج ولا مخزون: كمية صفر عمداً — يضيف الدواء إلى
+  /// «أدويتي» فقط، بلا دفعة مخزون وهمية (الاستلام الفعلي لاحقاً من «استلام
+  /// مخزون» حين تصل كمية حقيقية). سعرا البيع/الشراء على الدواء نفسه رغم ذلك،
+  /// مبذوران من السعر العام وسعر الصيدلاني بالكاتلوغ (محوَّلين للعملة
+  /// الأساسية) إن وُجدا وإلا صفر.
+  Future<void> _quickAdd(CatalogItem item) async {
+    if (_quickAdding.contains(item.id)) return;
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _quickAdding.add(item.id));
+
+    try {
+      final currencies = ref.read(currenciesProvider).value ?? const <Currency>[];
+      Currency? base;
+      for (final c in currencies) {
+        if (c.isBaseCurrency) {
+          base = c;
+          break;
+        }
+      }
+      base ??= currencies.isNotEmpty ? currencies.first : null;
+      Currency? itemCurrency;
+      for (final c in currencies) {
+        if (c.code == item.currency) {
+          itemCurrency = c;
+          break;
+        }
+      }
+      double convert(double v) {
+        if (v <= 0) return 0;
+        if (itemCurrency != null &&
+            base != null &&
+            itemCurrency.id != base.id &&
+            itemCurrency.exchangeRate > 0) {
+          return convertToBase(v, base, itemCurrency);
+        }
+        return v;
+      }
+
+      // كمية صفر عمداً: الإضافة السريعة تُسجِّل الدواء بقائمة أدويتي بلا
+      // دفعة مخزون وهمية — الاستلام الفعلي لاحقاً من «استلام مخزون» حين
+      // تصل كمية حقيقية. سعرا البيع/الشراء يُبذَران بالكاتلوغ رغم ذلك: هما
+      // على الدواء نفسه لا على دفعة، فيبقيان مفيدين حتى بلا مخزون.
+      final medId = await ref.read(catalogRemoteDataSourceProvider).addToStock(
+            catalogId: item.id,
+            quantity: 0,
+            purchasePrice: convert(item.pricePharmacist),
+            salePrice: convert(item.pricePublic),
+            expiryDate: DateTime.now().add(const Duration(days: 365 * 3)),
+            barcode: item.barcode,
+          );
+      if (medId.isNotEmpty) {
+        try {
+          await ref.read(medicineCatalogProvider.notifier).insertNew(medId);
+        } catch (_) {/* أفضل جهد — لا يُفشل الإضافة */}
+      }
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(
+          content: Text(
+              'أُضيف «${item.displayName}» إلى أدويتك بلا مخزون — زوّده بكمية من «استلام مخزون» حين تصل')));
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text('تعذّرت الإضافة: $e')));
+    } finally {
+      if (mounted) setState(() => _quickAdding.remove(item.id));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final byId = {for (final it in widget.items) it.id: it};
+    final myBarcodes = ref.watch(myMedicineBarcodesProvider);
     return Padding(
       padding:
           const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
@@ -274,9 +397,16 @@ class _CatalogGridState extends State<CatalogGrid> {
           ),
           Expanded(
             child: AppGrid(
-              // تغيّر النتائج (بحث جديد) → شبكة جديدة بصفوفها.
-              key: ValueKey(widget.items.length ^ widget.items.hashCode),
-              columns: _columns(byId),
+              // تغيّر النتائج (بحث جديد) أو تغيّر أدويتي (إضافة سريعة) → شبكة
+              // جديدة. Trina يخزّن الأعمدة داخلياً ولا يعيد قراءتها من
+              // `columns:` عند إعادة البناء وحدها بلا تغيّر المفتاح (نفس ما
+              // واجهناه بفاتورة المشتريات) — فبلا بصمة باركودات أدويتي هنا،
+              // تبقى إشارة ✓ وزرّ الإضافة السريعة بحالتهما القديمة بعد أي
+              // إضافة حتى بحثٍ جديد يُجبر الشبكة على التجدّد.
+              key: ValueKey(Object.hash(
+                  widget.items.length ^ widget.items.hashCode,
+                  Object.hashAllUnordered(myBarcodes))),
+              columns: _columns(byId, myBarcodes),
               rows: [for (final it in widget.items) _row(it)],
               onLoaded: (m) => _manager = m,
               onRowDoubleTap: (e) {
@@ -290,9 +420,33 @@ class _CatalogGridState extends State<CatalogGrid> {
     );
   }
 
-  List<TrinaColumn> _columns(Map<String, CatalogItem> byId) {
+  /// هل هذا الصنف مضاف أصلاً إلى أدويتي؟ — مطابقةً بالباركود (الرابط الوحيد
+  /// المتاح)، يُستعمَل لشارة الاسم ولاستبدال زرّ الإضافة السريعة بإشارة صحّ.
+  bool _isAdded(CatalogItem item, Set<String> myBarcodes) {
+    final barcode = item.barcode.trim();
+    return barcode.isNotEmpty && myBarcodes.contains(barcode);
+  }
+
+  List<TrinaColumn> _columns(
+      Map<String, CatalogItem> byId, Set<String> myBarcodes) {
     return [
-      appGridTextColumn('الاسم', _fName, width: 220),
+      appGridTextColumn('الاسم', _fName, width: 220, renderer: (ctx) {
+        final item = byId[ctx.row.cells[_fId]?.value];
+        final name = ctx.cell.value?.toString() ?? '';
+        final added = item != null && _isAdded(item, myBarcodes);
+        if (!added) return Text(name, overflow: TextOverflow.ellipsis);
+        return Row(
+          children: [
+            Tooltip(
+              message: 'مضاف إلى أدويتي',
+              child: Icon(Icons.check_circle,
+                  size: 14, color: context.semantic.success),
+            ),
+            const SizedBox(width: AppSpacing.xs),
+            Expanded(child: Text(name, overflow: TextOverflow.ellipsis)),
+          ],
+        );
+      }),
       appGridTextColumn('الشركة', _fCompany, width: 150),
       appGridTextColumn('التركيب العلمي', _fGeneric, width: 180),
       appGridTextColumn('العبوة', _fPack, width: 120, hide: true),
@@ -324,7 +478,7 @@ class _CatalogGridState extends State<CatalogGrid> {
         title: '',
         field: _fActions,
         type: TrinaColumnType.text(),
-        width: 90,
+        width: 134,
         enableEditingMode: false,
         enableContextMenu: false,
         enableFilterMenuItem: false,
@@ -332,6 +486,8 @@ class _CatalogGridState extends State<CatalogGrid> {
         renderer: (ctx) {
           final item = byId[ctx.row.cells[_fId]?.value];
           if (item == null) return const SizedBox.shrink();
+          final adding = _quickAdding.contains(item.id);
+          final added = _isAdded(item, myBarcodes);
           return Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -341,10 +497,38 @@ class _CatalogGridState extends State<CatalogGrid> {
                 tooltip: 'التفاصيل',
                 onPressed: () => _openDetail(item),
               ),
+              // إضافة فورية بقيم افتراضية — بلا نموذج، لتسجيل الدواء بسرعة.
+              // تتحوّل إلى إشارة صحّ معطَّلة إن كان مضافاً أصلاً: إعادة
+              // الضغط لا تُنشئ دواءً مكرَّراً (الخادم يطابق بالباركود) لكنها
+              // تضيف دفعة مخزون جديدة بقيم افتراضية بلا داعٍ — أفضل منعها.
+              if (adding)
+                const Padding(
+                  padding: EdgeInsets.all(8),
+                  child: SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2)),
+                )
+              else if (added)
+                Tooltip(
+                  message: 'مضاف بالفعل إلى أدويتي',
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Icon(Icons.check_circle,
+                        size: 16, color: context.semantic.success),
+                  ),
+                )
+              else
+                IconButton(
+                  icon: const Icon(Icons.bolt_outlined, size: 16),
+                  visualDensity: VisualDensity.compact,
+                  tooltip: 'إضافة سريعة إلى أدويتي (بلا مخزون)',
+                  onPressed: () => _quickAdd(item),
+                ),
               IconButton(
                 icon: const Icon(Icons.add_business_outlined, size: 16),
                 visualDensity: VisualDensity.compact,
-                tooltip: 'إضافة للمخزون',
+                tooltip: 'إضافة للمخزون (نموذج كامل)',
                 onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
                         builder: (_) => AddCatalogToStockPage(item: item))),

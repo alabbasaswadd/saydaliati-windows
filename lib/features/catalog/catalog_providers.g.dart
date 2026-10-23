@@ -526,3 +526,121 @@ final class CatalogItemAlternativesFamily extends $Family
   @override
   String toString() => r'catalogItemAlternativesProvider';
 }
+
+/// باركودات أدويتي الخاصة — مفروزة من قيم `Medicine.barcode` (قد يحمل الحقل
+/// عدّة رموز مفصولة بفاصلة لدواء واحد، انظر `AddCatalogToStockHandler`
+/// بالخادم) — لمطابقة أصناف الكاتلوغ المضافة أصلاً إلى أدويتي.
+///
+/// الباركود هو الرابط الوحيد المتاح بين صنف الكاتلوغ ودواء الصيدلية: لا حقل
+/// يربطهما مباشرة (لا بالخادم ولا بالواجهة)، فصنفٌ بلا باركود لن يُكتشَف
+/// كـ«مضاف» حتى لو كان فعلاً — نفس قصور المطابقة المعتمَد أصلاً بالخادم.
+
+@ProviderFor(myMedicineBarcodes)
+final myMedicineBarcodesProvider = MyMedicineBarcodesProvider._();
+
+/// باركودات أدويتي الخاصة — مفروزة من قيم `Medicine.barcode` (قد يحمل الحقل
+/// عدّة رموز مفصولة بفاصلة لدواء واحد، انظر `AddCatalogToStockHandler`
+/// بالخادم) — لمطابقة أصناف الكاتلوغ المضافة أصلاً إلى أدويتي.
+///
+/// الباركود هو الرابط الوحيد المتاح بين صنف الكاتلوغ ودواء الصيدلية: لا حقل
+/// يربطهما مباشرة (لا بالخادم ولا بالواجهة)، فصنفٌ بلا باركود لن يُكتشَف
+/// كـ«مضاف» حتى لو كان فعلاً — نفس قصور المطابقة المعتمَد أصلاً بالخادم.
+
+final class MyMedicineBarcodesProvider
+    extends $FunctionalProvider<Set<String>, Set<String>, Set<String>>
+    with $Provider<Set<String>> {
+  /// باركودات أدويتي الخاصة — مفروزة من قيم `Medicine.barcode` (قد يحمل الحقل
+  /// عدّة رموز مفصولة بفاصلة لدواء واحد، انظر `AddCatalogToStockHandler`
+  /// بالخادم) — لمطابقة أصناف الكاتلوغ المضافة أصلاً إلى أدويتي.
+  ///
+  /// الباركود هو الرابط الوحيد المتاح بين صنف الكاتلوغ ودواء الصيدلية: لا حقل
+  /// يربطهما مباشرة (لا بالخادم ولا بالواجهة)، فصنفٌ بلا باركود لن يُكتشَف
+  /// كـ«مضاف» حتى لو كان فعلاً — نفس قصور المطابقة المعتمَد أصلاً بالخادم.
+  MyMedicineBarcodesProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'myMedicineBarcodesProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$myMedicineBarcodesHash();
+
+  @$internal
+  @override
+  $ProviderElement<Set<String>> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  Set<String> create(Ref ref) {
+    return myMedicineBarcodes(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(Set<String> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<Set<String>>(value),
+    );
+  }
+}
+
+String _$myMedicineBarcodesHash() =>
+    r'18d30b2c05e29cc525763df33c7023af6fea6599';
+
+/// تقدّم «المضاف من الكاتلوغ إلى أدويتي» — عدد أصناف الكتالوغ المحلي التي
+/// باركودها يطابق أحد أدويتي، من أصل حجم الكتالوغ المحلي الكامل.
+/// `null` إن لم تُزامَن النسخة المحلية بعد (لا معنى لنسبة من صفر).
+
+@ProviderFor(catalogAddedProgress)
+final catalogAddedProgressProvider = CatalogAddedProgressProvider._();
+
+/// تقدّم «المضاف من الكاتلوغ إلى أدويتي» — عدد أصناف الكتالوغ المحلي التي
+/// باركودها يطابق أحد أدويتي، من أصل حجم الكتالوغ المحلي الكامل.
+/// `null` إن لم تُزامَن النسخة المحلية بعد (لا معنى لنسبة من صفر).
+
+final class CatalogAddedProgressProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<({int added, int total})?>,
+          ({int added, int total})?,
+          FutureOr<({int added, int total})?>
+        >
+    with
+        $FutureModifier<({int added, int total})?>,
+        $FutureProvider<({int added, int total})?> {
+  /// تقدّم «المضاف من الكاتلوغ إلى أدويتي» — عدد أصناف الكتالوغ المحلي التي
+  /// باركودها يطابق أحد أدويتي، من أصل حجم الكتالوغ المحلي الكامل.
+  /// `null` إن لم تُزامَن النسخة المحلية بعد (لا معنى لنسبة من صفر).
+  CatalogAddedProgressProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'catalogAddedProgressProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$catalogAddedProgressHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<({int added, int total})?> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<({int added, int total})?> create(Ref ref) {
+    return catalogAddedProgress(ref);
+  }
+}
+
+String _$catalogAddedProgressHash() =>
+    r'047200c5800cfad512a27e8ed356b6872a43275d';

@@ -434,6 +434,18 @@ abstract final class AppStrings {
   static const String unitCost = 'سعر التكلفة';
   static const String purchaseEmptyHint = 'أضِف دواءً لبدء فاتورة الشراء';
   static const String purchaseDetails = 'تفاصيل فاتورة الشراء';
+  // نفس نص تحقّق الخادم حرفياً (CreatePurchaseHandler.ValidatePurchase) —
+  // تُظهَر فوراً بلا انتظار جولة شبكة لسطرٍ لا كمية مدفوعة له ولا بونص.
+  static const String purchaseLineNeedsQtyOrBonus =
+      'السطر بلا كمية ولا بونص — أدخل كميةً مدفوعة أو بونصاً';
+  // شارة على بطاقة الفاتورة وعمود في تفاصيلها — تُظهر أيّ فاتورة فيها بونص
+  // بلمحة بلا فتحها، والبيانات محفوظة أصلاً (PurchaseItem.BonusQuantity)؛
+  // كانت القراءة وحدها مفقودة.
+  static const String bonusLabel = 'بونص';
+  // رسالة عند محاولة تسعير سطرٍ بلا كمية مدفوعة (قلم بونص) — كلفته صفر
+  // دائماً بحكم عدم دفع مقابل له.
+  static const String bonusLineHasNoCost =
+      'قلم البونص بلا كلفة — كلفته صفر دائماً';
 
   // Reports — medicine report
   static const String medicineReport = 'تقرير الدواء';
@@ -576,4 +588,31 @@ abstract final class AppStrings {
   // نقطة البيع: سحب للحذف + تراجع
   static const String lineDeleted = 'تم حذف الصنف';
   static const String undo = 'تراجع';
+
+  // الداشبورد الرئيسي
+  static const String dashSalesToday = 'مبيعات اليوم';
+  static const String dashInvoicesToday = 'عدد الفواتير اليوم';
+  static const String dashPurchasesThisMonth = 'مشتريات هذا الشهر';
+  static const String dashTotalMedicines = 'إجمالي الأصناف';
+  static const String dashTotalCustomers = 'العملاء';
+  static const String dashTotalSuppliers = 'الموردّون';
+  static const String dashSalesTrendTitle = 'مبيعات آخر 7 أيام';
+  static const String dashTopMedicinesTitle = 'الأكثر مبيعاً (آخر 30 يوماً)';
+  static const String dashLowStockAlertTitle = 'تنبيه المخزون المنخفض';
+  static const String dashExpiringAlertTitle = 'أدوية قريبة من الانتهاء';
+  static const String dashNoLowStock = 'لا توجد أدوية منخفضة المخزون';
+  static const String dashNoExpiring = 'لا توجد أدوية قريبة من الانتهاء حالياً';
+  static const String dashViewAll = 'عرض الكل';
+  static const String dashCapital = 'رأس المال المستخدم';
+  static const String dashCapitalInfo =
+      'رأس المال المستخدم هنا يُمثّل قيمة المخزون الحالي (الكمية المتاحة × '
+      'سعر الشراء) — لا يوجد حالياً حساب رأس مال محاسبي مستقل.';
+  static const String dashProfitTitle = 'الربح';
+  static const String dashPeriodDay = 'اليوم';
+  static const String dashPeriodWeek = 'الأسبوع';
+  static const String dashPeriodMonth = 'الشهر';
+  static const String dashPeriodYear = 'السنة';
+  static const String dashNoProfitData = 'لا توجد مبيعات لهذه الفترة';
+  static const String dashPayablesTitle = 'ديون الموردين';
+  static const String dashNoPayables = 'لا توجد ديون مستحقة للموردين';
 }

@@ -30,6 +30,17 @@ class MedicineRepositoryImpl implements MedicineRepository {
   Future<Result<List<Medicine>>> getCatalog() async {
     try {
       final raw = await _remote.list();
+      // رجوعٌ ناجح (200) بقائمة فارغة ليس بالضرورة كتالوغاً فُرِّغ فعلاً —
+      // غالباً عطل مؤقت بالتوكن أو بالخادم (شوهد فعلياً على بيئة الديف).
+      // كان يُستبدَل به التخزين المحلي فوراً، فيُمحى كتالوغٌ صحيح سبق
+      // تخزينه، وتختفي الأدوية من كل مكان يعتمد عليه (منتقي الدواء، نقطة
+      // البيع، ...) حتى تحديث يدوي لاحق ينجح بمحض الصدفة.
+      if (raw.isEmpty) {
+        final cached = await _local.getAll();
+        if (cached.isNotEmpty) {
+          return Result.success(_decodeSorted(cached));
+        }
+      }
       await _local.replaceAll(raw);
       return Result.success(_decodeSorted(raw));
     } catch (error) {

@@ -73,6 +73,23 @@ class DataSyncController extends _$DataSyncController {
     return const SyncProgress();
   }
 
+  /// يستبدل الكاش المحلي بردّ الخادم — إلا أن يكون [raw] فارغاً والكاش
+  /// المحلي فيه بيانات أصلاً؛ عندها يُبقيها كما هي بدل محوها.
+  ///
+  /// ردٌّ ناجح (200) بقائمة فارغة أثناء المزامنة غالباً عطل مؤقت بالتوكن أو
+  /// الشبكة — لا كتالوغاً فُرِّغ فعلياً على الخادم. وهذه الدالة تستدعي مصادر
+  /// البيانات مباشرة لا عبر المستودعات، فتتجاوز أي حماية موضوعة هناك (راجع
+  /// MedicineRepositoryImpl.getCatalog لنفس الإصلاح على ذلك المسار تحديداً) —
+  /// فلا بدّ من نفس الحماية هنا أيضاً.
+  Future<void> _replaceUnlessEmptyWipe(
+    List<Map<String, dynamic>> raw,
+    Future<List<Map<String, dynamic>>> Function() currentLocal,
+    Future<void> Function(List<Map<String, dynamic>>) replaceAll,
+  ) async {
+    if (raw.isEmpty && (await currentLocal()).isNotEmpty) return;
+    await replaceAll(raw);
+  }
+
   Future<void> syncAll() async {
     if (state.running) return;
     // Only sync when signed in — the catalogs are authed endpoints, and running
@@ -99,29 +116,35 @@ class DataSyncController extends _$DataSyncController {
         await ref.read(defaultWarehouseProvider.future);
       }),
       MapEntry(AppStrings.syncCurrencies, () async {
+        final local = ref.read(currencyLocalDataSourceProvider);
         final raw = await ref.read(currencyRemoteDataSourceProvider).list();
-        await ref.read(currencyLocalDataSourceProvider).replaceAll(raw);
+        await _replaceUnlessEmptyWipe(raw, local.getAll, local.replaceAll);
       }),
       MapEntry(AppStrings.syncMedicines, () async {
+        final local = ref.read(medicineLocalDataSourceProvider);
         final raw = await ref.read(medicineRemoteDataSourceProvider).list();
-        await ref.read(medicineLocalDataSourceProvider).replaceAll(raw);
+        await _replaceUnlessEmptyWipe(raw, local.getAll, local.replaceAll);
       }),
       MapEntry(AppStrings.syncCustomers, () async {
+        final local = ref.read(customerLocalDataSourceProvider);
         final raw = await ref.read(customerRemoteDataSourceProvider).list();
-        await ref.read(customerLocalDataSourceProvider).replaceAll(raw);
+        await _replaceUnlessEmptyWipe(raw, local.getAll, local.replaceAll);
       }),
       MapEntry(AppStrings.syncStock, () async {
+        final local = ref.read(stockLocalDataSourceProvider);
         final raw =
             await ref.read(stockRemoteDataSourceProvider).list(limit: 5000);
-        await ref.read(stockLocalDataSourceProvider).replaceAll(raw);
+        await _replaceUnlessEmptyWipe(raw, local.getAll, local.replaceAll);
       }),
       MapEntry(AppStrings.syncCategories, () async {
+        final local = ref.read(categoryLocalDataSourceProvider);
         final raw = await ref.read(categoryRemoteDataSourceProvider).list();
-        await ref.read(categoryLocalDataSourceProvider).replaceAll(raw);
+        await _replaceUnlessEmptyWipe(raw, local.getAll, local.replaceAll);
       }),
       MapEntry(AppStrings.syncUnits, () async {
+        final local = ref.read(unitLocalDataSourceProvider);
         final raw = await ref.read(unitRemoteDataSourceProvider).list();
-        await ref.read(unitLocalDataSourceProvider).replaceAll(raw);
+        await _replaceUnlessEmptyWipe(raw, local.getAll, local.replaceAll);
       }),
       // Global drug catalog → quiet local mirror (throttled to once / 6h, so it
       // only does real work occasionally; otherwise it returns immediately).

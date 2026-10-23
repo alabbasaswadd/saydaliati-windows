@@ -33,6 +33,7 @@ class _AddStockPageState extends ConsumerState<AddStockPage> {
   Medicine? _medicine;
   final _qty = TextEditingController();
   final _purchase = TextEditingController();
+  final _bonus = TextEditingController();
   final _barcode = TextEditingController();
   DateTime? _expiry;
   bool _saving = false;
@@ -41,6 +42,7 @@ class _AddStockPageState extends ConsumerState<AddStockPage> {
   void dispose() {
     _qty.dispose();
     _purchase.dispose();
+    _bonus.dispose();
     _barcode.dispose();
     super.dispose();
   }
@@ -57,8 +59,15 @@ class _AddStockPageState extends ConsumerState<AddStockPage> {
 
   Future<void> _save(String? warehouseId) async {
     final qty = double.tryParse(_qty.text.trim()) ?? 0;
-    if (qty <= 0) {
+    final bonus = double.tryParse(_bonus.text.trim()) ?? 0;
+    if (qty < 0 || bonus < 0) {
       AppSnackbar.error(context, AppStrings.quantity);
+      return;
+    }
+    // كمية مستلَمة صفر مسموحة إن كان الاستلام كلّه بونصاً — نفس حارس فاتورة
+    // الشراء، فلا سطر بلا كمية ولا بونص معاً.
+    if (qty <= 0 && bonus <= 0) {
+      AppSnackbar.error(context, AppStrings.purchaseLineNeedsQtyOrBonus);
       return;
     }
     if (_medicine == null) {
@@ -78,6 +87,7 @@ class _AddStockPageState extends ConsumerState<AddStockPage> {
             quantityAvailable: qty,
             purchasePrice: double.tryParse(_purchase.text.trim()) ?? 0,
             expiryDate: _expiry,
+            bonusQuantity: bonus,
           ),
         );
     if (!mounted) return;
@@ -173,6 +183,15 @@ class _AddStockPageState extends ConsumerState<AddStockPage> {
 
               AppNumberField(controller: _qty, label: AppStrings.quantity, isRequired: true),
               AppNumberField(controller: _purchase, label: AppStrings.purchasePrice),
+              // بونص: كمية مجّانية مستقلّة عن الكمية المستلَمة — لا تمسّ سعر
+              // الشراء أعلاه، وتدخل المخزون بكلفة صفر (دفعة منفصلة بالخادم)
+              // فيظهر أثرها تلقائياً في تقارير المبيعات والمشتريات والجرد
+              // (ربح كامل على بيعها، وقيمة مخزون صفر لها).
+              AppNumberField(
+                controller: _bonus,
+                label: AppStrings.bonusLabel,
+                prefixIcon: const Icon(Icons.card_giftcard_outlined),
+              ),
               AppDatePicker(
                 label: AppStrings.expirationDate,
                 value: _expiry,

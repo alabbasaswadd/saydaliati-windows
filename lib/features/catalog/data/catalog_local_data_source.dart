@@ -30,6 +30,11 @@ class CatalogLocalDataSource {
   final EntityCache<Map<String, dynamic>> _cache;
 
   Future<int> count() => _cache.count();
+
+  /// عدد أصناف الكتالوغ التي باركودها ضمن [barcodes] — «كم من أدويتي موجود
+  /// بالكتالوغ العام»، باستعلام على العمود المفهرَس مباشرة بلا فكّ أي حمولة.
+  Future<int> countByBarcodes(Iterable<String> barcodes) =>
+      _cache.countByCodes(barcodes);
   Future<DateTime?> lastPulledAt() => _cache.lastPulledAt();
   Future<void> markPulled() => _cache.markPulled();
   Future<void> upsertAll(List<Map<String, dynamic>> items) => _cache.upsertAll(items);

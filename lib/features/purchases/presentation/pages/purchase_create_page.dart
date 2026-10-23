@@ -92,6 +92,14 @@ class _PurLine {
 
   double get bonusQty => double.tryParse(bonus.text.trim()) ?? 0;
 
+  /// سطرٌ بلا كمية مدفوعة — كلفته لا معنى لها فتُقفَل خليّته ويُمَيَّز
+  /// بإشارة بجانب اسم المادة. **محسوبة لا عَلَماً يُضبَط يدوياً**: تصحّ فور
+  /// الإضافة عبر زرّ «قلم بونص» (كميته صفر منذ الإنشاء)، وتصحّ أيضاً لسطرٍ
+  /// استُرجِع من فاتورة محفوظة (`_prefillFromPurchase` يكتب الكمية المحفوظة
+  /// كما هي)، ولسطر عادي صفّر المستخدم كميته يدوياً — بلا حاجة لعلَمٍ منفصل
+  /// قد يغيب في أحد هذه المسارات فيُفلِت القفلَ والتمييز.
+  bool get isBonusOnly => (double.tryParse(qty.text.trim()) ?? 0) <= 0;
+
   void dispose() {
     price.dispose();
     qty.dispose();
@@ -115,6 +123,10 @@ class PurchaseCreatePage extends ConsumerStatefulWidget {
 
 class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
   final List<_PurLine> _lines = [];
+
+  /// آخر كتالوغ أدوية معروف — اختصار «إضافة مادة» يُستدعى من خارج دورة
+  /// البناء فيحتاج آخر قيمة معروفة (نفس حل فاتورة المبيعات).
+  List<Medicine> _lastCatalog = const [];
 
   /// نسبة سعر الشراء المقترَح من سعر المبيع. الافتراضي 27% — رقم تقريبي شائع
   /// لهامش الصيدليات، والمستخدم يغيّره من تنويه أعلى الفاتورة.
@@ -232,7 +244,13 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
   void initState() {
     super.initState();
     // اختصارات السطر — كانت تعمل في المبيعات وحدها.
+    //
+    // «إضافة مادة» (Ctrl+Z) كان غائباً هنا: الاختصار موجود بالكتالوغ ويعمل
+    // بفاتورة المبيعات، لكن فاتورة المشتريات لم تربط له معالجاً فكان
+    // الضغط عليه لا يفعل شيئاً — فتح المنتقي واختيار مادة لم يكن يحدث أصلاً.
     _shortcuts.bind({
+      ShortcutAction.invoiceAddItem: () =>
+          _pickMedicineForLine(_lastCatalog, null),
       ShortcutAction.invoiceEditQty: _editCurrentQuantity,
       ShortcutAction.invoiceEditPrice: _editCurrentPrice,
       ShortcutAction.invoiceDeleteLine: _deleteCurrentLine,
@@ -397,6 +415,13 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
       AppSnackbar.error(context, AppStrings.purchaseEmptyHint);
       return;
     }
+    // سطرٌ بكمية صفر صالح إن حمل بونصاً (قلم بونص)، لكن بلا الاثنين معاً
+    // لا معنى له — نفس حارس الخادم، مُستبَق هنا لتوفير جولة شبكة.
+    if (_lines.any((l) =>
+        (double.tryParse(l.qty.text.trim()) ?? 0) <= 0 && l.bonusQty <= 0)) {
+      AppSnackbar.error(context, AppStrings.purchaseLineNeedsQtyOrBonus);
+      return;
+    }
     // الشراء الآجل يتطلب مورّداً إجبارياً (يُنشئ حركة ذمّة بدل دفع فوري بالخادم).
     if (_payMethod.requiresParty && (_supplierId == null || _supplierId!.isEmpty)) {
       AppSnackbar.error(context, AppStrings.creditPurchaseNeedsSupplier);
@@ -541,6 +566,7 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
         .firstOrNull;
     final accounts = ref.watch(accountsListProvider).value ?? const <Account>[];
     _suggestPaymentAccountForCurrency(_effectiveCurrencyId(base), accounts, base?.id);
+    _lastCatalog = catalog;
 
     if (_isEdit && !_prefilled && catalog.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _ensurePrefill(catalog));
@@ -744,6 +770,36 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
     }
   }
 
+  /// يفتح منتقي الدواء لإضافة «قلم بونص» — سطر بلا كمية مدفوعة، كلّه
+  /// كمية مجّانية. يُستعمَل حين يمنح المورّد مادة كاملة مجّاناً على مستوى
+  /// الفاتورة (لا على سبيل بونص لسطرٍ مشترى)، ويمكن تكرار الإضافة لعدّة
+  /// مواد.
+  ///
+  /// الخادم يقبل سطراً بكمية صفر إن حمل بونصاً (راجع `CreatePurchaseHandler`)
+  /// فلا تغيير على الواجهة الخلفية — العائق كان الواجهة وحدها: خليّة الكمية
+  /// كانت ترفض الصفر، ولا طريقة لإضافة سطرٍ أساسه بونص لا كمية.
+  Future<void> _pickBonusMedicine(List<Medicine> catalog) async {
+    final picked = await showMedicinePicker(context, catalog);
+    if (picked == null || !mounted) return;
+    _addBonusLine(picked);
+  }
+
+  void _addBonusLine(Medicine m) {
+    if (m.units.isEmpty) {
+      AppSnackbar.error(context, AppStrings.noPricedUnitForProduct);
+      return;
+    }
+    final unit =
+        m.units.firstWhere((u) => u.isDefault, orElse: () => m.units.first);
+    // بلا سعر مقترَح وبلا كمية مدفوعة — السطر كلّه بونص (isBonusOnly محسوبة
+    // من الكمية فتصحّ فوراً).
+    final line = _PurLine(medicine: m, unitId: unit.unitId);
+    line.qty.text = '0';
+    setState(() => _lines.add(line));
+    _focus.select(_lineId(line));
+    AppSnackbar.info(context, 'أدخل كمية البونص في عمود «بونص»');
+  }
+
   // ─── جدول الفاتورة: غريد Trina حقيقي (نفس أسلوب فاتورة المبيعات) ──────────
 
   static const _fId = 'id';
@@ -847,17 +903,28 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
           title: AppStrings.medicineName,
           field: _fMed,
           type: TrinaColumnType.text(),
-          width: 240,
+          width: 300,
           enableEditingMode: false,
           renderer: (ctx) {
             if (isNewRow(ctx.row)) {
-              return Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: TextButton.icon(
-                  onPressed: () => _pickMedicineForLine(catalog, null),
-                  icon: const Icon(Icons.add_circle_outline, size: 16),
-                  label: const Text('اختر مادة…'),
-                ),
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextButton.icon(
+                    onPressed: () => _pickMedicineForLine(catalog, null),
+                    icon: const Icon(Icons.add_circle_outline, size: 16),
+                    label: const Text('اختر مادة…'),
+                  ),
+                  // سطر بلا كمية مدفوعة — كلّه كمية مجّانية من المورّد، على
+                  // مستوى الفاتورة لا مقيَّداً بسطر مادة مشتراة بعينه.
+                  // يمكن تكراره لعدّة مواد.
+                  IconButton(
+                    onPressed: () => _pickBonusMedicine(catalog),
+                    icon: const Icon(Icons.card_giftcard_outlined, size: 16),
+                    tooltip: 'إضافة قلم بونص',
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ],
               );
             }
             final l = lineOf(ctx.row);
@@ -866,6 +933,16 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
               onTap: () => _pickMedicineForLine(catalog, l),
               child: Row(
                 children: [
+                  // إشارة «قلم بونص» — تُميِّزه عن أسطر الفاتورة العادية
+                  // بلمحة، بلا فتح السطر أو قراءة خليّة الكلفة.
+                  if (l.isBonusOnly) ...[
+                    Tooltip(
+                      message: 'قلم بونص — بلا كلفة',
+                      child: Icon(Icons.card_giftcard,
+                          size: 14, color: context.semantic.success),
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                  ],
                   Expanded(
                     child: Text(l.medicine.displayName,
                         overflow: TextOverflow.ellipsis),
@@ -1117,6 +1194,14 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
       onChanged: (e) {
         final l = lineOf(e.row);
         if (l == null) return;
+        // قلم بونص: الكلفة ممنوعة لا مُهمَلة — رسالة صريحة بدل تجاهل صامت،
+        // وإعادة بناء الشبكة (`_gridEpoch`) تُطابق خليّة الكلفة قيمتها
+        // الحقيقية (صفر) بدل إبقاء ما كُتب للتوّ معروضاً بلا أثر فعلي.
+        if (e.column.field == _fCost && l.isBonusOnly) {
+          AppSnackbar.error(context, AppStrings.bonusLineHasNoCost);
+          setState(() => _gridEpoch++);
+          return;
+        }
         setState(() {
           switch (e.column.field) {
             case _fCost:
@@ -1128,7 +1213,18 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
               final v = e.value is num
                   ? (e.value as num).toDouble()
                   : double.tryParse(e.value?.toString() ?? '');
-              if (v != null && v > 0) l.qty.text = _plainNum(v);
+              // الصفر مسموح الآن: يحوّل السطر إلى «قلم بونص» بلا كمية
+              // مدفوعة (الخادم يقبل سطراً بكمية صفر إن حمل بونصاً).
+              if (v != null && v >= 0) {
+                l.qty.text = _plainNum(v);
+                // تصفير الكمية يجعل السطر قلم بونص فوراً (isBonusOnly
+                // محسوبة) — أي كلفة سابقة عليه تُصفَّر معه فلا تبقى معروضة
+                // بلا معنى.
+                if (v == 0) {
+                  l.price.text = '';
+                  l.suggested = null;
+                }
+              }
             case _fBonus:
               // البونص لا يدخل الإجمالي، فلا يُعاد حساب المبالغ بتغييره.
               final b = e.value is num

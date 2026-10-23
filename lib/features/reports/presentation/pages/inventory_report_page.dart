@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
+import 'package:saydaliati/core/permissions/permission_codes.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/features/currencies/domain/currency_conversion.dart';
 import 'package:saydaliati/features/currencies/domain/entities/currency.dart';
@@ -8,10 +9,12 @@ import 'package:saydaliati/features/currencies/presentation/providers/currencies
 import 'package:saydaliati/features/reports/domain/entities/inventory_report.dart';
 import 'package:saydaliati/features/reports/presentation/widgets/report_scaffold.dart';
 import 'package:saydaliati/features/reports/report_providers.dart';
+import 'package:saydaliati/features/stocks/presentation/widgets/adjust_stock_dialog.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
 import 'package:saydaliati/shared/widgets/cards/stat_chips_bar.dart';
 import 'package:saydaliati/shared/widgets/filters/filter_bar.dart';
 import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
+import 'package:saydaliati/shared/widgets/permission_gate.dart';
 import 'package:saydaliati/shared/widgets/states/app_states.dart';
 import 'package:trina_grid/trina_grid.dart';
 
@@ -45,6 +48,13 @@ class _InventoryReportPageState extends ConsumerState<InventoryReportPage> {
   static const _fWarehouse = 'warehouse';
   static const _fExpiry = 'expiry';
   static const _fDaysLeft = 'daysLeft';
+  static const _fAdjust = 'adjust';
+  static const _fBatchKey = 'batchKey';
+
+  /// خريطة بحث (مفتاح الدفعة → بياناتها) تُعاد تعبئتها عند كل بناء — يقرأ
+  /// منها زرّ التسوية ما يحتاجه (الدواء/المستودع/الصلاحية/الكمية الحالية)
+  /// دون المرور بقيمة الخليّة وحدها.
+  final Map<String, _BatchRef> _batchRefs = {};
 
   @override
   Widget build(BuildContext context) {
@@ -223,8 +233,51 @@ class _InventoryReportPageState extends ConsumerState<InventoryReportPage> {
                           );
                         },
                       ),
+                      // تسوية جرد — تظهر فقط على صفوف دفعة مُعرَّفة (دواء
+                      // بدفعة واحدة، أو سطر دفعة فرعي)؛ صفّ دواء متعدّد
+                      // الدفعات صفٌّ مجمَّع لا تسوية له مباشرةً — يُوسَّع إلى
+                      // دفعاته أولاً.
+                      TrinaColumn(
+                        title: '',
+                        field: _fAdjust,
+                        type: TrinaColumnType.text(),
+                        width: 44,
+                        enableEditingMode: false,
+                        enableContextMenu: false,
+                        enableFilterMenuItem: false,
+                        enableSorting: false,
+                        renderer: (ctx) {
+                          final key = ctx.row.cells[_fBatchKey]?.value as String?;
+                          final batch = key == null ? null : _batchRefs[key];
+                          if (batch == null) return const SizedBox.shrink();
+                          // `PermissionGate` بنفسه لا فحص مباشر هنا: هو
+                          // `ConsumerWidget` يستدعي `ref.watch` ضمن `build`ه
+                          // الخاص، فيبقى صحيحاً أياً كان عمق الاستدعاء —
+                          // بخلاف استدعاء `ref.watch` مباشرة داخل مُصيِّر
+                          // خليّة لا تملك هذا الضمان.
+                          return PermissionGate(
+                            permission: PermissionCodes.inventoryAdjust,
+                            child: IconButton(
+                              icon: const Icon(Icons.fact_check_outlined, size: 16),
+                              tooltip: 'تسوية جرد',
+                              visualDensity: VisualDensity.compact,
+                              onPressed: () => _adjust(batch),
+                            ),
+                          );
+                        },
+                      ),
+                      TrinaColumn(
+                          title: '',
+                          field: _fBatchKey,
+                          type: TrinaColumnType.text(),
+                          hide: true),
                     ],
-                    rows: [for (final it in r.items) _itemRow(it, conv)],
+                    rows: () {
+                      _batchRefs.clear();
+                      return [
+                        for (final it in r.items) _itemRow(it, conv, _batchRefs),
+                      ];
+                    }(),
                     onLoaded: (m) => _gridManager = m,
                     // صنف منخفض المخزون أو دفعة منتهية/قريبة الانتهاء → تظليل خفيف.
                     rowColorCallback: (ctx) {
@@ -256,10 +309,14 @@ class _InventoryReportPageState extends ConsumerState<InventoryReportPage> {
   /// الدواء أكثر من دفعة/تاريخ صلاحية — دواء بدفعة واحدة لا فائدة من توسيعه،
   /// فيبقى صفاً مسطّحاً، لكن **صلاحيته وأيامه المتبقية تُعرَض على نفس الصف**
   /// (لا تُفقَد فقط لأنه بلا أبناء).
-  TrinaRow<dynamic> _itemRow(InventoryItem it, double Function(double) conv) {
+  TrinaRow<dynamic> _itemRow(InventoryItem it, double Function(double) conv,
+      Map<String, _BatchRef> refs) {
     // دواء بدفعة واحدة بالضبط: فلا شجرة، لكن تفاصيل تلك الدفعة الوحيدة تُعرَض
     // مباشرة على صف الدواء نفسه بدل أن تختفي.
     final onlyBatch = it.batches.length == 1 ? it.batches.first : null;
+    final onlyBatchKey = onlyBatch == null
+        ? null
+        : _registerBatch(refs, it.medicineId, it.brandName, onlyBatch);
 
     final parentCells = {
       _fName: TrinaCell(value: it.brandName),
@@ -276,6 +333,7 @@ class _InventoryReportPageState extends ConsumerState<InventoryReportPage> {
       _fDaysLeft: TrinaCell(value: onlyBatch?.daysLeft ?? ''),
       _fValue: TrinaCell(value: conv(it.stockValue)),
       _fLow: TrinaCell(value: it.isLowStock.toString()),
+      _fBatchKey: TrinaCell(value: onlyBatchKey ?? ''),
     };
 
     if (it.batches.length <= 1) {
@@ -286,17 +344,39 @@ class _InventoryReportPageState extends ConsumerState<InventoryReportPage> {
       cells: parentCells,
       type: TrinaRowType.group(
         children: FilteredList(initialList: [
-          for (final b in it.batches) _batchRow(b, conv),
+          for (final b in it.batches)
+            _batchRow(it.medicineId, it.brandName, b, conv, refs),
         ]),
       ),
     );
   }
 
-  TrinaRow<dynamic> _batchRow(InventoryBatch b, double Function(double) conv) {
+  /// يسجّل دفعة في خريطة البحث ويُعيد مفتاحها — مفتاح مركّب (دواء + مستودع +
+  /// صلاحية) لأن التسوية بالخادم تحدَّد بهذه الثلاثة معاً (`AdjustStockCommand`).
+  String _registerBatch(Map<String, _BatchRef> refs, String medicineId,
+      String medicineName, InventoryBatch b) {
+    final key =
+        '$medicineId|${b.warehouseId}|${b.expiryDate?.toIso8601String() ?? ''}';
+    refs[key] = _BatchRef(
+      medicineId: medicineId,
+      medicineName: medicineName,
+      warehouseId: b.warehouseId,
+      warehouseName: b.warehouseName,
+      expiryDate: b.expiryDate,
+      quantity: b.quantity,
+    );
+    return key;
+  }
+
+  TrinaRow<dynamic> _batchRow(String medicineId, String medicineName,
+      InventoryBatch b, double Function(double) conv,
+      Map<String, _BatchRef> refs) {
+    final key = _registerBatch(refs, medicineId, medicineName, b);
     return TrinaRow(cells: {
       _fName: TrinaCell(value: ''),
       _fQty: TrinaCell(value: b.quantity),
       _fSale: TrinaCell(value: ''),
+      _fBatchKey: TrinaCell(value: key),
       _fCost: TrinaCell(value: conv(b.purchasePrice)),
       _fWarehouse: TrinaCell(value: b.warehouseName),
       _fExpiry: TrinaCell(
@@ -309,4 +389,39 @@ class _InventoryReportPageState extends ConsumerState<InventoryReportPage> {
 
   static String _ymd(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  /// يفتح حوار التسوية لدفعة بعينها، ويُحدِّث التقرير بعد نجاحه — الكمية
+  /// المعروضة قبل التحديث قديمة فوراً فلا تصحّ تسويةٌ ثانية عليها.
+  Future<void> _adjust(_BatchRef batch) async {
+    final done = await showAdjustStockDialog(
+      context,
+      medicineId: batch.medicineId,
+      medicineName: batch.medicineName,
+      warehouseId: batch.warehouseId,
+      warehouseName: batch.warehouseName,
+      expiryDate: batch.expiryDate,
+      currentQuantity: batch.quantity,
+    );
+    if (done) ref.invalidate(inventoryReportProvider);
+  }
+}
+
+/// بيانات دفعة واحدة لازمة لفتح حوار التسوية — مُجمَّعة من صف الشجرة (أب
+/// بدفعة واحدة، أو ابن) بلا إعادة البحث عن الدواء/الدفعة بعد الضغط.
+class _BatchRef {
+  const _BatchRef({
+    required this.medicineId,
+    required this.medicineName,
+    required this.warehouseId,
+    required this.warehouseName,
+    required this.expiryDate,
+    required this.quantity,
+  });
+
+  final String medicineId;
+  final String medicineName;
+  final String warehouseId;
+  final String warehouseName;
+  final DateTime? expiryDate;
+  final double quantity;
 }

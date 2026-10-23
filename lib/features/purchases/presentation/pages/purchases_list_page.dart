@@ -35,12 +35,15 @@ class _PurchasesListPageState extends ConsumerState<PurchasesListPage> {
 
   ReportPeriod? _period;
   String? _medicineId;
+  bool _bonusOnly = false;
 
-  bool get _hasFilters => _period != null || _medicineId != null;
+  bool get _hasFilters =>
+      _period != null || _medicineId != null || _bonusOnly;
 
   void _clear() => setState(() {
         _period = null;
         _medicineId = null;
+        _bonusOnly = false;
       });
 
   Future<void> _edit(Purchase purchase) =>
@@ -64,6 +67,11 @@ class _PurchasesListPageState extends ConsumerState<PurchasesListPage> {
     final medicineId = _medicineId;
     if (medicineId != null &&
         !p.items.any((i) => i.medicineId == medicineId)) {
+      return false;
+    }
+    // «الاطّلاع على كل البونص عندي» — فلترة لكل فواتير الشراء التي فيها
+    // بونص، بلا حاجة لفتح كل فاتورة على حدة للتأكّد.
+    if (_bonusOnly && !p.items.any((i) => i.bonusQuantity > 0)) {
       return false;
     }
     return true;
@@ -94,9 +102,11 @@ class _PurchasesListPageState extends ConsumerState<PurchasesListPage> {
       endDrawer: _FilterDrawer(
         period: _period,
         medicineId: _medicineId,
+        bonusOnly: _bonusOnly,
         onClear: _hasFilters ? _clear : null,
         onPeriod: (p) => setState(() => _period = p),
         onMedicine: (v) => setState(() => _medicineId = v),
+        onBonusOnly: (v) => setState(() => _bonusOnly = v),
       ),
       // بطاقات: كل فاتورة تُقرأ بلمحة (الرقم، التاريخ، أصنافها، مبلغها) وفيها
       // زر التعديل صريحاً.
@@ -139,6 +149,11 @@ class _PurchasesListPageState extends ConsumerState<PurchasesListPage> {
       // المورّد على البطاقة كما العميل في فواتير المبيعات: فاتورةٌ بلا اسم
       // مَن اشتُريت منه تُلزم فتحها لمعرفة أبسط ما يُعرّفها.
       partyLabel: purchase.supplierName.isEmpty ? null : purchase.supplierName,
+      // أيّ فاتورة فيها بونص تُعرَف من القائمة بلمحة — بلا فتح كل فاتورة
+      // للتأكّد. نفس أسلوب شارة «وصفة طبية» في فواتير المبيعات.
+      badge: purchase.items.any((i) => i.bonusQuantity > 0)
+          ? AppStrings.bonusLabel
+          : null,
       onTap: () => _open(PurchaseDetailPage(purchase: purchase)),
       onEdit: () => _edit(purchase),
       // لا حذف لفواتير الشراء: الخادم لا يوفّر نقطة حذف (التعديل يعكس المخزون
@@ -162,16 +177,20 @@ class _FilterDrawer extends ConsumerWidget {
   const _FilterDrawer({
     required this.period,
     required this.medicineId,
+    required this.bonusOnly,
     required this.onClear,
     required this.onPeriod,
     required this.onMedicine,
+    required this.onBonusOnly,
   });
 
   final ReportPeriod? period;
   final String? medicineId;
+  final bool bonusOnly;
   final VoidCallback? onClear;
   final ValueChanged<ReportPeriod?> onPeriod;
   final ValueChanged<String?> onMedicine;
+  final ValueChanged<bool> onBonusOnly;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -201,6 +220,17 @@ class _FilterDrawer extends ConsumerWidget {
                 avatar: const Icon(Icons.medication_outlined, size: 18),
                 onDeleted: () => onMedicine(null),
               ),
+        const Divider(),
+        // «الاطّلاع على كل البونص عندي» — كل الفواتير التي فيها بونص بضغطة
+        // واحدة، بلا فتح كل فاتورة للتأكّد.
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(AppStrings.bonusLabel, style: theme.textTheme.labelLarge),
+          subtitle: const Text('فواتير فيها قلم بونص واحد على الأقل'),
+          secondary: const Icon(Icons.card_giftcard_outlined),
+          value: bonusOnly,
+          onChanged: onBonusOnly,
+        ),
       ],
     );
   }

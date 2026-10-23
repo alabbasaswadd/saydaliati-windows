@@ -7,6 +7,7 @@ import 'package:saydaliati/features/roles/presentation/pages/role_form_dialog.da
 import 'package:saydaliati/features/roles/presentation/pages/role_permissions_dialog.dart';
 import 'package:saydaliati/features/roles/roles_providers.dart';
 import 'package:saydaliati/shared/widgets/buttons/add_entity_button.dart';
+import 'package:saydaliati/shared/widgets/buttons/app_refresh_button.dart';
 import 'package:saydaliati/shared/widgets/dialogs/app_dialogs.dart';
 import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
@@ -92,6 +93,9 @@ class RolesPage extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('الأدوار والصلاحيات'),
         actions: [
+          AppRefreshButton(
+            onRefresh: () => ref.refresh(rolesListProvider.future),
+          ),
           PermissionGate(
             permission: PermissionCodes.rolesManage,
             child: AddEntityButton(
