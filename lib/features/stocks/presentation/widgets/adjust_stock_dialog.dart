@@ -6,14 +6,15 @@ import 'package:saydaliati/core/utils/app_date.dart';
 import 'package:saydaliati/features/stocks/domain/stock_adjustment.dart';
 import 'package:saydaliati/features/stocks/stock_providers.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
+import 'package:saydaliati/shared/widgets/dialogs/app_dialogs.dart';
 import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_text_field.dart';
 
 /// حوار تسوية جرد دفعة واحدة — يضبط الكمية المتوفّرة إلى العدد الفعليّ.
-/// الفرق (+/-) يُنشئ تلقائياً بالخادم حركة إدخال أو إخراج وقيداً محاسبياً
-/// («فروق وتسويات المخزون») — لا شيء يُحسب أو يُرسَل من الواجهة غير الكمية
-/// الفعلية الجديدة.
+/// الفرق (+/-) يُصدِر فاتورة **حقيقية** بالخادم (شراء عند الزيادة، بيع عند
+/// النقص) تُنشئ قيدها المحاسبي كأي فاتورة عادية — فتُنبَّه الواجهة بذلك
+/// صراحةً قبل التأكيد، بنوع الفاتورة والكمية بالضبط.
 Future<bool> showAdjustStockDialog(
   BuildContext context, {
   required String medicineId,
@@ -91,6 +92,21 @@ class _AdjustStockDialogState extends ConsumerState<_AdjustStockDialog> {
       return;
     }
 
+    final delta = newQty - widget.currentQuantity;
+    final up = delta > 0;
+    final confirmed = await showConfirmationDialog(
+      context,
+      title: 'تأكيد التسوية',
+      message: up
+          ? 'سيصدر هذا فاتورة شراء بكمية ${Formatters.number(delta)} '
+              '(دخول للمخزون) — هل تريد المتابعة؟'
+          : 'سيصدر هذا فاتورة بيع بكمية ${Formatters.number(delta.abs())} '
+              '(خروج من المخزون) — هل تريد المتابعة؟',
+      confirmLabel: 'إصدار الفاتورة',
+      icon: up ? Icons.shopping_cart_outlined : Icons.point_of_sale_outlined,
+    );
+    if (!confirmed || !mounted) return;
+
     setState(() {
       _saving = true;
       _qtyError = null;
@@ -108,12 +124,19 @@ class _AdjustStockDialogState extends ConsumerState<_AdjustStockDialog> {
 
       if (!mounted) return;
       Navigator.of(context).pop(true);
-      final up = result.delta > 0;
+      final invoiceLabel = result.isPurchaseInvoice
+          ? 'فاتورة شراء'
+          : result.isSaleInvoice
+              ? 'فاتورة بيع'
+              : null;
       AppSnackbar.success(
         context,
-        '${up ? 'إدخال' : 'إخراج'} تسوية بمقدار '
-        '${Formatters.number(result.delta.abs())} — الكمية الآن '
-        '${Formatters.number(result.newQuantity)}',
+        invoiceLabel == null
+            ? '${up ? 'إدخال' : 'إخراج'} تسوية بمقدار '
+                '${Formatters.number(result.delta.abs())} — الكمية الآن '
+                '${Formatters.number(result.newQuantity)}'
+            : 'صدرت $invoiceLabel بكمية ${Formatters.number(result.delta.abs())} '
+                '— الكمية الآن ${Formatters.number(result.newQuantity)}',
       );
     } catch (error) {
       if (!mounted) return;
