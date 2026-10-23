@@ -129,7 +129,16 @@ class _InventoryReportPageState extends ConsumerState<InventoryReportPage> {
                 const SizedBox(height: AppSpacing.md),
                 Expanded(
                   child: AppGrid(
-                    key: ValueKey('$code-${r.items.length}'),
+                    // عدد الأصناف وحده لا يلتقط تغيّر كمية صنفٍ قائم (تسوية
+                    // جرد أو فاتورة أول المدة) — TrinaGrid تُبقي صفوفها
+                    // المخبَّأة داخلياً بلا إعادة بناء الكمية الجديدة. راجع
+                    // نفس الإصلاح في stocktake_report_page.dart.
+                    key: ValueKey(Object.hash(
+                      code,
+                      r.items.length,
+                      Object.hashAllUnordered(r.items.map(
+                          (i) => Object.hash(i.medicineId, i.quantity, i.stockValue))),
+                    )),
                     tree: true,
                     columns: [
                       appGridTextColumn(AppStrings.medicineName, _fName,

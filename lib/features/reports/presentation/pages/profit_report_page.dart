@@ -146,7 +146,15 @@ class _ProfitReportPageState extends ConsumerState<ProfitReportPage> {
           const SizedBox(height: AppSpacing.md),
           Expanded(
             child: AppGrid(
-              key: ValueKey('$code-${r.invoices.length}'),
+              // نفس إصلاح stocktake_report_page.dart: عدد الفواتير وحده لا
+              // يلتقط تعديل فاتورة قائمة (ربحها/إجماليها يتغيّر بلا تغيّر
+              // العدد) فتبقى TrinaGrid على صفوفها المخبَّأة القديمة.
+              key: ValueKey(Object.hash(
+                code,
+                r.invoices.length,
+                Object.hashAllUnordered(r.invoices.map((i) =>
+                    Object.hash(i.invoiceNumber, i.revenue, i.cost, i.profit))),
+              )),
               columns: [
                 appGridTextColumn(AppStrings.invoiceLabel, _fInvoice,
                     width: 130),

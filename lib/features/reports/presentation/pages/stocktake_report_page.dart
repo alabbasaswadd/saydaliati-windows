@@ -9,6 +9,7 @@ import 'package:saydaliati/features/reports/domain/entities/stocktake.dart';
 import 'package:saydaliati/features/reports/report_providers.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
 import 'package:saydaliati/shared/widgets/buttons/app_refresh_button.dart';
+import 'package:saydaliati/shared/widgets/buttons/app_segmented_pill.dart';
 import 'package:saydaliati/shared/widgets/cards/stat_chips_bar.dart';
 import 'package:saydaliati/shared/widgets/filters/filter_bar.dart';
 import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
@@ -121,16 +122,15 @@ class _StocktakeReportPageState extends ConsumerState<StocktakeReportPage> {
           // فلاتر مضمّنة: أساس التسعير + عملة العرض.
           FilterBar(
             children: [
-              SegmentedButton<_Basis>(
-                segments: const [
-                  ButtonSegment(
-                      value: _Basis.cost, label: Text(AppStrings.basisCost)),
-                  ButtonSegment(
-                      value: _Basis.sale, label: Text(AppStrings.basisSale)),
+              // نفس أسلوب مُنتقي الفترة بقسم الربح بالشاشة الرئيسية — لا
+              // كروم SegmentedButton القياسي الذي كان يبدو غريباً هنا.
+              AppSegmentedPill<_Basis>(
+                options: const [
+                  (_Basis.cost, AppStrings.basisCost),
+                  (_Basis.sale, AppStrings.basisSale),
                 ],
-                selected: {_basis},
-                onSelectionChanged: (sel) =>
-                    setState(() => _basis = sel.first),
+                selected: _basis,
+                onChanged: (v) => setState(() => _basis = v),
               ),
               if (currencies.isNotEmpty)
                 AppMenuChip<String>(
@@ -174,7 +174,19 @@ class _StocktakeReportPageState extends ConsumerState<StocktakeReportPage> {
           const SizedBox(height: AppSpacing.md),
           Expanded(
             child: AppGrid(
-              key: ValueKey('$code-$_basis-${s.items.length}'),
+              // المفتاح كان مشتقّاً من عدد الأصناف وحده — فتسويةٌ أو فاتورة
+              // أول المدة تُغيّر كمية صنفٍ قائم (بلا تغيير العدد الكلي) كانت
+              // لا تُجبر TrinaGrid على إعادة بناء صفوفه المخبَّأة داخلياً،
+              // فتبقى الكمية القديمة ظاهرة رغم وصول بيانات جديدة صحيحة من
+              // الخادم. GridGroupMemory مربوطة أصلاً لاستعادة التمدّد/الفلترة
+              // بعد أي إعادة بناء، فتضمين قيم البيانات هنا آمن.
+              key: ValueKey(Object.hash(
+                code,
+                _basis,
+                s.items.length,
+                Object.hashAllUnordered(s.items.map((i) =>
+                    Object.hash(i.medicineId, i.onHandQuantity, i.costValue))),
+              )),
               tree: true,
               columns: [
                 appGridTextColumn(AppStrings.medicineName, _fName, width: 260),

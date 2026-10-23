@@ -135,7 +135,16 @@ class _ExpiryReportPageState extends ConsumerState<ExpiryReportPage> {
                         : AppStrings.noExpiringSoon,
                   )
                 : AppGrid(
-                    key: ValueKey('$_window-$_view-${rows.length}'),
+                    // نفس إصلاح stocktake_report_page.dart: عدد الدفعات وحده
+                    // لا يلتقط تغيّر كمية دفعةٍ قائمة فتبقى TrinaGrid على
+                    // صفوفها المخبَّأة القديمة.
+                    key: ValueKey(Object.hash(
+                      _window,
+                      _view,
+                      rows.length,
+                      Object.hashAllUnordered(
+                          rows.map((b) => Object.hash(b.stockId, b.quantityAvailable))),
+                    )),
                     columns: _columns(soonColor, expiredColor),
                     rows: [
                       for (final b in rows)
