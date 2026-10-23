@@ -6,9 +6,12 @@ import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/features/currencies/domain/currency_conversion.dart';
 import 'package:saydaliati/features/currencies/domain/entities/currency.dart';
 import 'package:saydaliati/features/currencies/presentation/providers/currencies_provider.dart';
+import 'package:saydaliati/features/dashboard/presentation/providers/dashboard_provider.dart';
+import 'package:saydaliati/features/purchases/purchase_providers.dart';
 import 'package:saydaliati/features/reports/domain/entities/inventory_report.dart';
 import 'package:saydaliati/features/reports/presentation/widgets/report_scaffold.dart';
 import 'package:saydaliati/features/reports/report_providers.dart';
+import 'package:saydaliati/features/sales/presentation/providers/sales_provider.dart';
 import 'package:saydaliati/features/stocks/presentation/widgets/adjust_stock_dialog.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
 import 'package:saydaliati/shared/widgets/cards/stat_chips_bar.dart';
@@ -49,12 +52,6 @@ class _InventoryReportPageState extends ConsumerState<InventoryReportPage> {
   static const _fExpiry = 'expiry';
   static const _fDaysLeft = 'daysLeft';
   static const _fAdjust = 'adjust';
-  static const _fBatchKey = 'batchKey';
-
-  /// خريطة بحث (مفتاح الدفعة → بياناتها) تُعاد تعبئتها عند كل بناء — يقرأ
-  /// منها زرّ التسوية ما يحتاجه (الدواء/المستودع/الصلاحية/الكمية الحالية)
-  /// دون المرور بقيمة الخليّة وحدها.
-  final Map<String, _BatchRef> _batchRefs = {};
 
   @override
   Widget build(BuildContext context) {
@@ -238,17 +235,21 @@ class _InventoryReportPageState extends ConsumerState<InventoryReportPage> {
                       // الدفعات صفٌّ مجمَّع لا تسوية له مباشرةً — يُوسَّع إلى
                       // دفعاته أولاً.
                       TrinaColumn(
-                        title: '',
+                        title: 'تسوية',
                         field: _fAdjust,
                         type: TrinaColumnType.text(),
-                        width: 44,
+                        width: 60,
                         enableEditingMode: false,
                         enableContextMenu: false,
                         enableFilterMenuItem: false,
                         enableSorting: false,
                         renderer: (ctx) {
-                          final key = ctx.row.cells[_fBatchKey]?.value as String?;
-                          final batch = key == null ? null : _batchRefs[key];
+                          // بيانات الدفعة بمعطيات الصفّ (`metadata`) لا بعمود
+                          // خفيّ: عمودٌ خفيّ كان لا يزال يظهر في نافذة
+                          // «إظهار/إخفاء الأعمدة» (تسرد كل الأعمدة بلا استثناء
+                          // حتى المخفاة) — عمودٌ بلا عنوان يحمل معرّفات
+                          // وتواريخ خامًا لا معنى له للمستخدم.
+                          final batch = ctx.row.metadata?['batch'] as _BatchRef?;
                           if (batch == null) return const SizedBox.shrink();
                           // `PermissionGate` بنفسه لا فحص مباشر هنا: هو
                           // `ConsumerWidget` يستدعي `ref.watch` ضمن `build`ه
@@ -266,18 +267,8 @@ class _InventoryReportPageState extends ConsumerState<InventoryReportPage> {
                           );
                         },
                       ),
-                      TrinaColumn(
-                          title: '',
-                          field: _fBatchKey,
-                          type: TrinaColumnType.text(),
-                          hide: true),
                     ],
-                    rows: () {
-                      _batchRefs.clear();
-                      return [
-                        for (final it in r.items) _itemRow(it, conv, _batchRefs),
-                      ];
-                    }(),
+                    rows: [for (final it in r.items) _itemRow(it, conv)],
                     onLoaded: (m) => _gridManager = m,
                     // صنف منخفض المخزون أو دفعة منتهية/قريبة الانتهاء → تظليل خفيف.
                     rowColorCallback: (ctx) {
@@ -309,14 +300,13 @@ class _InventoryReportPageState extends ConsumerState<InventoryReportPage> {
   /// الدواء أكثر من دفعة/تاريخ صلاحية — دواء بدفعة واحدة لا فائدة من توسيعه،
   /// فيبقى صفاً مسطّحاً، لكن **صلاحيته وأيامه المتبقية تُعرَض على نفس الصف**
   /// (لا تُفقَد فقط لأنه بلا أبناء).
-  TrinaRow<dynamic> _itemRow(InventoryItem it, double Function(double) conv,
-      Map<String, _BatchRef> refs) {
+  TrinaRow<dynamic> _itemRow(InventoryItem it, double Function(double) conv) {
     // دواء بدفعة واحدة بالضبط: فلا شجرة، لكن تفاصيل تلك الدفعة الوحيدة تُعرَض
     // مباشرة على صف الدواء نفسه بدل أن تختفي.
     final onlyBatch = it.batches.length == 1 ? it.batches.first : null;
-    final onlyBatchKey = onlyBatch == null
+    final onlyBatchRef = onlyBatch == null
         ? null
-        : _registerBatch(refs, it.medicineId, it.brandName, onlyBatch);
+        : _batchRef(it.medicineId, it.brandName, onlyBatch);
 
     final parentCells = {
       _fName: TrinaCell(value: it.brandName),
@@ -333,58 +323,54 @@ class _InventoryReportPageState extends ConsumerState<InventoryReportPage> {
       _fDaysLeft: TrinaCell(value: onlyBatch?.daysLeft ?? ''),
       _fValue: TrinaCell(value: conv(it.stockValue)),
       _fLow: TrinaCell(value: it.isLowStock.toString()),
-      _fBatchKey: TrinaCell(value: onlyBatchKey ?? ''),
     };
 
     if (it.batches.length <= 1) {
-      return TrinaRow(cells: parentCells);
+      return TrinaRow(
+          cells: parentCells,
+          metadata: onlyBatchRef == null ? null : {'batch': onlyBatchRef});
     }
 
     return TrinaRow(
       cells: parentCells,
       type: TrinaRowType.group(
         children: FilteredList(initialList: [
-          for (final b in it.batches)
-            _batchRow(it.medicineId, it.brandName, b, conv, refs),
+          for (final b in it.batches) _batchRow(it.medicineId, it.brandName, b, conv),
         ]),
       ),
     );
   }
 
-  /// يسجّل دفعة في خريطة البحث ويُعيد مفتاحها — مفتاح مركّب (دواء + مستودع +
-  /// صلاحية) لأن التسوية بالخادم تحدَّد بهذه الثلاثة معاً (`AdjustStockCommand`).
-  String _registerBatch(Map<String, _BatchRef> refs, String medicineId,
-      String medicineName, InventoryBatch b) {
-    final key =
-        '$medicineId|${b.warehouseId}|${b.expiryDate?.toIso8601String() ?? ''}';
-    refs[key] = _BatchRef(
-      medicineId: medicineId,
-      medicineName: medicineName,
-      warehouseId: b.warehouseId,
-      warehouseName: b.warehouseName,
-      expiryDate: b.expiryDate,
-      quantity: b.quantity,
-    );
-    return key;
-  }
+  /// بيانات دفعة واحدة لازمة لحوار التسوية — مفتاحها الفعليّ عند الخادم
+  /// (دواء + مستودع + صلاحية، راجع `AdjustStockCommand`) يبقى داخل الكائن
+  /// نفسه، لا عموداً أو خريطة بحث منفصلة.
+  _BatchRef _batchRef(String medicineId, String medicineName, InventoryBatch b) =>
+      _BatchRef(
+        medicineId: medicineId,
+        medicineName: medicineName,
+        warehouseId: b.warehouseId,
+        warehouseName: b.warehouseName,
+        expiryDate: b.expiryDate,
+        quantity: b.quantity,
+      );
 
-  TrinaRow<dynamic> _batchRow(String medicineId, String medicineName,
-      InventoryBatch b, double Function(double) conv,
-      Map<String, _BatchRef> refs) {
-    final key = _registerBatch(refs, medicineId, medicineName, b);
-    return TrinaRow(cells: {
-      _fName: TrinaCell(value: ''),
-      _fQty: TrinaCell(value: b.quantity),
-      _fSale: TrinaCell(value: ''),
-      _fBatchKey: TrinaCell(value: key),
-      _fCost: TrinaCell(value: conv(b.purchasePrice)),
-      _fWarehouse: TrinaCell(value: b.warehouseName),
-      _fExpiry: TrinaCell(
-          value: b.expiryDate != null ? _ymd(b.expiryDate!) : AppStrings.notSet),
-      _fDaysLeft: TrinaCell(value: b.daysLeft ?? ''),
-      _fValue: TrinaCell(value: conv(b.batchValue)),
-      _fLow: TrinaCell(value: ''),
-    });
+  TrinaRow<dynamic> _batchRow(
+      String medicineId, String medicineName, InventoryBatch b, double Function(double) conv) {
+    return TrinaRow(
+      metadata: {'batch': _batchRef(medicineId, medicineName, b)},
+      cells: {
+        _fName: TrinaCell(value: ''),
+        _fQty: TrinaCell(value: b.quantity),
+        _fSale: TrinaCell(value: ''),
+        _fCost: TrinaCell(value: conv(b.purchasePrice)),
+        _fWarehouse: TrinaCell(value: b.warehouseName),
+        _fExpiry: TrinaCell(
+            value: b.expiryDate != null ? _ymd(b.expiryDate!) : AppStrings.notSet),
+        _fDaysLeft: TrinaCell(value: b.daysLeft ?? ''),
+        _fValue: TrinaCell(value: conv(b.batchValue)),
+        _fLow: TrinaCell(value: ''),
+      },
+    );
   }
 
   static String _ymd(DateTime d) =>
@@ -402,7 +388,14 @@ class _InventoryReportPageState extends ConsumerState<InventoryReportPage> {
       expiryDate: batch.expiryDate,
       currentQuantity: batch.quantity,
     );
-    if (done) ref.invalidate(inventoryReportProvider);
+    if (!done) return;
+    ref.invalidate(inventoryReportProvider);
+    // التسوية تُصدِر فاتورة شراء (زيادة) أو بيع (نقص) فعلية — راجع
+    // AdjustStockHandler. بلا هذا الإبطال تبقى قائمتا الفواتير بحالتهما
+    // المخزَّنة القديمة فلا تظهر فيهما الفاتورة الجديدة إلا بتحديث يدوي.
+    ref.invalidate(salesListProvider);
+    ref.invalidate(purchasesListProvider);
+    ref.invalidate(dashboardProvider);
   }
 }
 
