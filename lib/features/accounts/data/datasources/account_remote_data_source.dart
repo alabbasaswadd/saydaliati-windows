@@ -42,4 +42,17 @@ class AccountRemoteDataSource {
     );
     return (data as Map).cast<String, dynamic>();
   }
+
+  /// رصيد افتتاحي — الخادم يستخدم عملة الصندوق نفسها حصراً (لا حقل عملة هنا).
+  Future<void> setOpeningBalance(
+    String id, {
+    required double amount,
+    DateTime? date,
+    String? note,
+  }) =>
+      _api.post(ApiEndpoints.accountOpeningBalance(id), data: {
+        'amount': amount,
+        if (date != null) 'date': date.toIso8601String(),
+        if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+      });
 }

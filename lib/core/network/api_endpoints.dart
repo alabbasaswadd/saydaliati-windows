@@ -144,6 +144,8 @@ abstract final class ApiEndpoints {
   static const String accounts = '$_base/Account';
   static String accountById(String id) => '$_base/Account/$id';
   static String accountStatement(String id) => '$_base/Account/$id/statement';
+  static String accountOpeningBalance(String id) =>
+      '$_base/Account/$id/opening-balance';
 
   // ---- Journal entries ----
   static const String journalEntries = '$_base/JournalEntry';

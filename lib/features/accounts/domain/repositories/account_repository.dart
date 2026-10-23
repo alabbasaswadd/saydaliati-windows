@@ -17,4 +17,13 @@ abstract interface class AccountRepository {
     DateTime? from,
     DateTime? to,
   });
+
+  /// رصيد افتتاحي لصندوق عملة — سند قيد مزدوج (مدين الصندوق، دائن رأس
+  /// المال) بعملة الصندوق نفسها حصراً؛ الخادم يرفض الحسابات بلا عملة.
+  Future<Result<bool>> setOpeningBalance(
+    String accountId, {
+    required double amount,
+    DateTime? date,
+    String? note,
+  });
 }

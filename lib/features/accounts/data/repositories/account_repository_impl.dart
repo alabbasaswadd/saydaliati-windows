@@ -92,6 +92,21 @@ class AccountRepositoryImpl implements AccountRepository {
     }
   }
 
+  @override
+  Future<Result<bool>> setOpeningBalance(
+    String accountId, {
+    required double amount,
+    DateTime? date,
+    String? note,
+  }) async {
+    try {
+      await remote.setOpeningBalance(accountId, amount: amount, date: date, note: note);
+      return const Result.success(true);
+    } catch (error) {
+      return Result.failure(mapExceptionToFailure(error));
+    }
+  }
+
   Account _accountFromJson(Map<String, dynamic> j) => Account(
         id: (j['id'] ?? '').toString(),
         name: (j['name'] ?? '').toString(),

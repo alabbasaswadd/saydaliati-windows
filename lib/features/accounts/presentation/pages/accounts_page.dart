@@ -7,6 +7,7 @@ import 'package:saydaliati/features/accounts/account_providers.dart';
 import 'package:saydaliati/features/accounts/domain/entities/account.dart';
 import 'package:saydaliati/features/accounts/presentation/pages/account_form_dialog.dart';
 import 'package:saydaliati/features/accounts/presentation/pages/account_statement_page.dart';
+import 'package:saydaliati/features/accounts/presentation/pages/opening_balance_dialog.dart';
 import 'package:saydaliati/features/currencies/domain/currency_conversion.dart';
 import 'package:saydaliati/features/currencies/domain/entities/currency.dart';
 import 'package:saydaliati/features/currencies/presentation/providers/currencies_provider.dart';
@@ -67,6 +68,13 @@ class AccountsPage extends ConsumerWidget {
     ));
   }
 
+  Future<void> _openingBalance(BuildContext context, WidgetRef ref, Account a) async {
+    final saved = await showOpeningBalanceDialog(context, account: a);
+    if (saved != true || !context.mounted) return;
+    ref.invalidate(accountsListProvider);
+    AppSnackbar.success(context, 'تمّ تسجيل الرصيد الافتتاحي');
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(accountsListProvider);
@@ -110,6 +118,7 @@ class AccountsPage extends ConsumerWidget {
                   onEdit: (a) => _addOrEdit(context, ref, accounts, a),
                   onDelete: (a) => _delete(context, ref, a),
                   onOpenStatement: (a) => _openStatement(context, a),
+                  onOpeningBalance: (a) => _openingBalance(context, ref, a),
                 ),
               ),
       ),
@@ -125,6 +134,7 @@ class _AccountsGrid extends StatefulWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onOpenStatement,
+    required this.onOpeningBalance,
   });
 
   final List<Account> accounts;
@@ -133,6 +143,7 @@ class _AccountsGrid extends StatefulWidget {
   final ValueChanged<Account> onEdit;
   final ValueChanged<Account> onDelete;
   final ValueChanged<Account> onOpenStatement;
+  final ValueChanged<Account> onOpeningBalance;
 
   @override
   State<_AccountsGrid> createState() => _AccountsGridState();
@@ -277,8 +288,8 @@ class _AccountsGridState extends State<_AccountsGrid> {
           ),
         ),
         const SizedBox(height: AppSpacing.xs),
-        Expanded(child: _buildGrid(
-            context, byId, childrenOf, roots, rowOf, onEdit, onDelete, onOpenStatement)),
+        Expanded(child: _buildGrid(context, byId, childrenOf, roots, rowOf, onEdit,
+            onDelete, onOpenStatement, widget.onOpeningBalance)),
       ],
     );
   }
@@ -323,6 +334,7 @@ class _AccountsGridState extends State<_AccountsGrid> {
     ValueChanged<Account> onEdit,
     ValueChanged<Account> onDelete,
     ValueChanged<Account> onOpenStatement,
+    ValueChanged<Account> onOpeningBalance,
   ) {
     return AppGrid(
       // بلا مفتاح متغيّر لا يُعاد بناء TrinaGrid الداخلي عند تغيّر البيانات
@@ -399,7 +411,7 @@ class _AccountsGridState extends State<_AccountsGrid> {
           title: '',
           field: AccountsPage._fActions,
           type: TrinaColumnType.text(),
-          width: 140,
+          width: 170,
           enableEditingMode: false,
           enableContextMenu: false,
           enableFilterMenuItem: false,
@@ -428,6 +440,15 @@ class _AccountsGridState extends State<_AccountsGrid> {
                   tooltip: 'كشف الحساب',
                   onPressed: () => onOpenStatement(a),
                 ),
+                // الرصيد الافتتاحي متاح فقط لصناديق العملات (CurrencyId
+                // يميّزها وحدها) — نفس قيد الخادم تماماً.
+                if (a.currencyId != null)
+                  IconButton(
+                    icon: const Icon(Icons.savings_outlined, size: 16),
+                    visualDensity: VisualDensity.compact,
+                    tooltip: 'رصيد افتتاحي',
+                    onPressed: () => onOpeningBalance(a),
+                  ),
                 // التعديل بنقرة مزدوجة على الصف (بلا زر قلم في كل صف)، والحذف
                 // يظهر فقط للحسابات القابلة للحذف — الحساب الأساسي بلا أيقونة
                 // قفل معطّلة لا فائدة منها.
