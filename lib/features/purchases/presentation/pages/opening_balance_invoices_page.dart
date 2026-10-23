@@ -8,6 +8,9 @@ import 'package:saydaliati/features/purchases/presentation/pages/purchase_detail
 import 'package:saydaliati/features/purchases/purchase_providers.dart';
 import 'package:saydaliati/shared/widgets/buttons/app_refresh_button.dart';
 import 'package:saydaliati/shared/widgets/cards/invoice_card.dart';
+import 'package:saydaliati/shared/widgets/dialogs/app_dialogs.dart';
+import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
+import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
 import 'package:saydaliati/shared/widgets/states/app_states.dart';
 
 /// فواتير أول المدة — مخزون افتتاحي بلا مورّد، مقيَّد مقابل رأس المال
@@ -23,6 +26,22 @@ class OpeningBalanceInvoicesPage extends ConsumerWidget {
     );
     if (!context.mounted) return;
     ref.invalidate(purchasesListProvider);
+  }
+
+  Future<void> _delete(
+      BuildContext context, WidgetRef ref, Purchase purchase) async {
+    final ok = await showDeleteConfirmationDialog(context,
+        itemName: '${AppStrings.invoiceLabel} #${purchase.invoiceNumber}');
+    if (!ok || !context.mounted) return;
+    final result = await ref.read(purchaseRepositoryProvider).delete(purchase.id);
+    if (!context.mounted) return;
+    result.fold(
+      (_) {
+        ref.invalidate(purchasesListProvider);
+        AppSnackbar.success(context, AppStrings.deletedSuccess);
+      },
+      (failure) => showFailureSnackbar(context, failure),
+    );
   }
 
   @override
@@ -93,6 +112,7 @@ class OpeningBalanceInvoicesPage extends ConsumerWidget {
           context,
           ref,
           PurchaseCreatePage(purchaseToEdit: purchase, isOpeningBalance: true)),
+      onDelete: () => _delete(context, ref, purchase),
     );
   }
 

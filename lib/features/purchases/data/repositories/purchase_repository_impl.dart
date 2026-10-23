@@ -52,4 +52,14 @@ class PurchaseRepositoryImpl implements PurchaseRepository {
       return Result.failure(mapExceptionToFailure(error));
     }
   }
+
+  @override
+  Future<Result<void>> delete(String id) async {
+    try {
+      await _remote.delete(id);
+      return const Result.success(null);
+    } catch (error) {
+      return Result.failure(mapExceptionToFailure(error));
+    }
+  }
 }

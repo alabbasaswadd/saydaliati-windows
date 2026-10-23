@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/core/utils/app_date.dart';
+import 'package:saydaliati/features/dashboard/presentation/providers/dashboard_provider.dart';
 import 'package:saydaliati/features/medicines/domain/entities/medicine.dart';
 import 'package:saydaliati/features/medicines/presentation/providers/medicines_provider.dart';
 import 'package:saydaliati/features/medicines/presentation/widgets/medicine_picker_field.dart';
@@ -13,6 +14,9 @@ import 'package:saydaliati/features/purchases/purchase_providers.dart';
 import 'package:saydaliati/features/reports/domain/report_period.dart';
 import 'package:saydaliati/shared/widgets/buttons/app_refresh_button.dart';
 import 'package:saydaliati/shared/widgets/cards/invoice_card.dart';
+import 'package:saydaliati/shared/widgets/dialogs/app_dialogs.dart';
+import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
+import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
 import 'package:saydaliati/shared/widgets/filters/filter_side_sheet.dart';
 import 'package:saydaliati/shared/widgets/filters/period_filter_list.dart';
 import 'package:saydaliati/shared/widgets/states/app_states.dart';
@@ -50,6 +54,22 @@ class _PurchasesListPageState extends ConsumerState<PurchasesListPage> {
         purchaseToEdit: purchase,
         isOpeningBalance: purchase.isOpeningBalance,
       ));
+
+  Future<void> _delete(Purchase purchase) async {
+    final ok = await showDeleteConfirmationDialog(context,
+        itemName: '${AppStrings.invoiceLabel} #${purchase.invoiceNumber}');
+    if (!ok || !context.mounted) return;
+    final result = await ref.read(purchaseRepositoryProvider).delete(purchase.id);
+    if (!context.mounted) return;
+    result.fold(
+      (_) {
+        ref.invalidate(purchasesListProvider);
+        ref.invalidate(dashboardProvider);
+        AppSnackbar.success(context, AppStrings.deletedSuccess);
+      },
+      (failure) => showFailureSnackbar(context, failure),
+    );
+  }
 
   Future<void> _open(Widget page) async {
     await Navigator.of(context).push(
@@ -161,8 +181,7 @@ class _PurchasesListPageState extends ConsumerState<PurchasesListPage> {
           : null,
       onTap: () => _open(PurchaseDetailPage(purchase: purchase)),
       onEdit: () => _edit(purchase),
-      // لا حذف لفواتير الشراء: الخادم لا يوفّر نقطة حذف (التعديل يعكس المخزون
-      // ويعيد تطبيقه، أما الحذف فغير مدعوم).
+      onDelete: () => _delete(purchase),
     );
   }
 

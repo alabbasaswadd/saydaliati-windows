@@ -12,4 +12,8 @@ abstract interface class PurchaseRepository {
 
   Future<Result<List<Purchase>>> getPurchases({int? limit, int? offset});
   Future<Result<Purchase>> getPurchase(String id);
+
+  /// Deletes a purchase invoice (online). The backend reverses the stock it
+  /// added (fails if some of it was already consumed) and its journal entry.
+  Future<Result<void>> delete(String id);
 }

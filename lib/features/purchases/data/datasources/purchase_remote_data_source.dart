@@ -25,4 +25,6 @@ class PurchaseRemoteDataSource {
     final data = await _api.get(ApiEndpoints.purchaseById(id));
     return (data as Map).cast<String, dynamic>();
   }
+
+  Future<void> delete(String id) => _api.delete(ApiEndpoints.purchaseById(id));
 }
