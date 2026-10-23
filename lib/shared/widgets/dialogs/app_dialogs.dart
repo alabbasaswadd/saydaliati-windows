@@ -111,6 +111,31 @@ Future<void> showSuccessDialog(
   );
 }
 
+/// Info dialog with a single dismiss action — شرح مفهوم لا نتيجة عملية
+/// (خطأ/نجاح)، فأيقونته ولونه محايدان لا أحمر/أخضر.
+Future<void> showInfoDialog(
+  BuildContext context, {
+  required String message,
+  String? title,
+}) {
+  return showDialog<void>(
+    context: context,
+    builder: (context) => _AppAlert(
+      icon: Icons.info_outline,
+      iconColor: Theme.of(context).colorScheme.primary,
+      title: title ?? AppStrings.infoDefault,
+      message: message,
+      actions: [
+        _AlertButton(
+          label: AppStrings.ok,
+          filled: true,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ],
+    ),
+  );
+}
+
 class _AppAlert extends StatelessWidget {
   const _AppAlert({
     required this.icon,

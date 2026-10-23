@@ -96,6 +96,22 @@ class AccountsPage extends ConsumerWidget {
           AppRefreshButton(
             onRefresh: () => ref.refresh(accountsListProvider.future),
           ),
+          IconButton(
+            icon: const Icon(Icons.help_outline, size: 20),
+            tooltip: 'ما هو الرصيد الافتتاحي؟',
+            onPressed: () => showInfoDialog(
+              context,
+              title: 'الرصيد الافتتاحي',
+              message: 'المبلغ الموجود فعلياً في الصندوق لحظة بدء استخدام '
+                  'البرنامج — لا رصيد ناتج عن عملية بيع أو شراء، بل نقطة '
+                  'البداية.\n\n'
+                  'مهمّ خاصة عند إدخال فواتير قديمة بالرجوع: فاتورة شراء '
+                  'قديمة تخصم من الصندوق، فإن لم يكن له رصيد افتتاحي بتاريخ '
+                  'سابق لها يظهر رصيده سالباً رغم أن المواد موجودة أصلاً '
+                  'عند الصيدلي من قبل. فاختر دوماً تاريخاً سابقاً لأقدم '
+                  'فاتورة ستُدخلها.',
+            ),
+          ),
           Padding(
             padding: const EdgeInsetsDirectional.only(end: 8),
             child: SizedBox(

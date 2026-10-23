@@ -210,6 +210,7 @@ abstract final class AppStrings {
   static const String noInternet = 'لا يوجد اتصال بالإنترنت';
   static const String noInternetHint = 'تحقق من اتصالك ثم أعد المحاولة';
   static const String successDefault = 'تمت العملية بنجاح';
+  static const String infoDefault = 'معلومة';
 
   // Auth
   static const String login = 'تسجيل الدخول';
@@ -615,4 +616,6 @@ abstract final class AppStrings {
   static const String dashNoProfitData = 'لا توجد مبيعات لهذه الفترة';
   static const String dashPayablesTitle = 'ديون الموردين';
   static const String dashNoPayables = 'لا توجد ديون مستحقة للموردين';
+  static const String dashCashBoxTitle = 'رصيد الصندوق حسب العملة';
+  static const String dashNoCashBox = 'لا رصيد بعد';
 }
