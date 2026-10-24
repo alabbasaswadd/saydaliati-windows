@@ -26,6 +26,8 @@ const List<NavEntry> navCatalog = [
   NavEntry(AppRoutes.purchases, 'المشتريات', Icons.shopping_cart_outlined),
   NavEntry(AppRoutes.purchaseInvoices, 'فواتير المشتريات', Icons.receipt_outlined),
   NavEntry(AppRoutes.openingBalanceInvoices, 'أول المدة', Icons.account_balance_wallet_outlined),
+  NavEntry(AppRoutes.salesReturns, 'مرتجع مبيعات', Icons.assignment_return_outlined),
+  NavEntry(AppRoutes.purchaseReturns, 'مرتجع مشتريات', Icons.assignment_return_outlined),
   NavEntry(AppRoutes.products, 'الأدوية', Icons.medication_outlined),
   NavEntry(AppRoutes.catalog, 'المكتبة الدوائية', Icons.local_library_outlined),
   NavEntry(AppRoutes.inventory, 'المخزون', Icons.inventory_2_outlined),
@@ -55,6 +57,8 @@ const List<NavEntry> navCatalog = [
   NavEntry(AppRoutes.profile, 'الحساب الشخصي', Icons.person_outline),
   NavEntry(AppRoutes.tutorials, 'الشروحات', Icons.school_outlined),
   NavEntry(AppRoutes.notifications, 'الإشعارات', Icons.notifications_outlined),
+  NavEntry(AppRoutes.users, 'المستخدمون', Icons.manage_accounts_outlined),
+  NavEntry(AppRoutes.roles, 'الأدوار والصلاحيات', Icons.admin_panel_settings_outlined),
 ];
 
 /// أفضل مطابقة لمسار: المطابقة التامّة أولاً، ثم أطول بادئة — فمسار فرعي
