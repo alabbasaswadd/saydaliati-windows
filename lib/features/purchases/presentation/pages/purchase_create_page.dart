@@ -138,10 +138,10 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
   /// البناء فيحتاج آخر قيمة معروفة (نفس حل فاتورة المبيعات).
   List<Medicine> _lastCatalog = const [];
 
-  /// نسبة سعر الشراء المقترَح من سعر المبيع. الافتراضي 27% — رقم تقريبي شائع
-  /// لهامش الصيدليات، والمستخدم يغيّره من تنويه أعلى الفاتورة.
+  /// نسبة سعر الشراء المقترَح من سعر المبيع. الافتراضي 74%، والمستخدم
+  /// يغيّره من تنويه أعلى الفاتورة.
   double _costPercent = _defaultCostPercent;
-  static const double _defaultCostPercent = 27;
+  static const double _defaultCostPercent = 74;
 
   /// التكلفة المقترَحة لوحدة بعملة الفاتورة = سعر مبيعها × النسبة.
   double _suggestedCost(MedicineUnit unit, Currency? base, Currency? selected) =>
