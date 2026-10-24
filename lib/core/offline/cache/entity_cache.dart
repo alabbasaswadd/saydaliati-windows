@@ -109,20 +109,6 @@ class EntityCache<T> {
 
   Future<bool> get isEmpty async => (await count()) == 0;
 
-  /// Count of cached rows whose indexed [code] is one of [codes] — filtered at
-  /// the SQL level (the indexed `code` column), no payload decoded. For "how
-  /// many of these do I already have" checks against a large mirror.
-  Future<int> countByCodes(Iterable<String> codes) async {
-    final list = codes.toList();
-    if (list.isEmpty) return 0;
-    final countExp = db.cacheEntries.id.count();
-    final query = db.selectOnly(db.cacheEntries)
-      ..addColumns([countExp])
-      ..where(_scope & db.cacheEntries.code.isIn(list));
-    final row = await query.getSingle();
-    return row.read(countExp) ?? 0;
-  }
-
   /// When this type was last pulled from the server for this tenant (null = never).
   Future<DateTime?> lastPulledAt() async {
     final row = await (db.select(db.syncMetaEntries)

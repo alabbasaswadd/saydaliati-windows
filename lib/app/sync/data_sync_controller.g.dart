@@ -69,7 +69,7 @@ final class DataSyncControllerProvider
 }
 
 String _$dataSyncControllerHash() =>
-    r'7f9a774ba477f4c01baba2b055472a532f025fb2';
+    r'af0d54880457af003731e1060d4bff35973a2f37';
 
 /// The single orchestrator for keeping the local cache in sync with the server.
 ///
