@@ -604,10 +604,10 @@ abstract final class AppStrings {
   static const String dashNoLowStock = 'لا توجد أدوية منخفضة المخزون';
   static const String dashNoExpiring = 'لا توجد أدوية قريبة من الانتهاء حالياً';
   static const String dashViewAll = 'عرض الكل';
-  static const String dashCapital = 'رأس المال المستخدم';
+  static const String dashCapital = 'قيمة المخزون';
   static const String dashCapitalInfo =
-      'رأس المال المستخدم هنا يُمثّل قيمة المخزون الحالي (الكمية المتاحة × '
-      'سعر الشراء) — لا يوجد حالياً حساب رأس مال محاسبي مستقل.';
+      'قيمة المخزون = الكمية المتاحة × سعر الشراء، لكل الأدوية في كل '
+      'المستودعات.';
   static const String dashProfitTitle = 'الربح';
   static const String dashPeriodDay = 'اليوم';
   static const String dashPeriodWeek = 'الأسبوع';
