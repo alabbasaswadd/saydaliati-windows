@@ -12,8 +12,19 @@
 ;  Release output.
 ; ============================================================================
 
+#ifdef DEV
+; نسخة ديف: اسم وموقع تثبيت ومعرّف منتج مختلفون كلياً عن نسخة الإنتاج —
+; تُثبَّت بجانبها لا فوقها، فلا خطر على تثبيت العميل الحقيقي على نفس الجهاز.
+#define MyAppName "صيدليتي (ديف)"
+#define MyAppNameLatin "Saydaliati-Dev"
+#define MyAppId "{{B7E2A4F0-9C3D-4E1A-8F5B-2A6D7E8C9B0A}"
+#define MyOutputBaseFilename "Setup-dev"
+#else
 #define MyAppName "صيدليتي"
 #define MyAppNameLatin "Saydaliati"
+#define MyAppId "{{A3F1C9E2-5D47-4B8A-9E6C-1F2B3C4D5E6F}"
+#define MyOutputBaseFilename "Setup"
+#endif
 #define MyAppVersion "1.2.0"
 #define MyAppPublisher "CodeTech Syria"
 #define MyAppExeName "saydaliati.exe"
@@ -30,7 +41,8 @@
 [Setup]
 ; A STABLE AppId — keep it unchanged forever so updates/reinstalls map to the
 ; same Add/Remove-Programs entry (and user data is preserved across upgrades).
-AppId={{A3F1C9E2-5D47-4B8A-9E6C-1F2B3C4D5E6F}
+; (Dev builds use their own separate AppId — see the #ifdef DEV block above.)
+AppId={#MyAppId}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
@@ -39,9 +51,9 @@ VersionInfoVersion={#MyAppVersion}
 DefaultDirName={autopf}\{#MyAppNameLatin}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
-; One installer file -> <project>\dist\Setup.exe
+; One installer file -> <project>\dist\Setup.exe (or Setup-dev.exe for -Dev).
 OutputDir=..\..\dist
-OutputBaseFilename=Setup
+OutputBaseFilename={#MyOutputBaseFilename}
 SetupIconFile=..\runner\resources\app_icon.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 UninstallDisplayName={#MyAppName}

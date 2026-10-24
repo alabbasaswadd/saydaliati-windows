@@ -11,15 +11,26 @@
   Usage:
     powershell -ExecutionPolicy Bypass -File scripts\build_windows_installer.ps1
     powershell -ExecutionPolicy Bypass -File scripts\build_windows_installer.ps1 -Portable
+    powershell -ExecutionPolicy Bypass -File scripts\build_windows_installer.ps1 -Dev
 
   -Portable also produces dist\Saydaliati-<version>-portable.zip: the Release
   folder with the three C++ runtime DLLs copied in beside the exe, for machines
   where an admin installer cannot be run.
+
+  -Dev points the build at the dev API server instead of production, and
+  packages it as dist\Setup-dev.exe with its own app name/install folder/
+  AppId ("صيدليتي (ديف)") so it installs side-by-side with a production
+  install on the same machine instead of overwriting it.
 #>
 
 param(
-    [switch]$Portable
+    [switch]$Portable,
+    [switch]$Dev
 )
+
+# Dev builds point at the dev API server instead of the production default
+# baked into AppConfig.apiBaseUrl (lib\core\config\app_config.dart).
+$DevApiBaseUrl = 'http://169.58.139.217:5010'
 
 $ErrorActionPreference = 'Stop'
 
@@ -99,8 +110,14 @@ flutter pub get
 Write-Host "==> build_runner codegen (freezed / json_serializable / riverpod / drift)"
 dart run build_runner build --delete-conflicting-outputs
 
-Write-Host "==> flutter build windows --release"
-flutter build windows --release
+if ($Dev) {
+    Write-Host "==> flutter build windows --release (DEV -> $DevApiBaseUrl)"
+    flutter build windows --release --dart-define=API_BASE_URL=$DevApiBaseUrl
+}
+else {
+    Write-Host "==> flutter build windows --release"
+    flutter build windows --release
+}
 
 $releaseDir = Join-Path $root 'build\windows\x64\runner\Release'
 if (-not (Test-Path (Join-Path $releaseDir 'saydaliati.exe'))) {
@@ -124,10 +141,16 @@ if (-not $iscc) {
 }
 Write-Host "==> Inno Setup: $iscc"
 
-& $iscc "windows\installer\saydaliati.iss"
+if ($Dev) {
+    & $iscc "/DDEV=1" "windows\installer\saydaliati.iss"
+}
+else {
+    & $iscc "windows\installer\saydaliati.iss"
+}
 if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed with exit code $LASTEXITCODE" }
 
-$setup = Join-Path $root 'dist\Setup.exe'
+$setupName = if ($Dev) { 'Setup-dev.exe' } else { 'Setup.exe' }
+$setup = Join-Path $root "dist\$setupName"
 Write-Host ""
 Write-Host "==> Done. Installer at: $setup"
 Get-Item $setup | Format-List Name, Length, LastWriteTime
