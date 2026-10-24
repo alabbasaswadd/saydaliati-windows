@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/core/theme/app_breakpoints.dart';
+import 'package:saydaliati/core/theme/app_semantic_colors.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/features/catalog/catalog_providers.dart';
 import 'package:saydaliati/features/catalog/domain/catalog_item.dart';
@@ -11,6 +13,7 @@ import 'package:saydaliati/features/medicines/presentation/providers/medicines_p
 import 'package:saydaliati/features/suppliers/domain/entities/supplier.dart';
 import 'package:saydaliati/features/suppliers/supplier_providers.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
+import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
 import 'package:trina_grid/trina_grid.dart';
 
@@ -34,6 +37,9 @@ class _AddCatalogToStockPageState extends ConsumerState<AddCatalogToStockPage> {
   double _qty = 1;
   double _purchase = 0;
   double _sale = 0;
+  // بونص (مجّانية) — منفصلة عن الكمية المدفوعة، كلفتها صفر دائماً ولا تؤثّر
+  // في سعر الشراء أعلاه (نفس مبدأ البونص بفاتورة الشراء واستلام المخزون).
+  double _bonus = 0;
   late DateTime _expiry = DateTime.now().add(const Duration(days: 365 * 3));
   bool _busy = false;
   // العملة التي يُدخَل بها سعر الشراء (افتراضياً العملة الأساسية = ل.س).
@@ -45,6 +51,7 @@ class _AddCatalogToStockPageState extends ConsumerState<AddCatalogToStockPage> {
   static const _fPurchase = 'purchase';
   static const _fCurrency = 'currency';
   static const _fSale = 'sale';
+  static const _fBonus = 'bonus';
   static const _fExpiry = 'expiry';
   static const _fSupplier = 'supplier';
 
@@ -88,10 +95,18 @@ class _AddCatalogToStockPageState extends ConsumerState<AddCatalogToStockPage> {
   }
 
   Future<void> _save() async {
-    final messenger = ScaffoldMessenger.of(context);
-    if (_qty <= 0 || _purchase <= 0 || _sale <= 0) {
-      messenger.showSnackBar(const SnackBar(
-          content: Text('أدخل الكمية وسعر الشراء وسعر المبيع (قيم موجبة)')));
+    if (_sale <= 0) {
+      AppSnackbar.error(context, 'أدخل سعر المبيع (قيمة موجبة)');
+      return;
+    }
+    // كمية مدفوعة صفر مسموحة إن كان هناك بونص — دفعة بونص خالصة بلا شراء
+    // فعلي (نفس حارس فاتورة الشراء واستلام المخزون).
+    if (_qty <= 0 && _bonus <= 0) {
+      AppSnackbar.error(context, AppStrings.purchaseLineNeedsQtyOrBonus);
+      return;
+    }
+    if (_qty > 0 && _purchase <= 0) {
+      AppSnackbar.error(context, 'أدخل سعر الشراء للكمية المدفوعة');
       return;
     }
 
@@ -103,10 +118,9 @@ class _AddCatalogToStockPageState extends ConsumerState<AddCatalogToStockPage> {
     var purchaseSyp = _purchase;
     if (selected != null && base != null && selected.id != base.id) {
       if (selected.exchangeRate <= 0) {
-        messenger.showSnackBar(SnackBar(
-            content: Text(
-                'لم يُحدَّد سعر صرف لعملة ${selected.code}. حدّده من شاشة العملات، '
-                'أو اختر «الليرة السورية» وأدخل السعر بها.')));
+        AppSnackbar.error(context,
+            'لم يُحدَّد سعر صرف لعملة ${selected.code}. حدّده من شاشة العملات، '
+            'أو اختر «الليرة السورية» وأدخل السعر بها.');
         return;
       }
       purchaseSyp = convertToBase(_purchase, base, selected);
@@ -122,6 +136,7 @@ class _AddCatalogToStockPageState extends ConsumerState<AddCatalogToStockPage> {
             expiryDate: _expiry,
             barcode: widget.item.barcode,
             supplierId: _supplierId,
+            bonusQuantity: _bonus,
           );
       // حفظ الدواء المُنشأ مباشرةً في الكاش وإدراجه في قائمة الأدوية/المبيعات في
       // الذاكرة بلا رفرش يدوي.
@@ -131,12 +146,13 @@ class _AddCatalogToStockPageState extends ConsumerState<AddCatalogToStockPage> {
         } catch (_) {/* أفضل جهد — لا يُفشل الإضافة */}
       }
       if (!mounted) return;
-      messenger.showSnackBar(
-          const SnackBar(content: Text('تمت الإضافة إلى مخزونك')));
+      // نفس إشعار نجاح فواتير المبيعات (أخضر أعلى الشاشة) — لا سنادك بار
+      // رمادية أسفله بلا اتساق مع بقية التطبيق.
+      AppSnackbar.success(context, 'تمت الإضافة إلى مخزونك');
       Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text('تعذّرت الإضافة: $e')));
+      AppSnackbar.error(context, 'تعذّرت الإضافة: $e');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -274,8 +290,8 @@ class _AddCatalogToStockPageState extends ConsumerState<AddCatalogToStockPage> {
     }
 
     return AppGrid(
-      key: ValueKey(Object.hash(
-          selected?.id, _expiry, _supplierId, _qty, _purchase, _sale)),
+      key: ValueKey(Object.hash(selected?.id, _expiry, _supplierId, _qty,
+          _purchase, _sale, _bonus)),
       showColumnFilter: false,
       columns: [
         TrinaColumn(
@@ -324,6 +340,30 @@ class _AddCatalogToStockPageState extends ConsumerState<AddCatalogToStockPage> {
           enableEditingMode: true,
         ),
         TrinaColumn(
+          title: 'بونص',
+          field: _fBonus,
+          type: TrinaColumnType.number(
+              format: '#,##0.##', locale: 'en', applyFormatOnInit: false),
+          width: 90,
+          textAlign: TrinaColumnTextAlign.center,
+          enableEditingMode: true,
+          renderer: (ctx) {
+            final v = ctx.cell.value;
+            final n = v is num ? v.toDouble() : double.tryParse('$v');
+            if (n == null || n == 0) return const SizedBox.shrink();
+            return Directionality(
+              textDirection: TextDirection.ltr,
+              child: Text(
+                Formatters.number(n),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    color: context.semantic.success,
+                    fontWeight: FontWeight.w700),
+              ),
+            );
+          },
+        ),
+        TrinaColumn(
           title: 'تاريخ الصلاحية',
           field: _fExpiry,
           type: TrinaColumnType.text(),
@@ -366,6 +406,7 @@ class _AddCatalogToStockPageState extends ConsumerState<AddCatalogToStockPage> {
                     ? '${selected.name} (${selected.code})'
                     : ''),
           _fSale: TrinaCell(value: _sale > 0 ? _sale : ''),
+          _fBonus: TrinaCell(value: _bonus > 0 ? _bonus : ''),
           _fExpiry: TrinaCell(value: _ymd(_expiry)),
           if (suppliers.isNotEmpty)
             _fSupplier: TrinaCell(value: supplierName),
@@ -387,6 +428,8 @@ class _AddCatalogToStockPageState extends ConsumerState<AddCatalogToStockPage> {
               _purchase = v;
             case _fSale:
               _sale = v;
+            case _fBonus:
+              _bonus = v;
           }
         });
       },

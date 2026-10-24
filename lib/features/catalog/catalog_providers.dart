@@ -78,10 +78,6 @@ Future<List<CatalogItem>> catalogItemAlternatives(Ref ref, String id) =>
 /// باركودات أدويتي الخاصة — مفروزة من قيم `Medicine.barcode` (قد يحمل الحقل
 /// عدّة رموز مفصولة بفاصلة لدواء واحد، انظر `AddCatalogToStockHandler`
 /// بالخادم) — لمطابقة أصناف الكاتلوغ المضافة أصلاً إلى أدويتي.
-///
-/// الباركود هو الرابط الوحيد المتاح بين صنف الكاتلوغ ودواء الصيدلية: لا حقل
-/// يربطهما مباشرة (لا بالخادم ولا بالواجهة)، فصنفٌ بلا باركود لن يُكتشَف
-/// كـ«مضاف» حتى لو كان فعلاً — نفس قصور المطابقة المعتمَد أصلاً بالخادم.
 @riverpod
 Set<String> myMedicineBarcodes(Ref ref) {
   final meds = ref.watch(medicineCatalogProvider).value ?? const [];
@@ -95,16 +91,77 @@ Set<String> myMedicineBarcodes(Ref ref) {
   return out;
 }
 
-/// تقدّم «المضاف من الكاتلوغ إلى أدويتي» — عدد أصناف الكتالوغ المحلي التي
-/// باركودها يطابق أحد أدويتي، من أصل حجم الكتالوغ المحلي الكامل.
-/// `null` إن لم تُزامَن النسخة المحلية بعد (لا معنى لنسبة من صفر).
+/// مفاتيح «اسم+شركة» مطبَّعة لأدويتي — احتياطيّ المطابقة حين لا باركود (شائع
+/// فعلاً بالكاتلوغ). كل اسم غير فارغ لدواءٍ (التجاري، العربي، الأجنبي،
+/// العلمي) يُولِّد مفتاحاً مستقلاً مقروناً بالشركة، فتكفي مطابقة أيٍّ منها.
+@riverpod
+Set<String> myMedicineNameManufacturerKeys(Ref ref) {
+  final meds = ref.watch(medicineCatalogProvider).value ?? const [];
+  final out = <String>{};
+  for (final m in meds) {
+    out.addAll(nameManufacturerKeys(
+      [m.brandName, m.brandNameArabic, m.foreignName, m.genericName],
+      m.manufacturerName ?? '',
+    ));
+  }
+  return out;
+}
+
+/// يُطبِّع نصّاً للمطابقة: يُزيل الفراغات الطرفية ويوحِّد حالة الأحرف ويُقلِّص
+/// الفراغات الداخلية المتكرّرة — فلا يُفسِد اختلافٌ شكليٌّ بسيط مطابقةً
+/// حقيقية.
+String _normalizeForMatch(String s) =>
+    s.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+
+/// مفاتيح «اسم مطبَّع|شركة مطبَّعة» لكل اسمٍ غير فارغ في [names] — يُستعمَل من
+/// جهتَي المطابقة (أدويتي وصنف الكاتلوغ) بنفس الدالة فلا تتعارض القاعدتان.
+Set<String> nameManufacturerKeys(Iterable<String> names, String manufacturer) {
+  final m = _normalizeForMatch(manufacturer);
+  return {
+    for (final n in names)
+      if (n.trim().isNotEmpty) '${_normalizeForMatch(n)}|$m',
+  };
+}
+
+/// هل صنف الكاتلوغ [item] مضافٌ أصلاً إلى أدويتي؟ بالباركود أولاً (مفكَّكاً من
+/// الطرفين لتعدّد الرموز — شائع: ١٤٪ من الكتالوغ متعدّد الباركود)، وبالاسم
+/// والشركة معاً إن تعذّر — كثيرٌ من أصناف الكتالوغ بلا باركود مسجَّل أصلاً.
+bool isCatalogItemAdded(
+  CatalogItem item,
+  Set<String> myBarcodes,
+  Set<String> myNameManufacturerKeys,
+) {
+  for (final token in item.barcode.split(',')) {
+    final t = token.trim();
+    if (t.isNotEmpty && myBarcodes.contains(t)) return true;
+  }
+  final itemKeys = nameManufacturerKeys(
+    [item.brandName, item.brandNameArabic, item.foreignName, item.genericName],
+    item.manufacturerName,
+  );
+  return itemKeys.any(myNameManufacturerKeys.contains);
+}
+
+/// تقدّم «المضاف من الكاتلوغ إلى أدويتي» — عدد أصناف الكتالوغ المحلي
+/// المطابقة لأحد أدويتي (بالباركود أو بالاسم والشركة)، من أصل حجم الكتالوغ
+/// المحلي الكامل. `null` إن لم تُزامَن النسخة المحلية بعد (لا معنى لنسبة من
+/// صفر).
+///
+/// يفكّ كامل الكتالوغ المحلي (~٢٢ ألف صفّ) — نفس ما تحمّله شاشة «تصفّح
+/// الكل» أصلاً بلا شكوى أداء — لأن مطابقة الاسم تحتاج الحقول منفردة (لا
+/// العمود المفهرَس المُدمَج للبحث النصّي).
 @riverpod
 Future<({int added, int total})?> catalogAddedProgress(Ref ref) async {
   final local = ref.watch(catalogLocalDataSourceProvider);
   final total = await local.count();
   if (total == 0) return null;
   final barcodes = ref.watch(myMedicineBarcodesProvider);
-  final added =
-      barcodes.isEmpty ? 0 : await local.countByBarcodes(barcodes);
+  final nameKeys = ref.watch(myMedicineNameManufacturerKeysProvider);
+  if (barcodes.isEmpty && nameKeys.isEmpty) return (added: 0, total: total);
+  final items = await local.allItems();
+  var added = 0;
+  for (final it in items) {
+    if (isCatalogItemAdded(it, barcodes, nameKeys)) added++;
+  }
   return (added: added, total: total);
 }

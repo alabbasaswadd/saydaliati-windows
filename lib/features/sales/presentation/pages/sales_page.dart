@@ -547,7 +547,8 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
 
   /// Loads available batches for a line and defaults to the nearest expiry.
   Future<void> _loadBatches(_PosLine line) async {
-    final warehouseId = ref.read(defaultWarehouseIdProvider).value;
+    final warehouseId = await ref.read(defaultWarehouseIdProvider.future);
+    if (!mounted) return;
     if (warehouseId == null || warehouseId.isEmpty) return;
     try {
       final batches = await ref
@@ -773,6 +774,16 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
     return _lines.length == 1 ? _lines.first : null;
   }
 
+  /// الكمية **بالوحدة الأساسية** لهذا السطر — المخزون المتوفّر مخزَّن دوماً
+  /// بالوحدة الأساسية (الحبّة)، وكمية السطر بوحدته المختارة (علبة = ٢٠ حبة
+  /// مثلاً). فمقارنة ١ علبة مباشرةً بـ١٥ حبة متوفرة كانت تُظهر الرصيد كافياً
+  /// رغم أن المطلوب فعلياً ٢٠ حبة — فلا يُعرَض تنويه/عرض تعبئة المخزون أبداً
+  /// لأي سطر بوحدة غير أساسية.
+  double _baseQty(_PosLine l) {
+    final factor = l.unit.conversionFactor > 0 ? l.unit.conversionFactor : 1;
+    return l.quantity * factor;
+  }
+
   /// Medicine display-names whose requested quantity exceeds the known available
   /// stock (summed from loaded batches). Lines whose batches are not loaded (e.g.
   /// while editing) are skipped — the backend remains the authority.
@@ -780,7 +791,7 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
     final required = <String, double>{};
     final names = <String, String>{};
     for (final l in _lines) {
-      required[l.medicine.id] = (required[l.medicine.id] ?? 0) + l.quantity;
+      required[l.medicine.id] = (required[l.medicine.id] ?? 0) + _baseQty(l);
       names[l.medicine.id] = l.medicine.displayName;
     }
     final result = <String>[];
@@ -805,7 +816,7 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
   List<_PosLine> _shortLines() {
     final required = <String, double>{};
     for (final l in _lines) {
-      required[l.medicine.id] = (required[l.medicine.id] ?? 0) + l.quantity;
+      required[l.medicine.id] = (required[l.medicine.id] ?? 0) + _baseQty(l);
     }
     final short = <_PosLine>[];
     final seen = <String>{};
@@ -1343,8 +1354,7 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
                 for (final b in l.batches)
                   PopupMenuItem(
                     value: b.stockId,
-                    child: Text(
-                        '${b.expiryLabel} (${Formatters.qty(b.quantityAvailable)})'),
+                    child: Text(b.expiryLabel),
                   ),
               ],
               child: Row(
@@ -1411,7 +1421,7 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
             _fQty: TrinaCell(value: l.quantity),
             _fBatch: TrinaCell(
                 value: l.selectedBatch != null
-                    ? '${l.selectedBatch!.expiryLabel} (${Formatters.qty(l.selectedBatch!.quantityAvailable)})'
+                    ? l.selectedBatch!.expiryLabel
                     : ''),
             _fTotal: TrinaCell(value: l.total),
             _fDel: TrinaCell(value: ''),

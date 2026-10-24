@@ -93,6 +93,7 @@ class CatalogRemoteDataSource {
     required DateTime expiryDate,
     String? barcode,
     String? supplierId,
+    double bonusQuantity = 0,
   }) async {
     final data = await _api.post(ApiEndpoints.medicineFromCatalog, data: {
       'catalogId': catalogId,
@@ -102,6 +103,7 @@ class CatalogRemoteDataSource {
       'expiryDate': expiryDate.toUtc().toIso8601String(),
       if (barcode != null && barcode.trim().isNotEmpty) 'barcode': barcode.trim(),
       if (supplierId != null && supplierId.isNotEmpty) 'supplierId': supplierId,
+      'bonusQuantity': bonusQuantity,
     });
     final map = (data as Map?)?.cast<String, dynamic>() ?? const {};
     return (map['medicineId'] ?? '').toString();

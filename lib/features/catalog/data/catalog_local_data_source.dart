@@ -31,10 +31,14 @@ class CatalogLocalDataSource {
 
   Future<int> count() => _cache.count();
 
-  /// عدد أصناف الكتالوغ التي باركودها ضمن [barcodes] — «كم من أدويتي موجود
-  /// بالكتالوغ العام»، باستعلام على العمود المفهرَس مباشرة بلا فكّ أي حمولة.
-  Future<int> countByBarcodes(Iterable<String> barcodes) =>
-      _cache.countByCodes(barcodes);
+  /// كامل الكتالوغ المحلي مفكوكاً — لمطابقة «المضاف إلى أدويتي» بالاسم
+  /// والشركة حين لا باركود (العمود المفهرَس للاسم مُدمَجٌ للبحث النصّي فقط،
+  /// لا يصلح لمطابقة حقلٍ بعينه). نفس ما تحمّله شاشة «تصفّح الكل» أصلاً.
+  Future<List<CatalogItem>> allItems() async {
+    final rows = await _cache.getAll();
+    return rows.map(CatalogItemDto.fromJson).toList();
+  }
+
   Future<DateTime?> lastPulledAt() => _cache.lastPulledAt();
   Future<void> markPulled() => _cache.markPulled();
   Future<void> upsertAll(List<Map<String, dynamic>> items) => _cache.upsertAll(items);

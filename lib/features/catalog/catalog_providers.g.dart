@@ -530,10 +530,6 @@ final class CatalogItemAlternativesFamily extends $Family
 /// باركودات أدويتي الخاصة — مفروزة من قيم `Medicine.barcode` (قد يحمل الحقل
 /// عدّة رموز مفصولة بفاصلة لدواء واحد، انظر `AddCatalogToStockHandler`
 /// بالخادم) — لمطابقة أصناف الكاتلوغ المضافة أصلاً إلى أدويتي.
-///
-/// الباركود هو الرابط الوحيد المتاح بين صنف الكاتلوغ ودواء الصيدلية: لا حقل
-/// يربطهما مباشرة (لا بالخادم ولا بالواجهة)، فصنفٌ بلا باركود لن يُكتشَف
-/// كـ«مضاف» حتى لو كان فعلاً — نفس قصور المطابقة المعتمَد أصلاً بالخادم.
 
 @ProviderFor(myMedicineBarcodes)
 final myMedicineBarcodesProvider = MyMedicineBarcodesProvider._();
@@ -541,10 +537,6 @@ final myMedicineBarcodesProvider = MyMedicineBarcodesProvider._();
 /// باركودات أدويتي الخاصة — مفروزة من قيم `Medicine.barcode` (قد يحمل الحقل
 /// عدّة رموز مفصولة بفاصلة لدواء واحد، انظر `AddCatalogToStockHandler`
 /// بالخادم) — لمطابقة أصناف الكاتلوغ المضافة أصلاً إلى أدويتي.
-///
-/// الباركود هو الرابط الوحيد المتاح بين صنف الكاتلوغ ودواء الصيدلية: لا حقل
-/// يربطهما مباشرة (لا بالخادم ولا بالواجهة)، فصنفٌ بلا باركود لن يُكتشَف
-/// كـ«مضاف» حتى لو كان فعلاً — نفس قصور المطابقة المعتمَد أصلاً بالخادم.
 
 final class MyMedicineBarcodesProvider
     extends $FunctionalProvider<Set<String>, Set<String>, Set<String>>
@@ -552,10 +544,6 @@ final class MyMedicineBarcodesProvider
   /// باركودات أدويتي الخاصة — مفروزة من قيم `Medicine.barcode` (قد يحمل الحقل
   /// عدّة رموز مفصولة بفاصلة لدواء واحد، انظر `AddCatalogToStockHandler`
   /// بالخادم) — لمطابقة أصناف الكاتلوغ المضافة أصلاً إلى أدويتي.
-  ///
-  /// الباركود هو الرابط الوحيد المتاح بين صنف الكاتلوغ ودواء الصيدلية: لا حقل
-  /// يربطهما مباشرة (لا بالخادم ولا بالواجهة)، فصنفٌ بلا باركود لن يُكتشَف
-  /// كـ«مضاف» حتى لو كان فعلاً — نفس قصور المطابقة المعتمَد أصلاً بالخادم.
   MyMedicineBarcodesProvider._()
     : super(
         from: null,
@@ -592,16 +580,80 @@ final class MyMedicineBarcodesProvider
 String _$myMedicineBarcodesHash() =>
     r'18d30b2c05e29cc525763df33c7023af6fea6599';
 
-/// تقدّم «المضاف من الكاتلوغ إلى أدويتي» — عدد أصناف الكتالوغ المحلي التي
-/// باركودها يطابق أحد أدويتي، من أصل حجم الكتالوغ المحلي الكامل.
-/// `null` إن لم تُزامَن النسخة المحلية بعد (لا معنى لنسبة من صفر).
+/// مفاتيح «اسم+شركة» مطبَّعة لأدويتي — احتياطيّ المطابقة حين لا باركود (شائع
+/// فعلاً بالكاتلوغ). كل اسم غير فارغ لدواءٍ (التجاري، العربي، الأجنبي،
+/// العلمي) يُولِّد مفتاحاً مستقلاً مقروناً بالشركة، فتكفي مطابقة أيٍّ منها.
+
+@ProviderFor(myMedicineNameManufacturerKeys)
+final myMedicineNameManufacturerKeysProvider =
+    MyMedicineNameManufacturerKeysProvider._();
+
+/// مفاتيح «اسم+شركة» مطبَّعة لأدويتي — احتياطيّ المطابقة حين لا باركود (شائع
+/// فعلاً بالكاتلوغ). كل اسم غير فارغ لدواءٍ (التجاري، العربي، الأجنبي،
+/// العلمي) يُولِّد مفتاحاً مستقلاً مقروناً بالشركة، فتكفي مطابقة أيٍّ منها.
+
+final class MyMedicineNameManufacturerKeysProvider
+    extends $FunctionalProvider<Set<String>, Set<String>, Set<String>>
+    with $Provider<Set<String>> {
+  /// مفاتيح «اسم+شركة» مطبَّعة لأدويتي — احتياطيّ المطابقة حين لا باركود (شائع
+  /// فعلاً بالكاتلوغ). كل اسم غير فارغ لدواءٍ (التجاري، العربي، الأجنبي،
+  /// العلمي) يُولِّد مفتاحاً مستقلاً مقروناً بالشركة، فتكفي مطابقة أيٍّ منها.
+  MyMedicineNameManufacturerKeysProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'myMedicineNameManufacturerKeysProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$myMedicineNameManufacturerKeysHash();
+
+  @$internal
+  @override
+  $ProviderElement<Set<String>> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  Set<String> create(Ref ref) {
+    return myMedicineNameManufacturerKeys(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(Set<String> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<Set<String>>(value),
+    );
+  }
+}
+
+String _$myMedicineNameManufacturerKeysHash() =>
+    r'dcbba7b65acded0e7e8a713f9282dc8e4328b7e7';
+
+/// تقدّم «المضاف من الكاتلوغ إلى أدويتي» — عدد أصناف الكتالوغ المحلي
+/// المطابقة لأحد أدويتي (بالباركود أو بالاسم والشركة)، من أصل حجم الكتالوغ
+/// المحلي الكامل. `null` إن لم تُزامَن النسخة المحلية بعد (لا معنى لنسبة من
+/// صفر).
+///
+/// يفكّ كامل الكتالوغ المحلي (~٢٢ ألف صفّ) — نفس ما تحمّله شاشة «تصفّح
+/// الكل» أصلاً بلا شكوى أداء — لأن مطابقة الاسم تحتاج الحقول منفردة (لا
+/// العمود المفهرَس المُدمَج للبحث النصّي).
 
 @ProviderFor(catalogAddedProgress)
 final catalogAddedProgressProvider = CatalogAddedProgressProvider._();
 
-/// تقدّم «المضاف من الكاتلوغ إلى أدويتي» — عدد أصناف الكتالوغ المحلي التي
-/// باركودها يطابق أحد أدويتي، من أصل حجم الكتالوغ المحلي الكامل.
-/// `null` إن لم تُزامَن النسخة المحلية بعد (لا معنى لنسبة من صفر).
+/// تقدّم «المضاف من الكاتلوغ إلى أدويتي» — عدد أصناف الكتالوغ المحلي
+/// المطابقة لأحد أدويتي (بالباركود أو بالاسم والشركة)، من أصل حجم الكتالوغ
+/// المحلي الكامل. `null` إن لم تُزامَن النسخة المحلية بعد (لا معنى لنسبة من
+/// صفر).
+///
+/// يفكّ كامل الكتالوغ المحلي (~٢٢ ألف صفّ) — نفس ما تحمّله شاشة «تصفّح
+/// الكل» أصلاً بلا شكوى أداء — لأن مطابقة الاسم تحتاج الحقول منفردة (لا
+/// العمود المفهرَس المُدمَج للبحث النصّي).
 
 final class CatalogAddedProgressProvider
     extends
@@ -613,9 +665,14 @@ final class CatalogAddedProgressProvider
     with
         $FutureModifier<({int added, int total})?>,
         $FutureProvider<({int added, int total})?> {
-  /// تقدّم «المضاف من الكاتلوغ إلى أدويتي» — عدد أصناف الكتالوغ المحلي التي
-  /// باركودها يطابق أحد أدويتي، من أصل حجم الكتالوغ المحلي الكامل.
-  /// `null` إن لم تُزامَن النسخة المحلية بعد (لا معنى لنسبة من صفر).
+  /// تقدّم «المضاف من الكاتلوغ إلى أدويتي» — عدد أصناف الكتالوغ المحلي
+  /// المطابقة لأحد أدويتي (بالباركود أو بالاسم والشركة)، من أصل حجم الكتالوغ
+  /// المحلي الكامل. `null` إن لم تُزامَن النسخة المحلية بعد (لا معنى لنسبة من
+  /// صفر).
+  ///
+  /// يفكّ كامل الكتالوغ المحلي (~٢٢ ألف صفّ) — نفس ما تحمّله شاشة «تصفّح
+  /// الكل» أصلاً بلا شكوى أداء — لأن مطابقة الاسم تحتاج الحقول منفردة (لا
+  /// العمود المفهرَس المُدمَج للبحث النصّي).
   CatalogAddedProgressProvider._()
     : super(
         from: null,
@@ -643,4 +700,4 @@ final class CatalogAddedProgressProvider
 }
 
 String _$catalogAddedProgressHash() =>
-    r'047200c5800cfad512a27e8ed356b6872a43275d';
+    r'f6a117f6dbb503cf92c94667b5d34ce00587393a';

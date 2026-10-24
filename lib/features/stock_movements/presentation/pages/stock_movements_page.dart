@@ -12,6 +12,7 @@ import 'package:saydaliati/features/reports/domain/report_period.dart';
 import 'package:saydaliati/features/stock_movements/domain/entities/stock_movement.dart';
 import 'package:saydaliati/features/stock_movements/stock_movement_providers.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
+import 'package:saydaliati/shared/widgets/buttons/app_refresh_button.dart';
 import 'package:saydaliati/shared/widgets/filters/filter_side_sheet.dart';
 import 'package:saydaliati/shared/widgets/filters/period_filter_list.dart';
 import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
@@ -56,6 +57,11 @@ class _StockMovementsPageState extends ConsumerState<StockMovementsPage> {
       appBar: AppBar(
         title: const Text(AppStrings.stockMovements),
         actions: [
+          AppRefreshButton(
+            onRefresh: () => ref.refresh(stockMovementsProvider(
+                _medicineId, _categoryId, _period?.startUtcIso, _period?.endUtcIso)
+                .future),
+          ),
           IconButton(
             tooltip: AppStrings.filters,
             onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
