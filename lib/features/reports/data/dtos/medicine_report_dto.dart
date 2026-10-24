@@ -14,7 +14,6 @@ class MedicineReportDto {
     this.purchaseCost,
     this.stockQuantity,
     this.soldQuantity,
-    this.reservedQuantity,
     this.totalSalesAmount,
     this.totalTransactions,
     this.isNearExpiry,
@@ -33,7 +32,6 @@ class MedicineReportDto {
   final num? purchaseCost;
   final num? stockQuantity;
   final num? soldQuantity;
-  final num? reservedQuantity;
   final num? totalSalesAmount;
   final int? totalTransactions;
   final bool? isNearExpiry;

@@ -13,4 +13,12 @@ class DashboardRemoteDataSource {
     final data = await _api.get(ApiEndpoints.dashboard);
     return DashboardDto.fromJson((data as Map).cast<String, dynamic>());
   }
+
+  Future<DashboardProfitDto> getProfit(String period) async {
+    final data = await _api.get(
+      ApiEndpoints.dashboardProfit,
+      queryParameters: {'period': period},
+    );
+    return DashboardProfitDto.fromJson((data as Map).cast<String, dynamic>());
+  }
 }

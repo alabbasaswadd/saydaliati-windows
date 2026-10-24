@@ -18,6 +18,11 @@ class DashboardDto {
     this.totalMedicines,
     this.totalCustomers,
     this.totalSuppliers,
+    this.salesTrend,
+    this.topMedicines,
+    this.totalStockValue,
+    this.totalPayables,
+    this.topPayables,
   });
 
   final num? salesToday;
@@ -30,9 +35,62 @@ class DashboardDto {
   final int? totalMedicines;
   final int? totalCustomers;
   final int? totalSuppliers;
+  final List<SalesTrendPointDto>? salesTrend;
+  final List<DashboardTopMedicineDto>? topMedicines;
+  final num? totalStockValue;
+  final num? totalPayables;
+  final List<DashboardPayableDto>? topPayables;
 
   factory DashboardDto.fromJson(Map<String, dynamic> json) =>
       _$DashboardDtoFromJson(json);
+}
+
+/// Wire model for `GET pharmacy-api/Dashboard/profit`.
+@JsonSerializable(createToJson: false)
+class DashboardProfitDto {
+  const DashboardProfitDto({this.revenue, this.cost, this.profit});
+
+  final num? revenue;
+  final num? cost;
+  final num? profit;
+
+  factory DashboardProfitDto.fromJson(Map<String, dynamic> json) =>
+      _$DashboardProfitDtoFromJson(json);
+}
+
+@JsonSerializable(createToJson: false)
+class SalesTrendPointDto {
+  const SalesTrendPointDto({this.date, this.totalAmount});
+
+  final DateTime? date;
+  final num? totalAmount;
+
+  factory SalesTrendPointDto.fromJson(Map<String, dynamic> json) =>
+      _$SalesTrendPointDtoFromJson(json);
+}
+
+@JsonSerializable(createToJson: false)
+class DashboardTopMedicineDto {
+  const DashboardTopMedicineDto({this.medicineId, this.brandName, this.revenue});
+
+  final String? medicineId;
+  final String? brandName;
+  final num? revenue;
+
+  factory DashboardTopMedicineDto.fromJson(Map<String, dynamic> json) =>
+      _$DashboardTopMedicineDtoFromJson(json);
+}
+
+@JsonSerializable(createToJson: false)
+class DashboardPayableDto {
+  const DashboardPayableDto({this.partyId, this.partyName, this.balance});
+
+  final String? partyId;
+  final String? partyName;
+  final num? balance;
+
+  factory DashboardPayableDto.fromJson(Map<String, dynamic> json) =>
+      _$DashboardPayableDtoFromJson(json);
 }
 
 @JsonSerializable(createToJson: false)

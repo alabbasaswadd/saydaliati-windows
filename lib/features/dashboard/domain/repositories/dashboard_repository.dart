@@ -5,4 +5,5 @@ import 'package:saydaliati/features/dashboard/domain/entities/dashboard_summary.
 /// layer; the presentation layer depends only on this.
 abstract interface class DashboardRepository {
   Future<Result<DashboardSummary>> getDashboard();
+  Future<Result<DashboardProfit>> getProfit(String period);
 }

@@ -22,4 +22,14 @@ class DashboardRepositoryImpl implements DashboardRepository {
       return Result.failure(mapExceptionToFailure(error));
     }
   }
+
+  @override
+  Future<Result<DashboardProfit>> getProfit(String period) async {
+    try {
+      final dto = await _remote.getProfit(period);
+      return Result.success(dto.toEntity());
+    } catch (error) {
+      return Result.failure(mapExceptionToFailure(error));
+    }
+  }
 }

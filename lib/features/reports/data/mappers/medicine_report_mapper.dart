@@ -12,7 +12,6 @@ extension MedicineReportDtoMapper on MedicineReportDto {
         purchaseCost: (purchaseCost ?? 0).toDouble(),
         stockQuantity: (stockQuantity ?? 0).toDouble(),
         soldQuantity: (soldQuantity ?? 0).toDouble(),
-        reservedQuantity: (reservedQuantity ?? 0).toDouble(),
         totalSalesAmount: (totalSalesAmount ?? 0).toDouble(),
         totalTransactions: totalTransactions ?? 0,
         isNearExpiry: isNearExpiry ?? false,

@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$MedicineReport {
 
- String get medicineId; String get name; String get code; String get category; String get manufacturerName; double get unitPrice; double get purchaseCost; double get stockQuantity; double get soldQuantity; double get reservedQuantity; double get totalSalesAmount; int get totalTransactions; bool get isNearExpiry; bool get isLowStock; String get notes; DateTime? get expiryDate; List<MedicineBatch> get batches;
+ String get medicineId; String get name; String get code; String get category; String get manufacturerName; double get unitPrice; double get purchaseCost; double get stockQuantity; double get soldQuantity; double get totalSalesAmount; int get totalTransactions; bool get isNearExpiry; bool get isLowStock; String get notes; DateTime? get expiryDate; List<MedicineBatch> get batches;
 /// Create a copy of MedicineReport
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -27,20 +27,20 @@ $MedicineReportCopyWith<MedicineReport> get copyWith => _$MedicineReportCopyWith
 @override
 bool operator ==(Object other) {
   final _this = this as MedicineReport;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MedicineReport&&(identical(other.medicineId, _this.medicineId) || other.medicineId == _this.medicineId)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.code, _this.code) || other.code == _this.code)&&(identical(other.category, _this.category) || other.category == _this.category)&&(identical(other.manufacturerName, _this.manufacturerName) || other.manufacturerName == _this.manufacturerName)&&(identical(other.unitPrice, _this.unitPrice) || other.unitPrice == _this.unitPrice)&&(identical(other.purchaseCost, _this.purchaseCost) || other.purchaseCost == _this.purchaseCost)&&(identical(other.stockQuantity, _this.stockQuantity) || other.stockQuantity == _this.stockQuantity)&&(identical(other.soldQuantity, _this.soldQuantity) || other.soldQuantity == _this.soldQuantity)&&(identical(other.reservedQuantity, _this.reservedQuantity) || other.reservedQuantity == _this.reservedQuantity)&&(identical(other.totalSalesAmount, _this.totalSalesAmount) || other.totalSalesAmount == _this.totalSalesAmount)&&(identical(other.totalTransactions, _this.totalTransactions) || other.totalTransactions == _this.totalTransactions)&&(identical(other.isNearExpiry, _this.isNearExpiry) || other.isNearExpiry == _this.isNearExpiry)&&(identical(other.isLowStock, _this.isLowStock) || other.isLowStock == _this.isLowStock)&&(identical(other.notes, _this.notes) || other.notes == _this.notes)&&(identical(other.expiryDate, _this.expiryDate) || other.expiryDate == _this.expiryDate)&&const DeepCollectionEquality().equals(other.batches, _this.batches));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MedicineReport&&(identical(other.medicineId, _this.medicineId) || other.medicineId == _this.medicineId)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.code, _this.code) || other.code == _this.code)&&(identical(other.category, _this.category) || other.category == _this.category)&&(identical(other.manufacturerName, _this.manufacturerName) || other.manufacturerName == _this.manufacturerName)&&(identical(other.unitPrice, _this.unitPrice) || other.unitPrice == _this.unitPrice)&&(identical(other.purchaseCost, _this.purchaseCost) || other.purchaseCost == _this.purchaseCost)&&(identical(other.stockQuantity, _this.stockQuantity) || other.stockQuantity == _this.stockQuantity)&&(identical(other.soldQuantity, _this.soldQuantity) || other.soldQuantity == _this.soldQuantity)&&(identical(other.totalSalesAmount, _this.totalSalesAmount) || other.totalSalesAmount == _this.totalSalesAmount)&&(identical(other.totalTransactions, _this.totalTransactions) || other.totalTransactions == _this.totalTransactions)&&(identical(other.isNearExpiry, _this.isNearExpiry) || other.isNearExpiry == _this.isNearExpiry)&&(identical(other.isLowStock, _this.isLowStock) || other.isLowStock == _this.isLowStock)&&(identical(other.notes, _this.notes) || other.notes == _this.notes)&&(identical(other.expiryDate, _this.expiryDate) || other.expiryDate == _this.expiryDate)&&const DeepCollectionEquality().equals(other.batches, _this.batches));
 }
 
 
 @override
 int get hashCode {
   final _this = this as MedicineReport;
-  return Object.hash(runtimeType,_this.medicineId,_this.name,_this.code,_this.category,_this.manufacturerName,_this.unitPrice,_this.purchaseCost,_this.stockQuantity,_this.soldQuantity,_this.reservedQuantity,_this.totalSalesAmount,_this.totalTransactions,_this.isNearExpiry,_this.isLowStock,_this.notes,_this.expiryDate,const DeepCollectionEquality().hash(_this.batches));
+  return Object.hash(runtimeType,_this.medicineId,_this.name,_this.code,_this.category,_this.manufacturerName,_this.unitPrice,_this.purchaseCost,_this.stockQuantity,_this.soldQuantity,_this.totalSalesAmount,_this.totalTransactions,_this.isNearExpiry,_this.isLowStock,_this.notes,_this.expiryDate,const DeepCollectionEquality().hash(_this.batches));
 }
 
 @override
 String toString() {
   final _this = this as MedicineReport;
-  return 'MedicineReport(medicineId: ${_this.medicineId}, name: ${_this.name}, code: ${_this.code}, category: ${_this.category}, manufacturerName: ${_this.manufacturerName}, unitPrice: ${_this.unitPrice}, purchaseCost: ${_this.purchaseCost}, stockQuantity: ${_this.stockQuantity}, soldQuantity: ${_this.soldQuantity}, reservedQuantity: ${_this.reservedQuantity}, totalSalesAmount: ${_this.totalSalesAmount}, totalTransactions: ${_this.totalTransactions}, isNearExpiry: ${_this.isNearExpiry}, isLowStock: ${_this.isLowStock}, notes: ${_this.notes}, expiryDate: ${_this.expiryDate}, batches: ${_this.batches})';
+  return 'MedicineReport(medicineId: ${_this.medicineId}, name: ${_this.name}, code: ${_this.code}, category: ${_this.category}, manufacturerName: ${_this.manufacturerName}, unitPrice: ${_this.unitPrice}, purchaseCost: ${_this.purchaseCost}, stockQuantity: ${_this.stockQuantity}, soldQuantity: ${_this.soldQuantity}, totalSalesAmount: ${_this.totalSalesAmount}, totalTransactions: ${_this.totalTransactions}, isNearExpiry: ${_this.isNearExpiry}, isLowStock: ${_this.isLowStock}, notes: ${_this.notes}, expiryDate: ${_this.expiryDate}, batches: ${_this.batches})';
 }
 
 
@@ -51,7 +51,7 @@ abstract mixin class $MedicineReportCopyWith<$Res>  {
   factory $MedicineReportCopyWith(MedicineReport value, $Res Function(MedicineReport) _then) = _$MedicineReportCopyWithImpl;
 @useResult
 $Res call({
- String medicineId, String name, String code, String category, String manufacturerName, double unitPrice, double purchaseCost, double stockQuantity, double soldQuantity, double reservedQuantity, double totalSalesAmount, int totalTransactions, bool isNearExpiry, bool isLowStock, String notes, DateTime? expiryDate, List<MedicineBatch> batches
+ String medicineId, String name, String code, String category, String manufacturerName, double unitPrice, double purchaseCost, double stockQuantity, double soldQuantity, double totalSalesAmount, int totalTransactions, bool isNearExpiry, bool isLowStock, String notes, DateTime? expiryDate, List<MedicineBatch> batches
 });
 
 
@@ -68,7 +68,7 @@ class _$MedicineReportCopyWithImpl<$Res>
 
 /// Create a copy of MedicineReport
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? medicineId = null,Object? name = null,Object? code = null,Object? category = null,Object? manufacturerName = null,Object? unitPrice = null,Object? purchaseCost = null,Object? stockQuantity = null,Object? soldQuantity = null,Object? reservedQuantity = null,Object? totalSalesAmount = null,Object? totalTransactions = null,Object? isNearExpiry = null,Object? isLowStock = null,Object? notes = null,Object? expiryDate = freezed,Object? batches = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? medicineId = null,Object? name = null,Object? code = null,Object? category = null,Object? manufacturerName = null,Object? unitPrice = null,Object? purchaseCost = null,Object? stockQuantity = null,Object? soldQuantity = null,Object? totalSalesAmount = null,Object? totalTransactions = null,Object? isNearExpiry = null,Object? isLowStock = null,Object? notes = null,Object? expiryDate = freezed,Object? batches = null,}) {
   return _then(MedicineReport(
 medicineId: null == medicineId ? _self.medicineId : medicineId // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -79,7 +79,6 @@ as String,unitPrice: null == unitPrice ? _self.unitPrice : unitPrice // ignore: 
 as double,purchaseCost: null == purchaseCost ? _self.purchaseCost : purchaseCost // ignore: cast_nullable_to_non_nullable
 as double,stockQuantity: null == stockQuantity ? _self.stockQuantity : stockQuantity // ignore: cast_nullable_to_non_nullable
 as double,soldQuantity: null == soldQuantity ? _self.soldQuantity : soldQuantity // ignore: cast_nullable_to_non_nullable
-as double,reservedQuantity: null == reservedQuantity ? _self.reservedQuantity : reservedQuantity // ignore: cast_nullable_to_non_nullable
 as double,totalSalesAmount: null == totalSalesAmount ? _self.totalSalesAmount : totalSalesAmount // ignore: cast_nullable_to_non_nullable
 as double,totalTransactions: null == totalTransactions ? _self.totalTransactions : totalTransactions // ignore: cast_nullable_to_non_nullable
 as int,isNearExpiry: null == isNearExpiry ? _self.isNearExpiry : isNearExpiry // ignore: cast_nullable_to_non_nullable
@@ -172,10 +171,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String medicineId,  String name,  String code,  String category,  String manufacturerName,  double unitPrice,  double purchaseCost,  double stockQuantity,  double soldQuantity,  double reservedQuantity,  double totalSalesAmount,  int totalTransactions,  bool isNearExpiry,  bool isLowStock,  String notes,  DateTime? expiryDate,  List<MedicineBatch> batches)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String medicineId,  String name,  String code,  String category,  String manufacturerName,  double unitPrice,  double purchaseCost,  double stockQuantity,  double soldQuantity,  double totalSalesAmount,  int totalTransactions,  bool isNearExpiry,  bool isLowStock,  String notes,  DateTime? expiryDate,  List<MedicineBatch> batches)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _MedicineReport() when $default != null:
-return $default(_that.medicineId,_that.name,_that.code,_that.category,_that.manufacturerName,_that.unitPrice,_that.purchaseCost,_that.stockQuantity,_that.soldQuantity,_that.reservedQuantity,_that.totalSalesAmount,_that.totalTransactions,_that.isNearExpiry,_that.isLowStock,_that.notes,_that.expiryDate,_that.batches);case _:
+return $default(_that.medicineId,_that.name,_that.code,_that.category,_that.manufacturerName,_that.unitPrice,_that.purchaseCost,_that.stockQuantity,_that.soldQuantity,_that.totalSalesAmount,_that.totalTransactions,_that.isNearExpiry,_that.isLowStock,_that.notes,_that.expiryDate,_that.batches);case _:
   return orElse();
 
 }
@@ -193,10 +192,10 @@ return $default(_that.medicineId,_that.name,_that.code,_that.category,_that.manu
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String medicineId,  String name,  String code,  String category,  String manufacturerName,  double unitPrice,  double purchaseCost,  double stockQuantity,  double soldQuantity,  double reservedQuantity,  double totalSalesAmount,  int totalTransactions,  bool isNearExpiry,  bool isLowStock,  String notes,  DateTime? expiryDate,  List<MedicineBatch> batches)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String medicineId,  String name,  String code,  String category,  String manufacturerName,  double unitPrice,  double purchaseCost,  double stockQuantity,  double soldQuantity,  double totalSalesAmount,  int totalTransactions,  bool isNearExpiry,  bool isLowStock,  String notes,  DateTime? expiryDate,  List<MedicineBatch> batches)  $default,) {final _that = this;
 switch (_that) {
 case _MedicineReport():
-return $default(_that.medicineId,_that.name,_that.code,_that.category,_that.manufacturerName,_that.unitPrice,_that.purchaseCost,_that.stockQuantity,_that.soldQuantity,_that.reservedQuantity,_that.totalSalesAmount,_that.totalTransactions,_that.isNearExpiry,_that.isLowStock,_that.notes,_that.expiryDate,_that.batches);case _:
+return $default(_that.medicineId,_that.name,_that.code,_that.category,_that.manufacturerName,_that.unitPrice,_that.purchaseCost,_that.stockQuantity,_that.soldQuantity,_that.totalSalesAmount,_that.totalTransactions,_that.isNearExpiry,_that.isLowStock,_that.notes,_that.expiryDate,_that.batches);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -213,10 +212,10 @@ return $default(_that.medicineId,_that.name,_that.code,_that.category,_that.manu
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String medicineId,  String name,  String code,  String category,  String manufacturerName,  double unitPrice,  double purchaseCost,  double stockQuantity,  double soldQuantity,  double reservedQuantity,  double totalSalesAmount,  int totalTransactions,  bool isNearExpiry,  bool isLowStock,  String notes,  DateTime? expiryDate,  List<MedicineBatch> batches)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String medicineId,  String name,  String code,  String category,  String manufacturerName,  double unitPrice,  double purchaseCost,  double stockQuantity,  double soldQuantity,  double totalSalesAmount,  int totalTransactions,  bool isNearExpiry,  bool isLowStock,  String notes,  DateTime? expiryDate,  List<MedicineBatch> batches)?  $default,) {final _that = this;
 switch (_that) {
 case _MedicineReport() when $default != null:
-return $default(_that.medicineId,_that.name,_that.code,_that.category,_that.manufacturerName,_that.unitPrice,_that.purchaseCost,_that.stockQuantity,_that.soldQuantity,_that.reservedQuantity,_that.totalSalesAmount,_that.totalTransactions,_that.isNearExpiry,_that.isLowStock,_that.notes,_that.expiryDate,_that.batches);case _:
+return $default(_that.medicineId,_that.name,_that.code,_that.category,_that.manufacturerName,_that.unitPrice,_that.purchaseCost,_that.stockQuantity,_that.soldQuantity,_that.totalSalesAmount,_that.totalTransactions,_that.isNearExpiry,_that.isLowStock,_that.notes,_that.expiryDate,_that.batches);case _:
   return null;
 
 }
@@ -228,7 +227,7 @@ return $default(_that.medicineId,_that.name,_that.code,_that.category,_that.manu
 
 
 class _MedicineReport implements MedicineReport {
-  const _MedicineReport({required this.medicineId, required this.name, required this.code, required this.category, required this.manufacturerName, required this.unitPrice, required this.purchaseCost, required this.stockQuantity, required this.soldQuantity, required this.reservedQuantity, required this.totalSalesAmount, required this.totalTransactions, required this.isNearExpiry, required this.isLowStock, required this.notes, this.expiryDate,  List<MedicineBatch> batches = const <MedicineBatch>[]}): _batches = batches;
+  const _MedicineReport({required this.medicineId, required this.name, required this.code, required this.category, required this.manufacturerName, required this.unitPrice, required this.purchaseCost, required this.stockQuantity, required this.soldQuantity, required this.totalSalesAmount, required this.totalTransactions, required this.isNearExpiry, required this.isLowStock, required this.notes, this.expiryDate,  List<MedicineBatch> batches = const <MedicineBatch>[]}): _batches = batches;
   
 
 @override final  String medicineId;
@@ -240,7 +239,6 @@ class _MedicineReport implements MedicineReport {
 @override final  double purchaseCost;
 @override final  double stockQuantity;
 @override final  double soldQuantity;
-@override final  double reservedQuantity;
 @override final  double totalSalesAmount;
 @override final  int totalTransactions;
 @override final  bool isNearExpiry;
@@ -265,18 +263,18 @@ _$MedicineReportCopyWith<_MedicineReport> get copyWith => __$MedicineReportCopyW
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _MedicineReport&&(identical(other.medicineId, medicineId) || other.medicineId == medicineId)&&(identical(other.name, name) || other.name == name)&&(identical(other.code, code) || other.code == code)&&(identical(other.category, category) || other.category == category)&&(identical(other.manufacturerName, manufacturerName) || other.manufacturerName == manufacturerName)&&(identical(other.unitPrice, unitPrice) || other.unitPrice == unitPrice)&&(identical(other.purchaseCost, purchaseCost) || other.purchaseCost == purchaseCost)&&(identical(other.stockQuantity, stockQuantity) || other.stockQuantity == stockQuantity)&&(identical(other.soldQuantity, soldQuantity) || other.soldQuantity == soldQuantity)&&(identical(other.reservedQuantity, reservedQuantity) || other.reservedQuantity == reservedQuantity)&&(identical(other.totalSalesAmount, totalSalesAmount) || other.totalSalesAmount == totalSalesAmount)&&(identical(other.totalTransactions, totalTransactions) || other.totalTransactions == totalTransactions)&&(identical(other.isNearExpiry, isNearExpiry) || other.isNearExpiry == isNearExpiry)&&(identical(other.isLowStock, isLowStock) || other.isLowStock == isLowStock)&&(identical(other.notes, notes) || other.notes == notes)&&(identical(other.expiryDate, expiryDate) || other.expiryDate == expiryDate)&&const DeepCollectionEquality().equals(other.batches, _batches));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _MedicineReport&&(identical(other.medicineId, medicineId) || other.medicineId == medicineId)&&(identical(other.name, name) || other.name == name)&&(identical(other.code, code) || other.code == code)&&(identical(other.category, category) || other.category == category)&&(identical(other.manufacturerName, manufacturerName) || other.manufacturerName == manufacturerName)&&(identical(other.unitPrice, unitPrice) || other.unitPrice == unitPrice)&&(identical(other.purchaseCost, purchaseCost) || other.purchaseCost == purchaseCost)&&(identical(other.stockQuantity, stockQuantity) || other.stockQuantity == stockQuantity)&&(identical(other.soldQuantity, soldQuantity) || other.soldQuantity == soldQuantity)&&(identical(other.totalSalesAmount, totalSalesAmount) || other.totalSalesAmount == totalSalesAmount)&&(identical(other.totalTransactions, totalTransactions) || other.totalTransactions == totalTransactions)&&(identical(other.isNearExpiry, isNearExpiry) || other.isNearExpiry == isNearExpiry)&&(identical(other.isLowStock, isLowStock) || other.isLowStock == isLowStock)&&(identical(other.notes, notes) || other.notes == notes)&&(identical(other.expiryDate, expiryDate) || other.expiryDate == expiryDate)&&const DeepCollectionEquality().equals(other.batches, _batches));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,medicineId,name,code,category,manufacturerName,unitPrice,purchaseCost,stockQuantity,soldQuantity,reservedQuantity,totalSalesAmount,totalTransactions,isNearExpiry,isLowStock,notes,expiryDate,const DeepCollectionEquality().hash(_batches));
+    return Object.hash(runtimeType,medicineId,name,code,category,manufacturerName,unitPrice,purchaseCost,stockQuantity,soldQuantity,totalSalesAmount,totalTransactions,isNearExpiry,isLowStock,notes,expiryDate,const DeepCollectionEquality().hash(_batches));
 }
 
 @override
 String toString() {
-    return 'MedicineReport(medicineId: $medicineId, name: $name, code: $code, category: $category, manufacturerName: $manufacturerName, unitPrice: $unitPrice, purchaseCost: $purchaseCost, stockQuantity: $stockQuantity, soldQuantity: $soldQuantity, reservedQuantity: $reservedQuantity, totalSalesAmount: $totalSalesAmount, totalTransactions: $totalTransactions, isNearExpiry: $isNearExpiry, isLowStock: $isLowStock, notes: $notes, expiryDate: $expiryDate, batches: $batches)';
+    return 'MedicineReport(medicineId: $medicineId, name: $name, code: $code, category: $category, manufacturerName: $manufacturerName, unitPrice: $unitPrice, purchaseCost: $purchaseCost, stockQuantity: $stockQuantity, soldQuantity: $soldQuantity, totalSalesAmount: $totalSalesAmount, totalTransactions: $totalTransactions, isNearExpiry: $isNearExpiry, isLowStock: $isLowStock, notes: $notes, expiryDate: $expiryDate, batches: $batches)';
 }
 
 
@@ -287,7 +285,7 @@ abstract mixin class _$MedicineReportCopyWith<$Res> implements $MedicineReportCo
   factory _$MedicineReportCopyWith(_MedicineReport value, $Res Function(_MedicineReport) _then) = __$MedicineReportCopyWithImpl;
 @override @useResult
 $Res call({
- String medicineId, String name, String code, String category, String manufacturerName, double unitPrice, double purchaseCost, double stockQuantity, double soldQuantity, double reservedQuantity, double totalSalesAmount, int totalTransactions, bool isNearExpiry, bool isLowStock, String notes, DateTime? expiryDate, List<MedicineBatch> batches
+ String medicineId, String name, String code, String category, String manufacturerName, double unitPrice, double purchaseCost, double stockQuantity, double soldQuantity, double totalSalesAmount, int totalTransactions, bool isNearExpiry, bool isLowStock, String notes, DateTime? expiryDate, List<MedicineBatch> batches
 });
 
 
@@ -304,7 +302,7 @@ class __$MedicineReportCopyWithImpl<$Res>
 
 /// Create a copy of MedicineReport
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? medicineId = null,Object? name = null,Object? code = null,Object? category = null,Object? manufacturerName = null,Object? unitPrice = null,Object? purchaseCost = null,Object? stockQuantity = null,Object? soldQuantity = null,Object? reservedQuantity = null,Object? totalSalesAmount = null,Object? totalTransactions = null,Object? isNearExpiry = null,Object? isLowStock = null,Object? notes = null,Object? expiryDate = freezed,Object? batches = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? medicineId = null,Object? name = null,Object? code = null,Object? category = null,Object? manufacturerName = null,Object? unitPrice = null,Object? purchaseCost = null,Object? stockQuantity = null,Object? soldQuantity = null,Object? totalSalesAmount = null,Object? totalTransactions = null,Object? isNearExpiry = null,Object? isLowStock = null,Object? notes = null,Object? expiryDate = freezed,Object? batches = null,}) {
   return _then(_MedicineReport(
 medicineId: null == medicineId ? _self.medicineId : medicineId // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -315,7 +313,6 @@ as String,unitPrice: null == unitPrice ? _self.unitPrice : unitPrice // ignore: 
 as double,purchaseCost: null == purchaseCost ? _self.purchaseCost : purchaseCost // ignore: cast_nullable_to_non_nullable
 as double,stockQuantity: null == stockQuantity ? _self.stockQuantity : stockQuantity // ignore: cast_nullable_to_non_nullable
 as double,soldQuantity: null == soldQuantity ? _self.soldQuantity : soldQuantity // ignore: cast_nullable_to_non_nullable
-as double,reservedQuantity: null == reservedQuantity ? _self.reservedQuantity : reservedQuantity // ignore: cast_nullable_to_non_nullable
 as double,totalSalesAmount: null == totalSalesAmount ? _self.totalSalesAmount : totalSalesAmount // ignore: cast_nullable_to_non_nullable
 as double,totalTransactions: null == totalTransactions ? _self.totalTransactions : totalTransactions // ignore: cast_nullable_to_non_nullable
 as int,isNearExpiry: null == isNearExpiry ? _self.isNearExpiry : isNearExpiry // ignore: cast_nullable_to_non_nullable

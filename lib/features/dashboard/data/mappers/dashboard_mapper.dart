@@ -17,6 +17,44 @@ extension DashboardDtoMapper on DashboardDto {
         totalMedicines: totalMedicines ?? 0,
         totalCustomers: totalCustomers ?? 0,
         totalSuppliers: totalSuppliers ?? 0,
+        salesTrend: (salesTrend ?? const []).map((e) => e.toEntity()).toList(),
+        topMedicines:
+            (topMedicines ?? const []).map((e) => e.toEntity()).toList(),
+        totalStockValue: (totalStockValue ?? 0).toDouble(),
+        totalPayables: (totalPayables ?? 0).toDouble(),
+        topPayables:
+            (topPayables ?? const []).map((e) => e.toEntity()).toList(),
+      );
+}
+
+extension DashboardProfitDtoMapper on DashboardProfitDto {
+  DashboardProfit toEntity() => DashboardProfit(
+        revenue: (revenue ?? 0).toDouble(),
+        cost: (cost ?? 0).toDouble(),
+        profit: (profit ?? 0).toDouble(),
+      );
+}
+
+extension SalesTrendPointDtoMapper on SalesTrendPointDto {
+  SalesTrendPoint toEntity() => SalesTrendPoint(
+        date: date ?? DateTime.now(),
+        totalAmount: (totalAmount ?? 0).toDouble(),
+      );
+}
+
+extension DashboardTopMedicineDtoMapper on DashboardTopMedicineDto {
+  DashboardTopMedicine toEntity() => DashboardTopMedicine(
+        medicineId: medicineId ?? '',
+        brandName: brandName ?? '',
+        revenue: (revenue ?? 0).toDouble(),
+      );
+}
+
+extension DashboardPayableDtoMapper on DashboardPayableDto {
+  DashboardPayable toEntity() => DashboardPayable(
+        supplierId: partyId ?? '',
+        supplierName: partyName ?? '',
+        balance: (balance ?? 0).toDouble(),
       );
 }
 

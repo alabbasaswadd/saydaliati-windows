@@ -14,3 +14,12 @@ Future<DashboardSummary> dashboard(Ref ref) async {
   final result = await ref.watch(dashboardRepositoryProvider).getDashboard();
   return result.fold((summary) => summary, (failure) => throw failure);
 }
+
+/// Net profit for one period (day/week/month/year) — refetches on its own
+/// when the dashboard's period selector changes, independent of [dashboard].
+@riverpod
+Future<DashboardProfit> dashboardProfit(Ref ref, String period) async {
+  final result =
+      await ref.watch(dashboardRepositoryProvider).getProfit(period);
+  return result.fold((profit) => profit, (failure) => throw failure);
+}

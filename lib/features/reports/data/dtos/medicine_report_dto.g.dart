@@ -21,7 +21,6 @@ MedicineReportDto _$MedicineReportDtoFromJson(Map<String, dynamic> json) =>
       purchaseCost: json['purchaseCost'] as num?,
       stockQuantity: json['stockQuantity'] as num?,
       soldQuantity: json['soldQuantity'] as num?,
-      reservedQuantity: json['reservedQuantity'] as num?,
       totalSalesAmount: json['totalSalesAmount'] as num?,
       totalTransactions: (json['totalTransactions'] as num?)?.toInt(),
       isNearExpiry: json['isNearExpiry'] as bool?,

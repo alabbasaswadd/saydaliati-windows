@@ -76,12 +76,6 @@ class _ReportBody extends StatelessWidget {
         color: sem.success,
       ),
       StatChip(
-        label: AppStrings.reservedQuantity,
-        value: Formatters.integer(report.reservedQuantity),
-        icon: Icons.lock_clock_outlined,
-        color: sem.info,
-      ),
-      StatChip(
         label: AppStrings.unitPriceLabel,
         value: Formatters.money(report.unitPrice, code),
         icon: Icons.payments_outlined,

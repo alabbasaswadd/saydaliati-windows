@@ -15,7 +15,6 @@ abstract class MedicineReport with _$MedicineReport {
     required double purchaseCost,
     required double stockQuantity,
     required double soldQuantity,
-    required double reservedQuantity,
     required double totalSalesAmount,
     required int totalTransactions,
     required bool isNearExpiry,
