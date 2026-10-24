@@ -34,14 +34,18 @@ class SaleRepositoryImpl implements SaleRepository {
 
   @override
   Future<Result<bool>> createSale(CreateSaleInput input) {
-    final payload = input.toJson();
+    // نفس المعرّف يُستخدم لصفّ الطابور وللبيعة ذاتها (`clientRequestId`
+    // بالحمولة) — الخادم يكتشف به إعادة إرسال نفس الطلب (مهلة شبكة وصلت
+    // فعلاً، أو مزامنة تعطّلت بعد نجاحها) فيُعيد البيعة الموجودة بدل تكرارها.
+    final id = _uuid.v4();
+    final payload = {...input.toJson(), 'clientRequestId': id};
     final gate = OfflineWriteGate(
       outbox: outbox,
       tenantId: tenantId,
       isOnline: isOnline,
     );
     return gate.run<bool>(
-      id: _uuid.v4(), // client id → prevents duplicate rows in the queue
+      id: id,
       kind: kSaleOutboxKind,
       payload: payload,
       online: () async {
