@@ -602,49 +602,57 @@ class _RateEntry extends StatefulWidget {
 }
 
 class _RateEntryState extends State<_RateEntry> {
-  // false → "1 base = X code" (X entered = stored rate).
-  // true  → "1 code = X base" (stored rate = 1 / X).
-  // Default to the natural direction «1 code = X base» (e.g. 1 دولار = 135 ل.س)
-  // so typing 135 stores the correct 1/135 and the cost conversion isn't inverted.
-  bool _inverse = true;
-  late final TextEditingController _ctl;
+  // حقلان ظاهران دائماً معاً، لا مفتاح اتجاه يُخفي أحدهما: الأرقام متبادلة
+  // آلياً (مقلوب كلٍّ من الآخر) — تعديل أيٍّ منهما يحدِّث الآخر فوراً.
+  // _baseToCode: «١ أساسية = X عملة» — قيمته هي سعر الصرف المخزَّن مباشرة.
+  // _codeToBase: «١ عملة = Y أساسية» — قيمته مقلوب سعر الصرف المخزَّن.
+  late final TextEditingController _baseToCode;
+  late final TextEditingController _codeToBase;
+
+  /// يمنع حلقة تحديث لا نهائية أثناء مزامنة حقلٍ من الآخر برمجياً.
+  bool _syncing = false;
+
+  double? _rate;
 
   @override
   void initState() {
     super.initState();
-    _ctl = TextEditingController(
-        text: widget.initialRate > 0
-            ? _fmt(_inverse ? 1 / widget.initialRate : widget.initialRate)
-            : '');
-    _ctl.addListener(_emit);
+    final rate = widget.initialRate;
+    _rate = rate > 0 ? rate : null;
+    _baseToCode = TextEditingController(text: rate > 0 ? _fmt(rate) : '');
+    _codeToBase = TextEditingController(text: rate > 0 ? _fmt(1 / rate) : '');
+    _baseToCode.addListener(() => _onEdited(_baseToCode, _codeToBase));
+    _codeToBase.addListener(() => _onEdited(_codeToBase, _baseToCode));
   }
 
   @override
   void dispose() {
-    _ctl.removeListener(_emit);
-    _ctl.dispose();
+    _baseToCode.dispose();
+    _codeToBase.dispose();
     super.dispose();
   }
 
-  double? get _rate {
-    final v = double.tryParse(_ctl.text.trim());
-    if (v == null || v <= 0) return null;
-    return _inverse ? 1 / v : v;
-  }
-
-  void _emit() {
-    widget.onChanged(_rate);
-    if (mounted) setState(() {});
-  }
-
-  void _toggle(bool inverse) {
-    if (inverse == _inverse) return;
-    final r = _rate; // keep the same underlying rate; just flip the shown value
-    setState(() {
-      _inverse = inverse;
-      if (r != null && r > 0) _ctl.text = _fmt(inverse ? 1 / r : r);
-    });
-    _emit();
+  /// [from] تغيّر بيد المستخدم — يُحسَب سعر الصرف منه ويُعكَس في [to].
+  void _onEdited(TextEditingController from, TextEditingController to) {
+    if (_syncing) return;
+    final v = double.tryParse(from.text.trim());
+    if (v == null || v <= 0) {
+      _syncing = true;
+      to.text = '';
+      _syncing = false;
+      setState(() => _rate = null);
+      widget.onChanged(null);
+      return;
+    }
+    final mirrored = 1 / v;
+    _syncing = true;
+    to.text = _fmt(mirrored);
+    _syncing = false;
+    // سعر الصرف المخزَّن = قيمة حقل «أساسية = عملة» دائماً، أياً كان الحقل
+    // الذي كتب فيه المستخدم فعلياً.
+    final rate = identical(from, _baseToCode) ? v : mirrored;
+    setState(() => _rate = rate);
+    widget.onChanged(rate);
   }
 
   // Adaptive formatting so tiny inverse rates (e.g. 0.0000667) stay readable.
@@ -661,32 +669,35 @@ class _RateEntryState extends State<_RateEntry> {
     final theme = Theme.of(context);
     final code = widget.code.trim().isEmpty ? 'العملة' : widget.code.trim();
     final base = widget.baseCode.trim().isEmpty ? 'الأساسية' : widget.baseCode.trim();
-    final r = _rate;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SegmentedButton<bool>(
-          segments: [
-            ButtonSegment(value: false, label: Text('١ $base = $code')),
-            ButtonSegment(value: true, label: Text('١ $code = $base')),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: AppNumberField(
+                controller: _baseToCode,
+                label: '١ $base = ؟ $code',
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: AppNumberField(
+                controller: _codeToBase,
+                label: '١ $code = ؟ $base',
+              ),
+            ),
           ],
-          selected: {_inverse},
-          onSelectionChanged: (s) => _toggle(s.first),
-          showSelectedIcon: false,
         ),
-        const SizedBox(height: AppSpacing.sm),
-        AppNumberField(
-          controller: _ctl,
-          label: _inverse ? 'كم $base تساوي 1 $code؟' : 'كم $code تساوي 1 $base؟',
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        Text(
-          r == null
-              ? AppStrings.rateEnterPositive
-              : '١ $base = ${_fmt(r)} $code   •   ١ $code = ${_fmt(1 / r)} $base',
-          style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor),
-        ),
+        if (_rate == null) ...[
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            AppStrings.rateEnterPositive,
+            style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor),
+          ),
+        ],
       ],
     );
   }
