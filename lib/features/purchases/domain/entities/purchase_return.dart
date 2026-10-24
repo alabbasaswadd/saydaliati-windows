@@ -39,6 +39,7 @@ class CreatePurchaseReturnInput {
   const CreatePurchaseReturnInput({
     required this.purchaseId,
     required this.lines,
+    required this.returnDate,
     this.reason,
   });
 
@@ -46,10 +47,14 @@ class CreatePurchaseReturnInput {
   final String? reason;
   final List<PurchaseReturnLineInput> lines;
 
+  /// تاريخ المرتجع — مستقلّ عن تاريخ فاتورة الشراء الأصلية، افتراضياً اليوم.
+  final DateTime returnDate;
+
   Map<String, dynamic> toJson() => {
         'purchaseId': purchaseId,
         'reason': reason,
         'items': lines.map((l) => l.toJson()).toList(),
+        'returnDate': returnDate.toUtc().toIso8601String(),
       };
 }
 

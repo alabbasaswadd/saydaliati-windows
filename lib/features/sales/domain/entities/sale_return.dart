@@ -31,6 +31,7 @@ class CreateSaleReturnInput {
   const CreateSaleReturnInput({
     required this.saleId,
     required this.lines,
+    required this.returnDate,
     this.reason,
   });
 
@@ -38,10 +39,14 @@ class CreateSaleReturnInput {
   final String? reason;
   final List<SaleReturnLineInput> lines;
 
+  /// تاريخ المرتجع — مستقلّ عن تاريخ الفاتورة الأصلية، افتراضياً اليوم.
+  final DateTime returnDate;
+
   Map<String, dynamic> toJson() => {
         'saleId': saleId,
         'reason': reason,
         'items': lines.map((l) => l.toJson()).toList(),
+        'returnDate': returnDate.toUtc().toIso8601String(),
       };
 }
 

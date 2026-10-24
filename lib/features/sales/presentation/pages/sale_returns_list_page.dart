@@ -6,6 +6,7 @@ import 'package:saydaliati/features/sales/domain/entities/sale_return.dart';
 import 'package:saydaliati/features/sales/presentation/pages/sale_return_picker_page.dart';
 import 'package:saydaliati/features/sales/sale_providers.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
+import 'package:saydaliati/shared/widgets/buttons/app_refresh_button.dart';
 import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
 import 'package:saydaliati/shared/widgets/states/app_states.dart';
 import 'package:trina_grid/trina_grid.dart';
@@ -38,7 +39,14 @@ class _SaleReturnsListPageState extends ConsumerState<SaleReturnsListPage> {
     final async = ref.watch(saleReturnsListProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('مرتجع مبيعات')),
+      appBar: AppBar(
+        title: const Text('مرتجع مبيعات'),
+        actions: [
+          AppRefreshButton(
+            onRefresh: () => ref.refresh(saleReturnsListProvider.future),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _newReturn,
         icon: const Icon(Icons.add),

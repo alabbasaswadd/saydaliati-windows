@@ -12,6 +12,7 @@ import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
 import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
 import 'package:saydaliati/shared/widgets/grids/grid_line_focus.dart';
+import 'package:saydaliati/shared/widgets/inputs/app_date_picker.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_text_field.dart';
 import 'package:saydaliati/shared/widgets/states/app_states.dart';
 import 'package:trina_grid/trina_grid.dart';
@@ -41,6 +42,10 @@ class _SaleReturnPageState extends ConsumerState<SaleReturnPage> {
   static const _fTotal = 'total';
 
   final _reason = TextEditingController();
+
+  /// تاريخ المرتجع — مستقلّ عن تاريخ الفاتورة الأصلية، افتراضياً اليوم
+  /// (لا تاريخ الفاتورة)، وقابل للتغيير.
+  DateTime _returnDate = DateTime.now();
 
   /// الكمية المدخَلة للإرجاع، مفهرسة بمعرّف سطر الفاتورة الأصلي.
   final Map<String, double> _quantities = {};
@@ -119,6 +124,7 @@ class _SaleReturnPageState extends ConsumerState<SaleReturnPage> {
             saleId: widget.saleId,
             reason: _reason.text.trim().isEmpty ? null : _reason.text.trim(),
             lines: returnLines,
+            returnDate: _returnDate,
           ),
         );
     if (!mounted) return;
@@ -266,6 +272,15 @@ class _SaleReturnPageState extends ConsumerState<SaleReturnPage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
+          SizedBox(
+            width: 180,
+            child: AppDatePicker(
+              label: 'تاريخ المرتجع',
+              value: _returnDate,
+              onChanged: (d) => setState(() => _returnDate = d),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.lg),
           Expanded(
             child: AppTextField(controller: _reason, label: 'سبب الإرجاع (اختياري)'),
           ),
