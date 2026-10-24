@@ -65,9 +65,15 @@ dependencies:
   # Native window control (hide title bar, minimize/maximize/close, drag-to-move)
   # for the custom desktop title bar.
   window_manager: ^0.4.0
+  # تابعٌ لـwindow_manager أصلاً، ويُعلَن صراحةً لأن main.dart يقرأ منه مقاس
+  # الشاشة ليُلائم النافذة لها.
+  screen_retriever: ^0.2.0
 
   path_provider: ^2.1.5
   trina_grid: ^2.2.1
+
+  # Dashboard charts (sales trend / top medicines).
+  fl_chart: ^0.69.0
 
 dev_dependencies:
   flutter_test:
