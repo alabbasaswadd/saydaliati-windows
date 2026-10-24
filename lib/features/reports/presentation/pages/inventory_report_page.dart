@@ -216,6 +216,7 @@ class _InventoryReportPageState extends ConsumerState<InventoryReportPage> {
                         field: _fLow,
                         type: TrinaColumnType.text(),
                         width: 110,
+                        hide: true,
                         enableEditingMode: false,
                         textAlign: TrinaColumnTextAlign.center,
                         renderer: (ctx) {
@@ -382,8 +383,10 @@ class _InventoryReportPageState extends ConsumerState<InventoryReportPage> {
     );
   }
 
-  static String _ymd(DateTime d) =>
-      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  static String _ymd(DateTime d) {
+    final l = d.toLocal();
+    return '${l.year}-${l.month.toString().padLeft(2, '0')}-${l.day.toString().padLeft(2, '0')}';
+  }
 
   /// يفتح حوار التسوية لدفعة بعينها، ويُحدِّث التقرير بعد نجاحه — الكمية
   /// المعروضة قبل التحديث قديمة فوراً فلا تصحّ تسويةٌ ثانية عليها.

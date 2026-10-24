@@ -343,8 +343,10 @@ class _PurchasesReportPageState extends ConsumerState<PurchasesReportPage> {
     );
   }
 
-  static String _ymd(DateTime d) =>
-      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  static String _ymd(DateTime d) {
+    final l = d.toLocal();
+    return '${l.year}-${l.month.toString().padLeft(2, '0')}-${l.day.toString().padLeft(2, '0')}';
+  }
 
   static String _payLabel(int method) =>
       method >= 1 && method <= 6 ? PaymentMethod.fromWire(method).label : '—';
