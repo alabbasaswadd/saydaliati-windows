@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -180,6 +182,9 @@ class _TutorialHelpButtonState extends ConsumerState<TutorialHelpButton> {
   @override
   void initState() {
     super.initState();
+    // فيديوهات الشرح أُزيلت من نسخة الويندوز — فلا زرّ ولا تلميحٌ أوّل مرة
+    // يُفتح على فيديوٍ لم يعد له مكان يُعرض فيه.
+    if (Platform.isWindows) return;
     WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowHint());
   }
 
@@ -209,6 +214,8 @@ class _TutorialHelpButtonState extends ConsumerState<TutorialHelpButton> {
 
   @override
   Widget build(BuildContext context) {
+    // راجع ملاحظة initState: فيديوهات الشرح غير متاحة بنسخة الويندوز.
+    if (Platform.isWindows) return const SizedBox.shrink();
     return IconButton(
       tooltip: 'شرح مصوّر',
       icon: const Icon(Icons.ondemand_video_outlined),

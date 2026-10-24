@@ -7,10 +7,10 @@ import 'package:saydaliati/core/offline/connectivity/work_mode.dart';
 import 'package:saydaliati/core/offline/sync/sync_service.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/features/auth/presentation/pages/account_page.dart';
-import 'package:saydaliati/features/onboarding/onboarding_controller.dart';
 import 'package:saydaliati/features/settings/settings_providers.dart';
 import 'package:saydaliati/features/shortcuts/presentation/pages/shortcuts_page.dart';
 import 'package:saydaliati/features/tutorials/presentation/tutorial_help.dart';
+import 'package:saydaliati/shared/utils/whatsapp.dart';
 import 'package:saydaliati/shared/widgets/dialogs/entity_form_dialog.dart';
 import 'package:saydaliati/shared/widgets/feedback/app_snackbar.dart';
 
@@ -65,9 +65,15 @@ class SettingsPage extends ConsumerWidget {
               _SyncDataTile(),
             ],
           ),
-          const _Section(
+          _Section(
             title: AppStrings.help,
-            children: [_ReplayTourTile()],
+            children: [
+              for (var i = 0; i < AppConstants.supportWhatsAppNumbers.length; i++) ...[
+                if (i > 0) const Divider(height: 1),
+                _WhatsAppSupportTile(
+                    number: AppConstants.supportWhatsAppNumbers[i]),
+              ],
+            ],
           ),
         ],
       ),
@@ -357,20 +363,24 @@ class _ShortcutsTile extends StatelessWidget {
 
 // ═══════════════════════ المساعدة ═══════════════════════
 
-class _ReplayTourTile extends ConsumerWidget {
-  const _ReplayTourTile();
+class _WhatsAppSupportTile extends StatelessWidget {
+  const _WhatsAppSupportTile({required this.number});
+
+  final String number;
+
+  static const _whatsappGreen = Color(0xFF25D366);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     return ListTile(
-      leading: const Icon(Icons.school_outlined),
-      title: const Text(AppStrings.replayTour),
+      leading: const Icon(Icons.chat_outlined, color: _whatsappGreen),
+      title: const Text('الدعم الفني — واتساب'),
+      subtitle: Directionality(
+        textDirection: TextDirection.ltr,
+        child: Text(formatWhatsAppNumber(number)),
+      ),
       trailing: const Icon(Icons.chevron_left),
-      onTap: () {
-        // الجولة تشرح الشاشة الرئيسية، فالعودة إليها قبل تشغيلها.
-        Navigator.of(context).popUntil((r) => r.isFirst);
-        ref.read(onboardingControllerProvider.notifier).restart();
-      },
+      onTap: () => openWhatsApp(context, number),
     );
   }
 }

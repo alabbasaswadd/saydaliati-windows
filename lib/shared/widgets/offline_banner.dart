@@ -16,7 +16,7 @@ class OfflineBanner extends ConsumerWidget {
     final pending = ref.watch(pendingOperationsCountProvider).value ?? 0;
     final theme = Theme.of(context);
     return Material(
-      color: theme.colorScheme.tertiaryContainer,
+      color: theme.colorScheme.errorContainer,
       child: SafeArea(
         bottom: false,
         child: Padding(
@@ -24,7 +24,7 @@ class OfflineBanner extends ConsumerWidget {
           child: Row(
             children: [
               Icon(Icons.cloud_off,
-                  size: 18, color: theme.colorScheme.onTertiaryContainer),
+                  size: 18, color: theme.colorScheme.onErrorContainer),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -32,7 +32,7 @@ class OfflineBanner extends ConsumerWidget {
                       ? '${AppStrings.workingOffline} • ${AppStrings.pendingOperations}: $pending'
                       : AppStrings.workingOffline,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onTertiaryContainer,
+                    color: theme.colorScheme.onErrorContainer,
                     fontWeight: FontWeight.w600,
                   ),
                 ),

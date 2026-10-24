@@ -35,6 +35,18 @@ abstract final class AppConstants {
 
   /// Local flag: the first-run intro carousel has been seen.
   static const String introSeenKey = 'intro_seen';
+
+  /// Local flag: the post-auth "we migrate your data" offer has been shown
+  /// once (first time the dashboard is reached on this device). v2: v1 had a
+  /// race where the trigger lived on the login page itself — its context
+  /// could be torn down by the router's post-auth redirect between marking
+  /// the flag seen and actually showing the dialog, silently eating the
+  /// offer forever. Moved to [MigrationOfferGate] on the stable home page.
+  static const String migrationOfferSeenKey = 'migration_offer_seen_v2';
+
+  /// الدعم الفني — أرقام واتساب سورية، محلية (٠ بالبداية، تُحوَّل لدولية
+  /// بإبدال الصفر بـ٩٦٣ عند بناء رابط wa.me).
+  static const List<String> supportWhatsAppNumbers = ['0988693463', '0985311971'];
 }
 
 /// Keys used with the [KeyValueStore]. Centralized to avoid stringly-typed drift.
