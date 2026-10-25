@@ -58,6 +58,17 @@ class _NavSection {
 // Branch indices match the order in app_router.dart's StatefulShellRoute.
 // Keep these two lists in sync.
 
+// الرئيسية (الداشبورد) — عنصر ثابت فوق كل الكتل القابلة للطي، لا داخل قسم،
+// فيبقى ظاهراً دوماً بصرف النظر عن أي كتلة مطوية. الفرع 3 بالراوتر
+// (lib/app/router/app_router.dart) — كان بلا أي مدخل في الشريط الجانبي قبل
+// هذا، فلا سبيل للرجوع إليه إن أُغلق تابّه أو فُتح التطبيق على تابّ آخر محفوظ.
+const _homeItem = _NavItem(
+  index: 3,
+  label: 'الرئيسية',
+  icon: Icons.dashboard_outlined,
+  selectedIcon: Icons.dashboard,
+);
+
 const _mainSections = <_NavSection>[
   // الفواتير والمرتجعات: المبيعات/المشتريات (فروع مباشرة) + مرتجعاتهما
   // (مسارات متداخلة داخل فرع واحد، index 7 — التظليل يطابق المسار لا رقم الفرع).
@@ -123,12 +134,6 @@ const _mainSections = <_NavSection>[
       label: 'الكتالوغ',
       icon: Icons.menu_book_outlined,
       selectedIcon: Icons.menu_book,
-    ),
-    _NavItem(
-      index: 4,
-      label: 'المخزون',
-      icon: Icons.inventory_2_outlined,
-      selectedIcon: Icons.inventory_2,
     ),
     _NavItem(
       index: 5,
@@ -424,6 +429,21 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
                 _SidebarHeader(
                     showLabels: showLabels, onToggle: widget.onToggle),
                 Divider(height: 1, thickness: 2, color: theme.extension<AppSemanticColors>()!.border),
+
+                // الرئيسية: عنصر ثابت دائماً فوق كل الأقسام، لا يُطوى أبداً.
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.sm, AppSpacing.sm, AppSpacing.sm, 0,
+                  ),
+                  child: _NavItemTile(
+                    item: _homeItem,
+                    isSelected: _isSelected(_homeItem),
+                    showLabels: showLabels,
+                    badgeCount: 0,
+                    onTap: () => _onTap(_homeItem),
+                  ),
+                ),
+                _sectionDivider(context),
 
                 // Main navigation sections (scrollable) — حدّ رفيع بين كل كتلة
                 // والتي تليها.

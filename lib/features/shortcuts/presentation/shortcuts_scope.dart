@@ -106,7 +106,6 @@ class _ShortcutsScopeState extends ConsumerState<ShortcutsScope> {
     ShortcutAction.navSalesReturns: AppRoutes.salesReturns,
     ShortcutAction.navPurchaseReturns: AppRoutes.purchaseReturns,
     ShortcutAction.navMedicines: AppRoutes.products,
-    ShortcutAction.navStock: AppRoutes.inventory,
     ShortcutAction.navAccounts: AppRoutes.accounts,
     ShortcutAction.navSalesReport: AppRoutes.salesReport,
   };

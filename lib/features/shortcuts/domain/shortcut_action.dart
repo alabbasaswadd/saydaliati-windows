@@ -70,13 +70,6 @@ enum ShortcutAction {
     icon: Icons.medication_outlined,
     defaultCombo: 'Ctrl+5',
   ),
-  navStock(
-    id: 'nav.stock',
-    label: 'المخزون',
-    section: ShortcutSection.navigation,
-    icon: Icons.inventory_2_outlined,
-    defaultCombo: 'Ctrl+6',
-  ),
   navAccounts(
     id: 'nav.accounts',
     label: 'الحسابات',

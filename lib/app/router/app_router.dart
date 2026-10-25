@@ -135,13 +135,15 @@ GoRouter goRouter(Ref ref) {
       final onAuth = loc == AppRoutes.login || loc == AppRoutes.register;
 
       if (authed) {
-        if (onAuth || onIntro || onSplash) return AppRoutes.sales;
+        // الرئيسية (الداشبورد، عنوانها "التقارير") هي الصفحة الافتراضية عند
+        // فتح التطبيق — لا المبيعات.
+        if (onAuth || onIntro || onSplash) return AppRoutes.home;
         // Defense-in-depth below the sidebar filtering: a direct/typed URL
         // or a restored tab must not reach a page the current role can't see.
         final requiredPermission = _routePermissions[loc];
         if (requiredPermission != null) {
           final perms = ref.read(currentUserPermissionsProvider);
-          if (!perms.has(requiredPermission)) return AppRoutes.sales;
+          if (!perms.has(requiredPermission)) return AppRoutes.home;
         }
         return null;
       }

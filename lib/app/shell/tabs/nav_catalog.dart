@@ -30,7 +30,6 @@ const List<NavEntry> navCatalog = [
   NavEntry(AppRoutes.purchaseReturns, 'مرتجع مشتريات', Icons.assignment_return_outlined),
   NavEntry(AppRoutes.products, 'الأدوية', Icons.medication_outlined),
   NavEntry(AppRoutes.catalog, 'المكتبة الدوائية', Icons.local_library_outlined),
-  NavEntry(AppRoutes.inventory, 'المخزون', Icons.inventory_2_outlined),
   NavEntry(AppRoutes.stockMovements, 'حركات المخزون', Icons.swap_vert_outlined),
   NavEntry(AppRoutes.suppliers, 'الموردون', Icons.local_shipping_outlined),
   NavEntry(AppRoutes.customers, 'العملاء', Icons.people_outline),
