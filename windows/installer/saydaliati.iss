@@ -25,7 +25,7 @@
 #define MyAppId "{{A3F1C9E2-5D47-4B8A-9E6C-1F2B3C4D5E6F}"
 #define MyOutputBaseFilename "Setup"
 #endif
-#define MyAppVersion "1.2.0"
+#define MyAppVersion "1.2.1"
 #define MyAppPublisher "CodeTech Syria"
 #define MyAppExeName "saydaliati.exe"
 ; Release output of `flutter build windows --release`, relative to this file
