@@ -35,7 +35,7 @@ void main() async {
     WidgetsFlutterBinding.ensureInitialized();
     StartupLog.write('تهيئة فلاتر: تمّت');
 
-    if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+    if (!kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
       await windowManager.ensureInitialized();
       StartupLog.write('تهيئة مدير النوافذ: تمّت');
 

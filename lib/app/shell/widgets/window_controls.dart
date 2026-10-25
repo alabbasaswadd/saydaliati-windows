@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
@@ -40,13 +41,16 @@ class _WindowControlsState extends State<WindowControls> with WindowListener {
   @override
   void initState() {
     super.initState();
-    windowManager.addListener(this);
-    _sync();
+    // على الويب لا نافذة نظام — لا مستمع ولا مزامنة حالة.
+    if (!kIsWeb) {
+      windowManager.addListener(this);
+      _sync();
+    }
   }
 
   @override
   void dispose() {
-    windowManager.removeListener(this);
+    if (!kIsWeb) windowManager.removeListener(this);
     super.dispose();
   }
 
@@ -80,6 +84,8 @@ class _WindowControlsState extends State<WindowControls> with WindowListener {
 
   @override
   Widget build(BuildContext context) {
+    // على الويب: المتصفح يوفّر أزرار النافذة — نُخفي أزرارنا.
+    if (kIsWeb) return const SizedBox.shrink();
     // الأزرار في أعلى اليمين دائماً كعُرف ويندوز، مهما كانت لغة الواجهة.
     return Directionality(
       textDirection: TextDirection.ltr,

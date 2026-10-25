@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:saydaliati/features/currencies/presentation/providers/currencies_provider.dart';
@@ -53,7 +54,7 @@ class _CurrencyFreshnessState extends ConsumerState<CurrencyFreshness>
   void initState() {
     super.initState();
     CurrencyFreshness._lastRefresh = DateTime.now();
-    windowManager.addListener(this);
+    if (!kIsWeb) windowManager.addListener(this);
     _timer = Timer.periodic(CurrencyFreshness.maxAge, (_) {
       if (mounted) CurrencyFreshness.refreshNow(ref);
     });
@@ -62,7 +63,7 @@ class _CurrencyFreshnessState extends ConsumerState<CurrencyFreshness>
   @override
   void dispose() {
     _timer?.cancel();
-    windowManager.removeListener(this);
+    if (!kIsWeb) windowManager.removeListener(this);
     super.dispose();
   }
 

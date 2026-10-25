@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:saydaliati/app/shell/widgets/window_controls.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
@@ -48,12 +49,14 @@ class AuthScaffold extends StatelessWidget {
             _CompactLayout(title: title, subtitle: subtitle, child: child),
           // شاشات الدخول بلا شريط عنوان (TitleBarStyle.hidden) — شريطٌ شفّاف
           // يُبقي النافذة قابلة للسحب.
-          const Positioned(
+          Positioned(
             top: 0,
             left: 0,
             right: 0,
             height: 32,
-            child: DragToMoveArea(child: SizedBox.expand()),
+            child: kIsWeb
+                ? const SizedBox.expand()
+                : const DragToMoveArea(child: SizedBox.expand()),
           ),
           // وأزرار النافذة فوقه: بدونها لا يجد مَن يقف عند تسجيل الدخول
           // سبيلاً إلى تصغير النافذة ولا تكبيرها ولا إغلاقها إلّا بـAlt+F4.

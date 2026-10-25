@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:saydaliati/app/shell/widgets/exchange_rate_header.dart';
@@ -65,8 +66,10 @@ class _DesktopTitleBarState extends ConsumerState<DesktopTitleBar> {
         child: Row(
           children: [
             // Draggable area fills the available space (search field removed).
-            const Expanded(
-              child: DragToMoveArea(child: SizedBox.expand()),
+            Expanded(
+              child: kIsWeb
+                  ? const SizedBox.expand()
+                  : const DragToMoveArea(child: SizedBox.expand()),
             ),
 
             const ExchangeRateHeader(),

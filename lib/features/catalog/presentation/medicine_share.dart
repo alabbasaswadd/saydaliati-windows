@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
@@ -18,10 +19,20 @@ Future<void> shareMedicineAsImage(GlobalKey boundaryKey, String name) async {
   final image = await boundary.toImage(pixelRatio: 2.5);
   final data = await image.toByteData(format: ui.ImageByteFormat.png);
   if (data == null) return;
+  final bytes = data.buffer.asUint8List();
+  const text = 'بطاقة دواء — صيدليتي';
+  if (kIsWeb) {
+    await Share.shareXFiles(
+      [XFile.fromData(bytes, name: 'medicine.png', mimeType: 'image/png')],
+      subject: name,
+      text: text,
+    );
+    return;
+  }
   final dir = await getTemporaryDirectory();
   final file = File('${dir.path}/medicine_${DateTime.now().millisecondsSinceEpoch}.png');
-  await file.writeAsBytes(data.buffer.asUint8List());
-  await Share.shareXFiles([XFile(file.path)], subject: name, text: 'بطاقة دواء — صيدليتي');
+  await file.writeAsBytes(bytes);
+  await Share.shareXFiles([XFile(file.path)], subject: name, text: text);
 }
 
 /// Builds and shares a full PDF of the medicine + its alternatives (branded,
