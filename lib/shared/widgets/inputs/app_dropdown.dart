@@ -20,6 +20,7 @@ class AppDropdown<T> extends StatelessWidget {
     this.hint,
     this.isRequired = false,
     this.enabled = true,
+    this.validator,
     super.key,
   });
 
@@ -30,6 +31,7 @@ class AppDropdown<T> extends StatelessWidget {
   final String? hint;
   final bool isRequired;
   final bool enabled;
+  final String? Function(T?)? validator;
 
   @override
   Widget build(BuildContext context) {
@@ -64,6 +66,7 @@ class AppDropdown<T> extends StatelessWidget {
               DropdownMenuItem<T>(value: item.value, child: Text(item.label)),
           ],
           onChanged: enabled ? onChanged : null,
+          validator: validator,
         ),
       ],
     );

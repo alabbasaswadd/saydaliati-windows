@@ -26,6 +26,7 @@ const List<NavEntry> navCatalog = [
   NavEntry(AppRoutes.purchases, 'المشتريات', Icons.shopping_cart_outlined),
   NavEntry(AppRoutes.purchaseInvoices, 'فواتير المشتريات', Icons.receipt_outlined),
   NavEntry(AppRoutes.openingBalanceInvoices, 'أول المدة', Icons.account_balance_wallet_outlined),
+  NavEntry(AppRoutes.damagedGoods, 'بضاعة تالفة', Icons.broken_image_outlined),
   NavEntry(AppRoutes.salesReturns, 'مرتجع مبيعات', Icons.assignment_return_outlined),
   NavEntry(AppRoutes.purchaseReturns, 'مرتجع مشتريات', Icons.assignment_return_outlined),
   NavEntry(AppRoutes.products, 'الأدوية', Icons.medication_outlined),

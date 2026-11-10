@@ -107,6 +107,13 @@ const _mainSections = <_NavSection>[
       route: AppRoutes.openingBalanceInvoices,
     ),
     _NavItem(
+      index: 28,
+      label: 'بضاعة تالفة',
+      icon: Icons.broken_image_outlined,
+      selectedIcon: Icons.broken_image,
+      route: AppRoutes.damagedGoods,
+    ),
+    _NavItem(
       index: 7,
       label: 'مرتجع مبيعات',
       icon: Icons.assignment_return_outlined,

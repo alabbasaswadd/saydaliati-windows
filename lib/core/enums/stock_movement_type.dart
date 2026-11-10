@@ -1,14 +1,15 @@
 /// The kind of stock movement. Mirrors the backend `StockMovementTypeEnum` —
-/// serialized as an **integer** (0..5) on the wire.
+/// serialized as an **integer** (0..6) on the wire.
 enum StockMovementType {
   purchaseReceipt,
   purchaseReturn,
   saleIssue,
   saleReturn,
   stockAdjustmentPlus,
-  stockAdjustmentMinus;
+  stockAdjustmentMinus,
+  damagedGoods;
 
-  int get wire => index; // PurchaseReceipt=0 … StockAdjustmentMinus=5.
+  int get wire => index; // PurchaseReceipt=0 … DamagedGoods=6.
 
   String get label => switch (this) {
         StockMovementType.purchaseReceipt => 'استلام شراء',
@@ -17,6 +18,7 @@ enum StockMovementType {
         StockMovementType.saleReturn => 'مرتجع بيع',
         StockMovementType.stockAdjustmentPlus => 'تسوية (زيادة)',
         StockMovementType.stockAdjustmentMinus => 'تسوية (نقص)',
+        StockMovementType.damagedGoods => 'بضاعة تالفة',
       };
 
   /// True when the movement increases available stock.

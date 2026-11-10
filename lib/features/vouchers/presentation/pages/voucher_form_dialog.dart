@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:saydaliati/core/constants/app_strings.dart';
 import 'package:saydaliati/core/network/server_capabilities.dart';
+import 'package:saydaliati/core/result/result.dart';
 import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/features/accounts/domain/entities/account.dart';
 import 'package:saydaliati/features/accounts/presentation/widgets/account_picker_field.dart';
@@ -18,24 +19,26 @@ import 'package:saydaliati/shared/widgets/inputs/app_date_picker.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_dropdown.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_text_field.dart';
 
-/// حوار إضافة سند مباشر — طرف مدين وطرف دائن بنفس المبلغ (الحالة الشائعة
-/// لسند قبض/دفع). نفس أسلوب حوار المصروف/الحساب: الحفظ داخل الحوار نفسه
-/// مع مؤشّر تحميل، لا يُغلَق إلا بعد نجاح الطلب.
+/// حوار إضافة/تعديل سند مباشر — طرف مدين وطرف دائن بنفس المبلغ (الحالة
+/// الشائعة لسند قبض/دفع). نفس أسلوب حوار المصروف/الحساب: الحفظ داخل الحوار
+/// نفسه مع مؤشّر تحميل، لا يُغلَق إلا بعد نجاح الطلب.
 Future<bool?> showVoucherFormDialog(
   BuildContext context, {
   required List<Account> accounts,
+  Voucher? existing,
 }) {
   return showDialog<bool>(
     context: context,
     barrierDismissible: false,
-    builder: (_) => _VoucherFormDialog(accounts: accounts),
+    builder: (_) => _VoucherFormDialog(accounts: accounts, existing: existing),
   );
 }
 
 class _VoucherFormDialog extends ConsumerStatefulWidget {
-  const _VoucherFormDialog({required this.accounts});
+  const _VoucherFormDialog({required this.accounts, this.existing});
 
   final List<Account> accounts;
+  final Voucher? existing;
 
   @override
   ConsumerState<_VoucherFormDialog> createState() => _VoucherFormDialogState();
@@ -43,12 +46,22 @@ class _VoucherFormDialog extends ConsumerStatefulWidget {
 
 class _VoucherFormDialogState extends ConsumerState<_VoucherFormDialog> {
   final _formKey = GlobalKey<FormState>();
-  final _descriptionController = TextEditingController();
-  final _amountController = TextEditingController();
+  late final _descriptionController = TextEditingController(
+      text: widget.existing?.description ?? '');
+  late final _amountController = TextEditingController(
+      text: (widget.existing?.totalDebit ?? 0) > 0
+          ? widget.existing!.totalDebit.toString()
+          : '');
 
-  DateTime? _date = DateTime.now();
-  String? _debitAccountId;
-  String? _creditAccountId;
+  late DateTime? _date = widget.existing?.date ?? DateTime.now();
+  late String? _debitAccountId = widget.existing?.lines
+      .where((l) => l.debit > 0)
+      .map((l) => l.accountId)
+      .firstOrNull;
+  late String? _creditAccountId = widget.existing?.lines
+      .where((l) => l.credit > 0)
+      .map((l) => l.accountId)
+      .firstOrNull;
   String? _currencyId;
   String? _lastSuggestedCurrencyId;
   bool _saving = false;
@@ -98,14 +111,30 @@ class _VoucherFormDialogState extends ConsumerState<_VoucherFormDialog> {
         serverConverts ? enteredAmount : convertToBase(enteredAmount, base, selected);
 
     setState(() => _saving = true);
-    final result = await ref.read(voucherRepositoryProvider).create(CreateVoucherInput(
-          date: _date!,
-          description: _descriptionController.text.trim(),
-          debitAccountId: _debitAccountId!,
-          creditAccountId: _creditAccountId!,
-          amount: amount,
-          currencyId: serverConverts ? _currencyId : null,
-        ));
+
+    final isEdit = widget.existing != null;
+    final Result<bool> result;
+
+    if (isEdit) {
+      result = await ref.read(voucherRepositoryProvider).update(UpdateVoucherInput(
+            id: widget.existing!.id,
+            date: _date!,
+            description: _descriptionController.text.trim(),
+            debitAccountId: _debitAccountId!,
+            creditAccountId: _creditAccountId!,
+            amount: amount,
+            currencyId: serverConverts ? _currencyId : null,
+          ));
+    } else {
+      result = await ref.read(voucherRepositoryProvider).create(CreateVoucherInput(
+            date: _date!,
+            description: _descriptionController.text.trim(),
+            debitAccountId: _debitAccountId!,
+            creditAccountId: _creditAccountId!,
+            amount: amount,
+            currencyId: serverConverts ? _currencyId : null,
+          ));
+    }
 
     if (!mounted) return;
     result.fold(
@@ -120,6 +149,7 @@ class _VoucherFormDialogState extends ConsumerState<_VoucherFormDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isEdit = widget.existing != null;
 
     return SaveShortcut(
       onSave: _submit,
@@ -149,7 +179,7 @@ class _VoucherFormDialogState extends ConsumerState<_VoucherFormDialog> {
                       Expanded(
                         child: Padding(
                           padding: const EdgeInsets.only(top: 2),
-                          child: Text('سند جديد',
+                          child: Text(isEdit ? 'تعديل سند' : 'سند جديد',
                               style: theme.textTheme.titleMedium
                                   ?.copyWith(fontWeight: FontWeight.w600)),
                         ),

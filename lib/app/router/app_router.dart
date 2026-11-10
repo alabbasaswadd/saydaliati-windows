@@ -16,6 +16,7 @@ import 'package:saydaliati/features/catalog/presentation/pages/catalog_page.dart
 import 'package:saydaliati/features/categories/presentation/pages/categories_page.dart';
 import 'package:saydaliati/features/currencies/presentation/pages/currencies_page.dart';
 import 'package:saydaliati/features/customers/presentation/pages/customers_page.dart';
+import 'package:saydaliati/features/damaged_goods/presentation/pages/damaged_goods_page.dart';
 import 'package:saydaliati/features/debts/presentation/pages/debts_page.dart';
 import 'package:saydaliati/features/expenses/presentation/pages/expense_categories_page.dart';
 import 'package:saydaliati/features/expenses/presentation/pages/expenses_list_page.dart';
@@ -93,6 +94,7 @@ const _routePermissions = <String, String>{
 ///  20  /more/profile          – Account / profile
 ///  25  /more/users            – Staff users (Admin only)
 ///  26  /more/roles            – Roles & permissions (Admin only)
+///  28  /more/damaged-goods    – Damaged goods write-off
 @Riverpod(keepAlive: true)
 GoRouter goRouter(Ref ref) {
   GoRoute rootRoute(String path, Widget Function(GoRouterState) build) =>
@@ -302,6 +304,9 @@ GoRouter goRouter(Ref ref) {
           // تُضاف في النهاية عمداً (نفس سبب shortcuts/salesInvoices أعلاه).
           branch(AppRoutes.openingBalanceInvoices,
               const OpeningBalanceInvoicesPage()),
+          // ── Damaged goods write-off (index 28) ──────────────────────────
+          // تُضاف في النهاية عمداً (نفس سبب shortcuts/salesInvoices أعلاه).
+          branch(AppRoutes.damagedGoods, const DamagedGoodsPage()),
         ],
       ),
     ],

@@ -19,5 +19,8 @@ class VoucherRemoteDataSource {
   Future<void> create(Map<String, dynamic> body) =>
       _api.post(ApiEndpoints.journalEntries, data: body);
 
+  Future<void> update(String id, Map<String, dynamic> body) =>
+      _api.put(ApiEndpoints.journalEntryById(id), data: body);
+
   Future<void> delete(String id) => _api.delete(ApiEndpoints.journalEntryById(id));
 }

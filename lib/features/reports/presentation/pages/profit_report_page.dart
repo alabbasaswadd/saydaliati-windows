@@ -116,7 +116,7 @@ class _ProfitReportPageState extends ConsumerState<ProfitReportPage> {
               Expanded(
                 child: StatChipsBar(chips: [
                   StatChip(
-                    label: AppStrings.profitShort,
+                    label: AppStrings.netProfit,
                     value: Formatters.money(conv(r.totalProfit), code),
                     icon: Icons.trending_up_outlined,
                     color: profitColor(r.totalProfit),
@@ -131,6 +131,12 @@ class _ProfitReportPageState extends ConsumerState<ProfitReportPage> {
                     value: Formatters.money(conv(r.totalCost), code),
                     icon: Icons.shopping_bag_outlined,
                     color: Theme.of(context).colorScheme.secondary,
+                  ),
+                  StatChip(
+                    label: AppStrings.expensesShort,
+                    value: Formatters.money(conv(r.totalExpenses), code),
+                    icon: Icons.money_off_outlined,
+                    color: Theme.of(context).colorScheme.error,
                   ),
                   StatChip(
                     label: AppStrings.invoicesCount,
@@ -213,7 +219,7 @@ class _ProfitReportPageState extends ConsumerState<ProfitReportPage> {
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            AppStrings.profitFormulaHint,
+            '${AppStrings.profitFormulaHint} | ${AppStrings.netProfit} = ${AppStrings.profitShort} − ${AppStrings.expensesShort}',
             style: Theme.of(context)
                 .textTheme
                 .bodySmall

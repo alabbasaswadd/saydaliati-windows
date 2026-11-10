@@ -18,6 +18,7 @@ import 'package:saydaliati/features/currencies/presentation/widgets/currency_pic
 import 'package:saydaliati/features/customers/customer_providers.dart';
 import 'package:saydaliati/features/customers/domain/entities/customer.dart';
 import 'package:saydaliati/features/customers/presentation/widgets/customer_picker_field.dart';
+import 'package:saydaliati/features/suppliers/supplier_providers.dart';
 import 'package:saydaliati/features/dashboard/presentation/providers/dashboard_provider.dart';
 import 'package:saydaliati/features/medicines/domain/entities/medicine.dart';
 import 'package:saydaliati/features/medicines/medicine_providers.dart';
@@ -365,7 +366,16 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
 
   Future<void> _pickCustomerByShortcut() async {
     final customers = ref.read(customersProvider).value ?? const <Customer>[];
-    final picked = await showCustomerPicker(context, customers);
+    final supplierList = ref.read(suppliersProvider).value ?? const [];
+    final supplierAsCustomers = supplierList.map((s) => Customer(
+      id: s.id,
+      firstName: s.name,
+      lastName: '',
+      phone: s.contactPerson,
+      address: '',
+    )).toList();
+    final allParties = [...customers, ...supplierAsCustomers];
+    final picked = await showCustomerPicker(context, allParties);
     if (picked == null || !mounted) return;
     setState(() => _customerId = picked.id);
   }
@@ -1114,17 +1124,28 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
                         ),
                         SizedBox(
                           width: 220,
-                          child: CustomerPickerField(
-                            compact: true,
-                            label: AppStrings.customer,
-                            hint: AppStrings.noCustomer,
-                            customers: ref.watch(customersProvider).value ??
-                                const <Customer>[],
-                            selectedId: _customerId,
-                            allowClear: true,
-                            onCleared: () => setState(() => _customerId = null),
-                            onSelected: (c) => setState(() => _customerId = c.id),
-                          ),
+                          child: Builder(builder: (_) {
+                            final customers = ref.watch(customersProvider).value ?? const <Customer>[];
+                            final supplierList = ref.watch(suppliersProvider).value ?? const [];
+                            final supplierAsCustomers = supplierList.map((s) => Customer(
+                              id: s.id,
+                              firstName: s.name,
+                              lastName: '',
+                              phone: s.contactPerson,
+                              address: '',
+                            )).toList();
+                            final allParties = [...customers, ...supplierAsCustomers];
+                            return CustomerPickerField(
+                              compact: true,
+                              label: AppStrings.customer,
+                              hint: AppStrings.noCustomer,
+                              customers: allParties,
+                              selectedId: _customerId,
+                              allowClear: true,
+                              onCleared: () => setState(() => _customerId = null),
+                              onSelected: (c) => setState(() => _customerId = c.id),
+                            );
+                          }),
                         ),
                         _paymentMethodField(),
                         if (_payMethod != PaymentMethod.credit)

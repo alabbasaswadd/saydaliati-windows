@@ -194,6 +194,9 @@ abstract final class ApiEndpoints {
   static const String capabilities = '$_base/Setting/capabilities';
   static String settingByKey(String key) => '$_base/Setting/$key';
 
+  // ---- Damaged goods write-off ----
+  static const String damagedGoods = '$_base/DamagedGoods';
+
   // ---- Keyboard shortcuts (stored customisations only; the app owns the
   // action catalogue and the defaults) ----
   static const String shortcuts = '$_base/Shortcut';

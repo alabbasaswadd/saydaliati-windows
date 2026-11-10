@@ -64,6 +64,50 @@ class Voucher {
       lines.where((l) => l.credit > 0).map((l) => l.accountCurrencyCode).firstOrNull;
 }
 
+/// حمولة تعديل سند مباشر مبسَّط: طرف مدين واحد + طرف دائن واحد بنفس المبلغ.
+class UpdateVoucherInput {
+  const UpdateVoucherInput({
+    required this.id,
+    required this.date,
+    required this.description,
+    required this.debitAccountId,
+    required this.creditAccountId,
+    required this.amount,
+    this.currencyId,
+  });
+
+  final String id;
+  final DateTime date;
+  final String description;
+  final String debitAccountId;
+  final String creditAccountId;
+  final double amount;
+  final String? currencyId;
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'date': date.toIso8601String(),
+        'description': description,
+        'totalDepit': amount,
+        'totalCredit': amount,
+        'currencyId': currencyId,
+        'journalEntryDetails': [
+          {
+            'accountId': debitAccountId,
+            'debit': amount,
+            'credit': 0,
+            'notes': description,
+          },
+          {
+            'accountId': creditAccountId,
+            'debit': 0,
+            'credit': amount,
+            'notes': description,
+          },
+        ],
+      };
+}
+
 /// حمولة إنشاء سند مباشر مبسَّط: طرف مدين واحد + طرف دائن واحد بنفس المبلغ
 /// (الحالة الشائعة لسند قبض/دفع). الباك يقبل أسطراً أكثر لكن الواجهة المباشرة
 /// تبقى بسيطتين فقط.

@@ -7,5 +7,7 @@ abstract interface class VoucherRepository {
 
   Future<Result<bool>> create(CreateVoucherInput input);
 
+  Future<Result<bool>> update(UpdateVoucherInput input);
+
   Future<Result<bool>> delete(String id);
 }

@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$ProfitReport {
 
- double get totalRevenue; double get totalCost; double get totalProfit; int get invoicesCount; List<ProfitByCurrency> get byCurrency; List<ProfitInvoice> get invoices;
+ double get totalRevenue; double get totalCost; double get totalExpenses; double get totalProfit; int get invoicesCount; List<ProfitByCurrency> get byCurrency; List<ProfitInvoice> get invoices;
 /// Create a copy of ProfitReport
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -27,20 +27,20 @@ $ProfitReportCopyWith<ProfitReport> get copyWith => _$ProfitReportCopyWithImpl<P
 @override
 bool operator ==(Object other) {
   final _this = this as ProfitReport;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProfitReport&&(identical(other.totalRevenue, _this.totalRevenue) || other.totalRevenue == _this.totalRevenue)&&(identical(other.totalCost, _this.totalCost) || other.totalCost == _this.totalCost)&&(identical(other.totalProfit, _this.totalProfit) || other.totalProfit == _this.totalProfit)&&(identical(other.invoicesCount, _this.invoicesCount) || other.invoicesCount == _this.invoicesCount)&&const DeepCollectionEquality().equals(other.byCurrency, _this.byCurrency)&&const DeepCollectionEquality().equals(other.invoices, _this.invoices));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProfitReport&&(identical(other.totalRevenue, _this.totalRevenue) || other.totalRevenue == _this.totalRevenue)&&(identical(other.totalCost, _this.totalCost) || other.totalCost == _this.totalCost)&&(identical(other.totalExpenses, _this.totalExpenses) || other.totalExpenses == _this.totalExpenses)&&(identical(other.totalProfit, _this.totalProfit) || other.totalProfit == _this.totalProfit)&&(identical(other.invoicesCount, _this.invoicesCount) || other.invoicesCount == _this.invoicesCount)&&const DeepCollectionEquality().equals(other.byCurrency, _this.byCurrency)&&const DeepCollectionEquality().equals(other.invoices, _this.invoices));
 }
 
 
 @override
 int get hashCode {
   final _this = this as ProfitReport;
-  return Object.hash(runtimeType,_this.totalRevenue,_this.totalCost,_this.totalProfit,_this.invoicesCount,const DeepCollectionEquality().hash(_this.byCurrency),const DeepCollectionEquality().hash(_this.invoices));
+  return Object.hash(runtimeType,_this.totalRevenue,_this.totalCost,_this.totalExpenses,_this.totalProfit,_this.invoicesCount,const DeepCollectionEquality().hash(_this.byCurrency),const DeepCollectionEquality().hash(_this.invoices));
 }
 
 @override
 String toString() {
   final _this = this as ProfitReport;
-  return 'ProfitReport(totalRevenue: ${_this.totalRevenue}, totalCost: ${_this.totalCost}, totalProfit: ${_this.totalProfit}, invoicesCount: ${_this.invoicesCount}, byCurrency: ${_this.byCurrency}, invoices: ${_this.invoices})';
+  return 'ProfitReport(totalRevenue: ${_this.totalRevenue}, totalCost: ${_this.totalCost}, totalExpenses: ${_this.totalExpenses}, totalProfit: ${_this.totalProfit}, invoicesCount: ${_this.invoicesCount}, byCurrency: ${_this.byCurrency}, invoices: ${_this.invoices})';
 }
 
 
@@ -51,7 +51,7 @@ abstract mixin class $ProfitReportCopyWith<$Res>  {
   factory $ProfitReportCopyWith(ProfitReport value, $Res Function(ProfitReport) _then) = _$ProfitReportCopyWithImpl;
 @useResult
 $Res call({
- double totalRevenue, double totalCost, double totalProfit, int invoicesCount, List<ProfitByCurrency> byCurrency, List<ProfitInvoice> invoices
+ double totalRevenue, double totalCost, double totalExpenses, double totalProfit, int invoicesCount, List<ProfitByCurrency> byCurrency, List<ProfitInvoice> invoices
 });
 
 
@@ -68,10 +68,11 @@ class _$ProfitReportCopyWithImpl<$Res>
 
 /// Create a copy of ProfitReport
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? totalRevenue = null,Object? totalCost = null,Object? totalProfit = null,Object? invoicesCount = null,Object? byCurrency = null,Object? invoices = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? totalRevenue = null,Object? totalCost = null,Object? totalExpenses = null,Object? totalProfit = null,Object? invoicesCount = null,Object? byCurrency = null,Object? invoices = null,}) {
   return _then(ProfitReport(
 totalRevenue: null == totalRevenue ? _self.totalRevenue : totalRevenue // ignore: cast_nullable_to_non_nullable
 as double,totalCost: null == totalCost ? _self.totalCost : totalCost // ignore: cast_nullable_to_non_nullable
+as double,totalExpenses: null == totalExpenses ? _self.totalExpenses : totalExpenses // ignore: cast_nullable_to_non_nullable
 as double,totalProfit: null == totalProfit ? _self.totalProfit : totalProfit // ignore: cast_nullable_to_non_nullable
 as double,invoicesCount: null == invoicesCount ? _self.invoicesCount : invoicesCount // ignore: cast_nullable_to_non_nullable
 as int,byCurrency: null == byCurrency ? _self.byCurrency : byCurrency // ignore: cast_nullable_to_non_nullable
@@ -161,10 +162,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( double totalRevenue,  double totalCost,  double totalProfit,  int invoicesCount,  List<ProfitByCurrency> byCurrency,  List<ProfitInvoice> invoices)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( double totalRevenue,  double totalCost,  double totalExpenses,  double totalProfit,  int invoicesCount,  List<ProfitByCurrency> byCurrency,  List<ProfitInvoice> invoices)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ProfitReport() when $default != null:
-return $default(_that.totalRevenue,_that.totalCost,_that.totalProfit,_that.invoicesCount,_that.byCurrency,_that.invoices);case _:
+return $default(_that.totalRevenue,_that.totalCost,_that.totalExpenses,_that.totalProfit,_that.invoicesCount,_that.byCurrency,_that.invoices);case _:
   return orElse();
 
 }
@@ -182,10 +183,10 @@ return $default(_that.totalRevenue,_that.totalCost,_that.totalProfit,_that.invoi
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( double totalRevenue,  double totalCost,  double totalProfit,  int invoicesCount,  List<ProfitByCurrency> byCurrency,  List<ProfitInvoice> invoices)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( double totalRevenue,  double totalCost,  double totalExpenses,  double totalProfit,  int invoicesCount,  List<ProfitByCurrency> byCurrency,  List<ProfitInvoice> invoices)  $default,) {final _that = this;
 switch (_that) {
 case _ProfitReport():
-return $default(_that.totalRevenue,_that.totalCost,_that.totalProfit,_that.invoicesCount,_that.byCurrency,_that.invoices);case _:
+return $default(_that.totalRevenue,_that.totalCost,_that.totalExpenses,_that.totalProfit,_that.invoicesCount,_that.byCurrency,_that.invoices);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -202,10 +203,10 @@ return $default(_that.totalRevenue,_that.totalCost,_that.totalProfit,_that.invoi
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( double totalRevenue,  double totalCost,  double totalProfit,  int invoicesCount,  List<ProfitByCurrency> byCurrency,  List<ProfitInvoice> invoices)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( double totalRevenue,  double totalCost,  double totalExpenses,  double totalProfit,  int invoicesCount,  List<ProfitByCurrency> byCurrency,  List<ProfitInvoice> invoices)?  $default,) {final _that = this;
 switch (_that) {
 case _ProfitReport() when $default != null:
-return $default(_that.totalRevenue,_that.totalCost,_that.totalProfit,_that.invoicesCount,_that.byCurrency,_that.invoices);case _:
+return $default(_that.totalRevenue,_that.totalCost,_that.totalExpenses,_that.totalProfit,_that.invoicesCount,_that.byCurrency,_that.invoices);case _:
   return null;
 
 }
@@ -217,11 +218,12 @@ return $default(_that.totalRevenue,_that.totalCost,_that.totalProfit,_that.invoi
 
 
 class _ProfitReport implements ProfitReport {
-  const _ProfitReport({this.totalRevenue = 0, this.totalCost = 0, this.totalProfit = 0, this.invoicesCount = 0,  List<ProfitByCurrency> byCurrency = const <ProfitByCurrency>[],  List<ProfitInvoice> invoices = const <ProfitInvoice>[]}): _byCurrency = byCurrency,_invoices = invoices;
+  const _ProfitReport({this.totalRevenue = 0, this.totalCost = 0, this.totalExpenses = 0, this.totalProfit = 0, this.invoicesCount = 0,  List<ProfitByCurrency> byCurrency = const <ProfitByCurrency>[],  List<ProfitInvoice> invoices = const <ProfitInvoice>[]}): _byCurrency = byCurrency,_invoices = invoices;
   
 
 @override@JsonKey() final  double totalRevenue;
 @override@JsonKey() final  double totalCost;
+@override@JsonKey() final  double totalExpenses;
 @override@JsonKey() final  double totalProfit;
 @override@JsonKey() final  int invoicesCount;
  final  List<ProfitByCurrency> _byCurrency;
@@ -249,18 +251,18 @@ _$ProfitReportCopyWith<_ProfitReport> get copyWith => __$ProfitReportCopyWithImp
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProfitReport&&(identical(other.totalRevenue, totalRevenue) || other.totalRevenue == totalRevenue)&&(identical(other.totalCost, totalCost) || other.totalCost == totalCost)&&(identical(other.totalProfit, totalProfit) || other.totalProfit == totalProfit)&&(identical(other.invoicesCount, invoicesCount) || other.invoicesCount == invoicesCount)&&const DeepCollectionEquality().equals(other.byCurrency, _byCurrency)&&const DeepCollectionEquality().equals(other.invoices, _invoices));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProfitReport&&(identical(other.totalRevenue, totalRevenue) || other.totalRevenue == totalRevenue)&&(identical(other.totalCost, totalCost) || other.totalCost == totalCost)&&(identical(other.totalExpenses, totalExpenses) || other.totalExpenses == totalExpenses)&&(identical(other.totalProfit, totalProfit) || other.totalProfit == totalProfit)&&(identical(other.invoicesCount, invoicesCount) || other.invoicesCount == invoicesCount)&&const DeepCollectionEquality().equals(other.byCurrency, _byCurrency)&&const DeepCollectionEquality().equals(other.invoices, _invoices));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,totalRevenue,totalCost,totalProfit,invoicesCount,const DeepCollectionEquality().hash(_byCurrency),const DeepCollectionEquality().hash(_invoices));
+    return Object.hash(runtimeType,totalRevenue,totalCost,totalExpenses,totalProfit,invoicesCount,const DeepCollectionEquality().hash(_byCurrency),const DeepCollectionEquality().hash(_invoices));
 }
 
 @override
 String toString() {
-    return 'ProfitReport(totalRevenue: $totalRevenue, totalCost: $totalCost, totalProfit: $totalProfit, invoicesCount: $invoicesCount, byCurrency: $byCurrency, invoices: $invoices)';
+    return 'ProfitReport(totalRevenue: $totalRevenue, totalCost: $totalCost, totalExpenses: $totalExpenses, totalProfit: $totalProfit, invoicesCount: $invoicesCount, byCurrency: $byCurrency, invoices: $invoices)';
 }
 
 
@@ -271,7 +273,7 @@ abstract mixin class _$ProfitReportCopyWith<$Res> implements $ProfitReportCopyWi
   factory _$ProfitReportCopyWith(_ProfitReport value, $Res Function(_ProfitReport) _then) = __$ProfitReportCopyWithImpl;
 @override @useResult
 $Res call({
- double totalRevenue, double totalCost, double totalProfit, int invoicesCount, List<ProfitByCurrency> byCurrency, List<ProfitInvoice> invoices
+ double totalRevenue, double totalCost, double totalExpenses, double totalProfit, int invoicesCount, List<ProfitByCurrency> byCurrency, List<ProfitInvoice> invoices
 });
 
 
@@ -288,10 +290,11 @@ class __$ProfitReportCopyWithImpl<$Res>
 
 /// Create a copy of ProfitReport
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? totalRevenue = null,Object? totalCost = null,Object? totalProfit = null,Object? invoicesCount = null,Object? byCurrency = null,Object? invoices = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? totalRevenue = null,Object? totalCost = null,Object? totalExpenses = null,Object? totalProfit = null,Object? invoicesCount = null,Object? byCurrency = null,Object? invoices = null,}) {
   return _then(_ProfitReport(
 totalRevenue: null == totalRevenue ? _self.totalRevenue : totalRevenue // ignore: cast_nullable_to_non_nullable
 as double,totalCost: null == totalCost ? _self.totalCost : totalCost // ignore: cast_nullable_to_non_nullable
+as double,totalExpenses: null == totalExpenses ? _self.totalExpenses : totalExpenses // ignore: cast_nullable_to_non_nullable
 as double,totalProfit: null == totalProfit ? _self.totalProfit : totalProfit // ignore: cast_nullable_to_non_nullable
 as double,invoicesCount: null == invoicesCount ? _self.invoicesCount : invoicesCount // ignore: cast_nullable_to_non_nullable
 as int,byCurrency: null == byCurrency ? _self._byCurrency : byCurrency // ignore: cast_nullable_to_non_nullable

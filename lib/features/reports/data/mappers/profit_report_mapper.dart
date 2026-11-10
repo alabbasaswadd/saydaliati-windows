@@ -5,6 +5,7 @@ extension ProfitReportDtoMapper on ProfitReportDto {
   ProfitReport toEntity() => ProfitReport(
         totalRevenue: (totalRevenue ?? 0).toDouble(),
         totalCost: (totalCost ?? 0).toDouble(),
+        totalExpenses: (totalExpenses ?? 0).toDouble(),
         totalProfit: (totalProfit ?? 0).toDouble(),
         invoicesCount: invoicesCount ?? 0,
         byCurrency: [

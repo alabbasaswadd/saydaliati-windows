@@ -30,6 +30,16 @@ class VoucherRepositoryImpl implements VoucherRepository {
   }
 
   @override
+  Future<Result<bool>> update(UpdateVoucherInput input) async {
+    try {
+      await remote.update(input.id, input.toJson());
+      return const Result.success(true);
+    } catch (error) {
+      return Result.failure(mapExceptionToFailure(error));
+    }
+  }
+
+  @override
   Future<Result<bool>> delete(String id) async {
     try {
       await remote.delete(id);

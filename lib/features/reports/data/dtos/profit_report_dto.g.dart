@@ -10,6 +10,7 @@ ProfitReportDto _$ProfitReportDtoFromJson(Map<String, dynamic> json) =>
     ProfitReportDto(
       totalRevenue: json['totalRevenue'] as num?,
       totalCost: json['totalCost'] as num?,
+      totalExpenses: json['totalExpenses'] as num?,
       totalProfit: json['totalProfit'] as num?,
       invoicesCount: (json['invoicesCount'] as num?)?.toInt(),
       byCurrency: (json['byCurrency'] as List<dynamic>?)

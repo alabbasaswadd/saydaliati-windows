@@ -317,8 +317,17 @@ class _ExpenseFormDialogState extends ConsumerState<_ExpenseFormDialog> {
                               for (final a in accounts)
                                 AppDropdownItem(value: a.id, label: a.name),
                             ],
-                            onChanged: (v) =>
-                                setState(() => _paymentAccountId = v),
+                            onChanged: (v) => setState(() {
+                              _paymentAccountId = v;
+                              if (v != null) {
+                                // اقتراح العملة من حساب الدفع المختار
+                                final account =
+                                    accounts.where((a) => a.id == v).firstOrNull;
+                                if (account?.currencyId != null) {
+                                  _currencyId = account!.currencyId;
+                                }
+                              }
+                            }),
                           ),
                           const SizedBox(height: AppSpacing.md),
                           AppTextField(

@@ -7,6 +7,7 @@ class ProfitReportDto {
   const ProfitReportDto({
     this.totalRevenue,
     this.totalCost,
+    this.totalExpenses,
     this.totalProfit,
     this.invoicesCount,
     this.byCurrency,
@@ -15,6 +16,7 @@ class ProfitReportDto {
 
   final num? totalRevenue;
   final num? totalCost;
+  final num? totalExpenses;
   final num? totalProfit;
   final int? invoicesCount;
   final List<ProfitByCurrencyDto>? byCurrency;

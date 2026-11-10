@@ -29,7 +29,12 @@
       "Bash(flutter analyze *)",
       "Bash(flutter build *)",
       "Bash(Get-ChildItem -Path \"E:\\\\flutter\\\\pharmacy_flutter-main\" -Recurse -Directory -ErrorAction SilentlyContinue)",
-      "Bash(Select-Object -ExpandProperty FullName)"
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Get-Content *)",
+      "Bash(Get-ChildItem -Path 'E:\\\\tawrid\\\\saydaliati api' -Filter 'Migrations' -Directory -Recurse)",
+      "Bash(mkdir -p \"E:\\\\tawrid\\\\saydaliati api\\\\Pharmacy.api\\\\Requests\\\\DamagedGoodsRequests\")",
+      "Bash(mkdir -p \"E:\\\\tawrid\\\\saydaliati api\\\\Pharmacy.Application\\\\Features\\\\DamagedGoods\\\\Commands\\\\CreateDamagedGoods\")",
+      "Bash(xargs cat)"
     ]
   }
 }

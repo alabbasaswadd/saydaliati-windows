@@ -40,6 +40,9 @@ abstract final class AppRoutes {
   // فواتير أول المدة — مخزون افتتاحي بلا مورّد، مقيَّد مقابل رأس المال.
   static const String openingBalanceInvoices = '/more/invoices/opening-balance';
 
+  // بضاعة تالفة — إخراج مخزون تالف/منتهي الصلاحية (DamagedGoods).
+  static const String damagedGoods = '/more/damaged-goods';
+
   static const String salesReturns = '/more/returns/sales';
   static const String purchaseReturns = '/more/returns/purchases';
 

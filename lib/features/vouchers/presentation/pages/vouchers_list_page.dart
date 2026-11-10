@@ -14,6 +14,7 @@ import 'package:saydaliati/features/sales/presentation/pages/sale_detail_page.da
 import 'package:saydaliati/features/sales/presentation/pages/sale_returns_list_page.dart';
 import 'package:saydaliati/features/sales/sale_providers.dart';
 import 'package:saydaliati/features/vouchers/domain/entities/voucher.dart';
+import 'package:saydaliati/features/vouchers/presentation/pages/voucher_entry_page.dart';
 import 'package:saydaliati/features/vouchers/presentation/pages/voucher_form_dialog.dart';
 import 'package:saydaliati/features/vouchers/voucher_providers.dart';
 import 'package:saydaliati/shared/utils/formatters.dart';
@@ -53,15 +54,24 @@ class VouchersListPage extends ConsumerWidget {
   static const _fActions = 'actions';
   static const _fId = '_id';
 
-  Future<void> _add(BuildContext context, WidgetRef ref, List<Account> accounts) async {
-    if (accounts.isEmpty) {
-      await showErrorDialog(context, message: 'لا توجد حسابات متاحة');
+  Future<void> _add(BuildContext context, WidgetRef ref) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const VoucherEntryPage()),
+    );
+    if (!context.mounted) return;
+    ref.invalidate(vouchersListProvider);
+  }
+
+  Future<void> _edit(BuildContext context, WidgetRef ref, Voucher v, List<Account> accounts) async {
+    if (v.hasOrigin) {
+      await showErrorDialog(context, message: 'هذا السند تابع لمصدر — لا يمكن تعديله من هنا');
       return;
     }
-    final saved = await showVoucherFormDialog(context, accounts: accounts);
+    if (accounts.isEmpty) return;
+    final saved = await showVoucherFormDialog(context, accounts: accounts, existing: v);
     if (saved != true || !context.mounted) return;
     ref.invalidate(vouchersListProvider);
-    AppSnackbar.success(context, AppStrings.createdSuccess);
+    AppSnackbar.success(context, AppStrings.updatedSuccess);
   }
 
   Future<void> _delete(BuildContext context, WidgetRef ref, Voucher v) async {
@@ -140,7 +150,7 @@ class VouchersListPage extends ConsumerWidget {
                 ),
                 icon: const Icon(Icons.add, size: 18),
                 label: const Text('سند جديد'),
-                onPressed: () => _add(context, ref, accounts),
+                onPressed: () => _add(context, ref),
               ),
             ),
           ),
@@ -159,6 +169,7 @@ class VouchersListPage extends ConsumerWidget {
                   // الأحدث تاريخاً ووقتاً أولاً.
                   vouchers: [...vouchers]..sort(_newestFirst),
                   onDelete: (v) => _delete(context, ref, v),
+                  onEdit: (v) => _edit(context, ref, v, accounts),
                   onOpenOrigin: (v) => _openOrigin(context, ref, v),
                 ),
               ),
@@ -171,11 +182,13 @@ class _VouchersGrid extends StatelessWidget {
   const _VouchersGrid({
     required this.vouchers,
     required this.onDelete,
+    required this.onEdit,
     required this.onOpenOrigin,
   });
 
   final List<Voucher> vouchers;
   final ValueChanged<Voucher> onDelete;
+  final ValueChanged<Voucher> onEdit;
   final ValueChanged<Voucher> onOpenOrigin;
 
   @override
@@ -212,7 +225,7 @@ class _VouchersGrid extends StatelessWidget {
           title: '',
           field: VouchersListPage._fActions,
           type: TrinaColumnType.text(),
-          width: 100,
+          width: 120,
           enableEditingMode: false,
           enableContextMenu: false,
           enableFilterMenuItem: false,
@@ -229,6 +242,13 @@ class _VouchersGrid extends StatelessWidget {
                     visualDensity: VisualDensity.compact,
                     tooltip: 'الذهاب إلى المصدر',
                     onPressed: () => onOpenOrigin(v),
+                  ),
+                if (!v.hasOrigin)
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined, size: 16),
+                    visualDensity: VisualDensity.compact,
+                    tooltip: AppStrings.edit,
+                    onPressed: () => onEdit(v),
                   ),
                 if (!v.hasOrigin)
                   IconButton(

@@ -8,6 +8,7 @@ abstract class ProfitReport with _$ProfitReport {
   const factory ProfitReport({
     @Default(0) double totalRevenue,
     @Default(0) double totalCost,
+    @Default(0) double totalExpenses,
     @Default(0) double totalProfit,
     @Default(0) int invoicesCount,
     @Default(<ProfitByCurrency>[]) List<ProfitByCurrency> byCurrency,
