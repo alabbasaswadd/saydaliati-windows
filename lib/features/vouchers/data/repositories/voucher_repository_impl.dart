@@ -75,6 +75,8 @@ class VoucherRepositoryImpl implements VoucherRepository {
       debit: ((j['debit'] ?? 0) as num).toDouble(),
       credit: ((j['credit'] ?? 0) as num).toDouble(),
       notes: j['notes'] as String?,
+      originalDebit: ((j['originalDebit'] ?? 0) as num).toDouble(),
+      originalCredit: ((j['originalCredit'] ?? 0) as num).toDouble(),
     );
   }
 }

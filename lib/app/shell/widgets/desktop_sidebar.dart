@@ -69,6 +69,13 @@ const _homeItem = _NavItem(
   selectedIcon: Icons.dashboard,
 );
 
+const _analyticsItem = _NavItem(
+  index: 29,
+  label: 'التحليلات',
+  icon: Icons.analytics_outlined,
+  selectedIcon: Icons.analytics,
+);
+
 const _mainSections = <_NavSection>[
   // الفواتير والمرتجعات: المبيعات/المشتريات (فروع مباشرة) + مرتجعاتهما
   // (مسارات متداخلة داخل فرع واحد، index 7 — التظليل يطابق المسار لا رقم الفرع).
@@ -199,7 +206,7 @@ const _mainSections = <_NavSection>[
     ),
     _NavItem(
       index: 14,
-      label: 'تقرير الأرباح',
+      label: 'تقرير الأرباح والخسائر',
       icon: Icons.trending_up_outlined,
       selectedIcon: Icons.trending_up,
       route: AppRoutes.profitReport,
@@ -239,6 +246,20 @@ const _mainSections = <_NavSection>[
       selectedIcon: Icons.medical_services,
       route: AppRoutes.prescriptionsReport,
     ),
+    _NavItem(
+      index: 14,
+      label: 'كشف حساب',
+      icon: Icons.account_balance_wallet_outlined,
+      selectedIcon: Icons.account_balance_wallet,
+      route: AppRoutes.accountReport,
+    ),
+    _NavItem(
+      index: 14,
+      label: 'الميزانية العمومية',
+      icon: Icons.account_balance_outlined,
+      selectedIcon: Icons.account_balance,
+      route: AppRoutes.balanceSheetReport,
+    ),
   ]),
   // الحسابات والسندات والمصاريف: كلها قيود/تدفقات مالية — مسارات متداخلة
   // داخل فرعين (index 15 للمصاريف، 16 للحسابات) — نفس أسلوب المرتجعات/التقارير.
@@ -264,7 +285,7 @@ const _mainSections = <_NavSection>[
   _NavSection('الحسابات والمصاريف', [
     _NavItem(
       index: 16,
-      label: 'الحسابات',
+      label: 'دليل الحسابات',
       icon: Icons.account_balance_outlined,
       selectedIcon: Icons.account_balance,
       route: AppRoutes.accounts,
@@ -292,20 +313,12 @@ const _mainSections = <_NavSection>[
     ),
   ]),
 
-  // المستخدمون والأدوار — ظاهر فقط لمن يملك صلاحية العرض المطابقة (عادة
-  // الأدمن وحده). راجع lib/core/permissions/.
+  // المستخدمون والصلاحيات — ظاهر فقط لمن يملك صلاحية العرض (عادة الأدمن وحده).
+  // صفحة واحدة بتبويبَيها: المستخدمون | الأدوار والصلاحيات.
   _NavSection('المستخدمون والصلاحيات', [
     _NavItem(
-      index: 25,
-      label: 'المستخدمون',
-      icon: Icons.manage_accounts_outlined,
-      selectedIcon: Icons.manage_accounts,
-      route: AppRoutes.users,
-      requiredPermission: PermissionCodes.usersView,
-    ),
-    _NavItem(
       index: 26,
-      label: 'الأدوار والصلاحيات',
+      label: 'المستخدمون والصلاحيات',
       icon: Icons.admin_panel_settings_outlined,
       selectedIcon: Icons.admin_panel_settings,
       route: AppRoutes.roles,
@@ -437,17 +450,29 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
                     showLabels: showLabels, onToggle: widget.onToggle),
                 Divider(height: 1, thickness: 2, color: theme.extension<AppSemanticColors>()!.border),
 
-                // الرئيسية: عنصر ثابت دائماً فوق كل الأقسام، لا يُطوى أبداً.
+                // الرئيسية + التحليلات: عنصران ثابتان دائماً فوق كل الأقسام.
                 Padding(
                   padding: const EdgeInsets.fromLTRB(
                     AppSpacing.sm, AppSpacing.sm, AppSpacing.sm, 0,
                   ),
-                  child: _NavItemTile(
-                    item: _homeItem,
-                    isSelected: _isSelected(_homeItem),
-                    showLabels: showLabels,
-                    badgeCount: 0,
-                    onTap: () => _onTap(_homeItem),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _NavItemTile(
+                        item: _homeItem,
+                        isSelected: _isSelected(_homeItem),
+                        showLabels: showLabels,
+                        badgeCount: 0,
+                        onTap: () => _onTap(_homeItem),
+                      ),
+                      _NavItemTile(
+                        item: _analyticsItem,
+                        isSelected: _isSelected(_analyticsItem),
+                        showLabels: showLabels,
+                        badgeCount: 0,
+                        onTap: () => _onTap(_analyticsItem),
+                      ),
+                    ],
                   ),
                 ),
                 _sectionDivider(context),

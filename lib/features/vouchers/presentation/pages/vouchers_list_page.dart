@@ -273,7 +273,9 @@ class _VouchersGrid extends StatelessWidget {
             VouchersListPage._fDesc: TrinaCell(value: v.description),
             VouchersListPage._fDebit: TrinaCell(value: v.debitAccountName),
             VouchersListPage._fCredit: TrinaCell(value: v.creditAccountName),
-            VouchersListPage._fAmount: TrinaCell(value: v.totalDebit),
+            // يُعرض المبلغ الأصلي بعملة المعاملة إن أرسله الخادم، وإلا المبلغ الأساسي.
+            VouchersListPage._fAmount: TrinaCell(
+                value: v.originalTotal > 0 ? v.originalTotal : v.totalDebit),
             VouchersListPage._fCurrency: TrinaCell(value: v.currencyCode ?? ''),
             VouchersListPage._fId: TrinaCell(value: v.id),
           }),

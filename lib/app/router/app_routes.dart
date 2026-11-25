@@ -43,6 +43,9 @@ abstract final class AppRoutes {
   // بضاعة تالفة — إخراج مخزون تالف/منتهي الصلاحية (DamagedGoods).
   static const String damagedGoods = '/more/damaged-goods';
 
+  // التحليلات — مخططات بيانية مفصّلة (نُقلت من الرئيسية).
+  static const String analytics = '/more/analytics';
+
   static const String salesReturns = '/more/returns/sales';
   static const String purchaseReturns = '/more/returns/purchases';
 
@@ -73,6 +76,8 @@ abstract final class AppRoutes {
   static const String expiryReport = '/more/reports/expiry';
   static const String stocktakeReport = '/more/reports/stocktake';
   static const String prescriptionsReport = '/more/reports/prescriptions';
+  static const String accountReport = '/more/reports/account';
+  static const String balanceSheetReport = '/more/reports/balance-sheet';
   static const String settings = '/more/settings';
   static const String shortcuts = '/more/shortcuts';
   static const String profile = '/more/profile';

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:saydaliati/app/router/app_router.dart';
 import 'package:saydaliati/app/sync/data_sync_controller.dart';
 import 'package:saydaliati/core/constants/app_constants.dart';
+import 'package:saydaliati/core/refresh/auto_refresh_service.dart';
 import 'package:saydaliati/core/theme/app_theme.dart';
 /// The root widget. Applies the app theme and forces Arabic / RTL app-wide via
 /// the Arabic locale + Material localizations (which set `TextDirection.rtl` for
@@ -19,6 +20,9 @@ class SaydaliatiApp extends ConsumerWidget {
     // re-pulls catalogs on startup and whenever connectivity returns (keepAlive
     // keeps it running for the whole session).
     ref.watch(dataSyncControllerProvider);
+
+    // التحديث التلقائي كل 5 دقائق للبيانات المالية والإدارية.
+    ref.watch(autoRefreshServiceProvider);
 
     return MaterialApp.router(
       title: AppConstants.appName,

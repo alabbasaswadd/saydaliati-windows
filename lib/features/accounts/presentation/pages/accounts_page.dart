@@ -91,7 +91,7 @@ class AccountsPage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('الحسابات'),
+        title: const Text('دليل الحسابات'),
         actions: [
           AppRefreshButton(
             onRefresh: () => ref.refresh(accountsListProvider.future),

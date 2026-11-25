@@ -289,3 +289,87 @@ final class ExpensesListProvider
 }
 
 String _$expensesListHash() => r'856a9be5b0fbcf055a13af9c5e5da22aeebbe5fc';
+
+/// Expenses filtered by period — used by P&L report for category breakdown.
+
+@ProviderFor(expensesForPeriod)
+final expensesForPeriodProvider = ExpensesForPeriodFamily._();
+
+/// Expenses filtered by period — used by P&L report for category breakdown.
+
+final class ExpensesForPeriodProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Expense>>,
+          List<Expense>,
+          FutureOr<List<Expense>>
+        >
+    with $FutureModifier<List<Expense>>, $FutureProvider<List<Expense>> {
+  /// Expenses filtered by period — used by P&L report for category breakdown.
+  ExpensesForPeriodProvider._({
+    required ExpensesForPeriodFamily super.from,
+    required (String, String) super.argument,
+  }) : super(
+         retry: null,
+         name: r'expensesForPeriodProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$expensesForPeriodHash();
+
+  @override
+  String toString() {
+    return r'expensesForPeriodProvider'
+        ''
+        '$argument';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<List<Expense>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<Expense>> create(Ref ref) {
+    final argument = this.argument as (String, String);
+    return expensesForPeriod(ref, argument.$1, argument.$2);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is ExpensesForPeriodProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$expensesForPeriodHash() => r'71b45839dcddbd1ee59b9c9de924d90191614135';
+
+/// Expenses filtered by period — used by P&L report for category breakdown.
+
+final class ExpensesForPeriodFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<List<Expense>>, (String, String)> {
+  ExpensesForPeriodFamily._()
+    : super(
+        retry: null,
+        name: r'expensesForPeriodProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Expenses filtered by period — used by P&L report for category breakdown.
+
+  ExpensesForPeriodProvider call(String startIso, String endIso) =>
+      ExpensesForPeriodProvider._(argument: (startIso, endIso), from: this);
+
+  @override
+  String toString() => r'expensesForPeriodProvider';
+}

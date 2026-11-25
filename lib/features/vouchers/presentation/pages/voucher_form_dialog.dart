@@ -49,9 +49,7 @@ class _VoucherFormDialogState extends ConsumerState<_VoucherFormDialog> {
   late final _descriptionController = TextEditingController(
       text: widget.existing?.description ?? '');
   late final _amountController = TextEditingController(
-      text: (widget.existing?.totalDebit ?? 0) > 0
-          ? widget.existing!.totalDebit.toString()
-          : '');
+      text: _amountTextForExisting(widget.existing));
 
   late DateTime? _date = widget.existing?.date ?? DateTime.now();
   late String? _debitAccountId = widget.existing?.lines
@@ -65,6 +63,38 @@ class _VoucherFormDialogState extends ConsumerState<_VoucherFormDialog> {
   String? _currencyId;
   String? _lastSuggestedCurrencyId;
   bool _saving = false;
+
+  /// المبلغ الأصلي بعملة السند إن توفّر، وإلا المبلغ بالعملة الأساسية.
+  static String _amountTextForExisting(Voucher? v) {
+    if (v == null) return '';
+    final orig = v.originalTotal;
+    if (orig > 0) return orig.toString();
+    return v.totalDebit > 0 ? v.totalDebit.toString() : '';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.existing != null) {
+      _currencyId = _currencyIdForExisting();
+      _lastSuggestedCurrencyId = _currencyId;
+    }
+  }
+
+  /// يستعيد معرِّف عملة السند من الحسابات المرتبطة به — نفس منطق
+  /// _suggestCurrencyForAccount: المدين أولاً، الدائن احتياطياً.
+  String? _currencyIdForExisting() {
+    final v = widget.existing!;
+    final debitId =
+        v.lines.where((l) => l.debit > 0).map((l) => l.accountId).firstOrNull;
+    final debitAccount =
+        widget.accounts.where((a) => a.id == debitId).firstOrNull;
+    if (debitAccount?.currencyId != null) return debitAccount!.currencyId;
+
+    final creditId =
+        v.lines.where((l) => l.credit > 0).map((l) => l.accountId).firstOrNull;
+    return widget.accounts.where((a) => a.id == creditId).firstOrNull?.currencyId;
+  }
 
   @override
   void dispose() {

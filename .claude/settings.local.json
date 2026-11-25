@@ -34,7 +34,8 @@
       "Bash(Get-ChildItem -Path 'E:\\\\tawrid\\\\saydaliati api' -Filter 'Migrations' -Directory -Recurse)",
       "Bash(mkdir -p \"E:\\\\tawrid\\\\saydaliati api\\\\Pharmacy.api\\\\Requests\\\\DamagedGoodsRequests\")",
       "Bash(mkdir -p \"E:\\\\tawrid\\\\saydaliati api\\\\Pharmacy.Application\\\\Features\\\\DamagedGoods\\\\Commands\\\\CreateDamagedGoods\")",
-      "Bash(xargs cat)"
+      "Bash(xargs cat)",
+      "Bash(grep -v \"^$\")"
     ]
   }
 }

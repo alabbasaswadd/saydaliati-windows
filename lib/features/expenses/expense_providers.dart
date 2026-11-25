@@ -41,3 +41,17 @@ Future<List<Expense>> expensesList(Ref ref) async {
   final result = await ref.watch(expenseRepositoryProvider).getAll();
   return result.fold((list) => list, (failure) => throw failure);
 }
+
+/// Expenses filtered by period — used by P&L report for category breakdown.
+@riverpod
+Future<List<Expense>> expensesForPeriod(
+    Ref ref, String startIso, String endIso) async {
+  final from = DateTime.tryParse(startIso);
+  final to = DateTime.tryParse(endIso);
+  final result = await ref.watch(expenseRepositoryProvider).getAll(
+    from: from,
+    to: to,
+    limit: 500,
+  );
+  return result.fold((list) => list, (failure) => throw failure);
+}

@@ -7,16 +7,25 @@ class VoucherLine {
     required this.credit,
     this.accountCurrencyCode,
     this.notes,
+    this.originalDebit = 0,
+    this.originalCredit = 0,
   });
 
   final String accountId;
   final String accountName;
+
+  /// المبلغ بالعملة الأساسية (بعد تحويل الخادم).
   final double debit;
   final double credit;
 
   /// عملة الحساب (مثل USD) — null إن لم تكن له عملة خاصة.
   final String? accountCurrencyCode;
   final String? notes;
+
+  /// المبلغ الأصلي بعملة المعاملة قبل تحويل الخادم للعملة الأساسية.
+  /// يُرجعه الخادم الحديث (amountsInOriginalCurrency)؛ صفر إن لم يُرسله.
+  final double originalDebit;
+  final double originalCredit;
 }
 
 /// سند (قيد محاسبي) — يدوي أو تابع لفاتورة/مصروف/مرتجع. السندات التابعة
@@ -62,6 +71,11 @@ class Voucher {
   String? get currencyCode =>
       lines.where((l) => l.debit > 0).map((l) => l.accountCurrencyCode).firstOrNull ??
       lines.where((l) => l.credit > 0).map((l) => l.accountCurrencyCode).firstOrNull;
+
+  /// المبلغ الأصلي بعملة السند قبل تحويله للأساس.
+  /// يُرجعه الخادم الحديث فقط؛ صفر يعني غير متوفر (نستخدم totalDebit بدلاً منه).
+  double get originalTotal =>
+      lines.where((l) => l.debit > 0).fold<double>(0, (s, l) => s + l.originalDebit);
 }
 
 /// حمولة تعديل سند مباشر مبسَّط: طرف مدين واحد + طرف دائن واحد بنفس المبلغ.
