@@ -50,7 +50,8 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final prefs = await SharedPreferences.getInstance();
-      if (mounted) setState(() => _sidebarExpanded = prefs.getBool(_prefKey) ?? true);
+      if (mounted)
+        setState(() => _sidebarExpanded = prefs.getBool(_prefKey) ?? true);
       // جولة الترحيب أولاً عند أول فتح، ثم إعلانات الإصدار — حتى لا تتزاحم
       // نافذتان على المستخدم الجديد في اللحظة نفسها.
       await _maybeShowWelcome();
@@ -122,10 +123,9 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      ref.read(openTabsProvider.notifier).assignToActive(
-            location,
-            branchIndex: widget.shell.currentIndex,
-          );
+      ref
+          .read(openTabsProvider.notifier)
+          .assignToActive(location, branchIndex: widget.shell.currentIndex);
     });
   }
 
@@ -149,7 +149,9 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
     final location = route ?? _locationOfBranch(branchIndex);
     if (location == null) return;
 
-    final tab = ref.read(openTabsProvider.notifier).openWith(
+    final tab = ref
+        .read(openTabsProvider.notifier)
+        .openWith(
           location,
           branchIndex: branchIndex,
           // لا يُنشَّط: «في الخلف» تعني أن المستخدم يبقى حيث هو.
@@ -158,10 +160,12 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
 
     // تابٌّ يُفتَح بلا انتقال لا يراه المستخدم إن لم يُقَل له — والشريط
     // أسفل الشاشة قد يكون خارج بصره وقت النقر.
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      duration: const Duration(milliseconds: 1400),
-      content: Text('فُتح تابّ: ${tab.title}'),
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        duration: const Duration(milliseconds: 1400),
+        content: Text('فُتح تابّ: ${tab.title}'),
+      ),
+    );
   }
 
   /// زرّ «+»: تابٌّ فارغ يصبح النشِط، ثم يختار صاحبه صفحته من القائمة
@@ -282,7 +286,8 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
                                     ),
                                     if (showBlank)
                                       const Positioned.fill(
-                                          child: NewTabPage()),
+                                        child: NewTabPage(),
+                                      ),
                                   ],
                                 ),
                               ),

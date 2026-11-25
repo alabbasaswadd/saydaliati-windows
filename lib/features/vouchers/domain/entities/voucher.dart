@@ -74,8 +74,17 @@ class Voucher {
 
   /// المبلغ الأصلي بعملة السند قبل تحويله للأساس.
   /// يُرجعه الخادم الحديث فقط؛ صفر يعني غير متوفر (نستخدم totalDebit بدلاً منه).
-  double get originalTotal =>
-      lines.where((l) => l.debit > 0).fold<double>(0, (s, l) => s + l.originalDebit);
+  /// يتحقق أولاً من أسطر المدين؛ فإن كانت صفراً (حساب بالعملة الأساسية) جرّب
+  /// أسطر الدائن — نمط شائع: أجار بالسوري → صندوق دولار (OriginalCredit=50).
+  double get originalTotal {
+    final fromDebit = lines
+        .where((l) => l.debit > 0)
+        .fold<double>(0, (s, l) => s + l.originalDebit);
+    if (fromDebit > 0) return fromDebit;
+    return lines
+        .where((l) => l.credit > 0)
+        .fold<double>(0, (s, l) => s + l.originalCredit);
+  }
 }
 
 /// حمولة تعديل سند مباشر مبسَّط: طرف مدين واحد + طرف دائن واحد بنفس المبلغ.

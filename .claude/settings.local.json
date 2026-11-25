@@ -35,7 +35,10 @@
       "Bash(mkdir -p \"E:\\\\tawrid\\\\saydaliati api\\\\Pharmacy.api\\\\Requests\\\\DamagedGoodsRequests\")",
       "Bash(mkdir -p \"E:\\\\tawrid\\\\saydaliati api\\\\Pharmacy.Application\\\\Features\\\\DamagedGoods\\\\Commands\\\\CreateDamagedGoods\")",
       "Bash(xargs cat)",
-      "Bash(grep -v \"^$\")"
+      "Bash(grep -v \"^$\")",
+      "Bash(Get-ChildItem \"E:\\\\tawrid\\\\saydaliati api\" -Force)",
+      "Bash(Select-Object Name, PSIsContainer)",
+      "Bash(Get-ChildItem \"E:\\\\tawrid\\\\saydaliati api\\\\Pharmacy.api\\\\Dtos\\\\JournalEntry\")"
     ]
   }
 }
