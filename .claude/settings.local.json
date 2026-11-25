@@ -38,7 +38,9 @@
       "Bash(grep -v \"^$\")",
       "Bash(Get-ChildItem \"E:\\\\tawrid\\\\saydaliati api\" -Force)",
       "Bash(Select-Object Name, PSIsContainer)",
-      "Bash(Get-ChildItem \"E:\\\\tawrid\\\\saydaliati api\\\\Pharmacy.api\\\\Dtos\\\\JournalEntry\")"
+      "Bash(Get-ChildItem \"E:\\\\tawrid\\\\saydaliati api\\\\Pharmacy.api\\\\Dtos\\\\JournalEntry\")",
+      "Bash(Get-ChildItem -Path \"E:\\\\flutter\\\\saydaliati-windows\\\\lib\" -Recurse -Filter \"*_remote_data_source.dart\" -ErrorAction SilentlyContinue)",
+      "PowerShell(head *)"
     ]
   }
 }

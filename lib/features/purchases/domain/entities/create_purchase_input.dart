@@ -16,6 +16,7 @@ class CreatePurchaseInput {
     this.originalCurrencyId,
     this.amountsInOriginalCurrency = false,
     this.isOpeningBalance = false,
+    this.discountAmount = 0,
   });
 
   final String currencyId;
@@ -45,6 +46,9 @@ class CreatePurchaseInput {
   /// المال مباشرة (CreatePurchaseHandler)، لا كشراء عادي.
   final bool isOpeningBalance;
 
+  /// حسم على مستوى الفاتورة (قيمة بالعملة الأساسية).
+  final double discountAmount;
+
   Map<String, dynamic> toJson() => {
         'supplierId': supplierId,
         'userId': null,
@@ -54,6 +58,7 @@ class CreatePurchaseInput {
         'note': note,
         'purchaseDate': purchaseDate.toIso8601String(),
         'totalAmount': totalAmount,
+        'discountAmount': discountAmount,
         'paymentAccountId': paymentAccountId,
         'originalCurrencyId': originalCurrencyId,
         'amountsInOriginalCurrency': amountsInOriginalCurrency,
@@ -69,6 +74,7 @@ class CreatePurchaseInput {
         'userId': null,
         'purchaseDate': purchaseDate.toIso8601String(),
         'totalAmount': totalAmount,
+        'discountAmount': discountAmount,
         'paymentAccountId': paymentAccountId,
         'items': [
           for (final l in lines)
@@ -84,6 +90,7 @@ class CreatePurchaseInput {
               // بلا قيمة = صفر)، فيُفقَد بونص كل سطر عند أي تعديل لفاتورة شراء
               // قائمة — بما فيها أقلام البونص الخالصة (كمية صفر + بونص).
               'bonusQuantity': l.bonusQuantity,
+              'discount': l.discount,
               'note': l.note ?? '',
               'expiryDate': l.expiryDate?.toIso8601String(),
             },
@@ -98,6 +105,7 @@ class CreatePurchaseLineInput {
     required this.unitPrice,
     required this.quantity,
     this.bonusQuantity = 0,
+    this.discount = 0,
     this.expiryDate,
     this.note,
     this.scannedBarcode,
@@ -114,6 +122,9 @@ class CreatePurchaseLineInput {
   /// تدخل المخزون بكلفة صفر، فبيعها ربح صافٍ كامل.
   final double bonusQuantity;
 
+  /// حسم السطر (قيمة بالعملة الأساسية).
+  final double discount;
+
   final DateTime? expiryDate;
   final String? note;
 
@@ -123,6 +134,7 @@ class CreatePurchaseLineInput {
 
   Map<String, dynamic> toJson(String warehouseId) => {
         'bonusQuantity': bonusQuantity,
+        'discount': discount,
         'warehouseId': warehouseId,
         'medicineId': medicineId,
         'unitId': unitId,

@@ -11,6 +11,7 @@ class SaleDto {
     this.customerId,
     this.saleDate,
     this.totalAmount,
+    this.discountAmount,
     this.paymentMethod,
     this.currency,
     this.originalCurrencyId,
@@ -25,6 +26,7 @@ class SaleDto {
   final String? customerId;
   final DateTime? saleDate;
   final num? totalAmount;
+  final num? discountAmount;
   final int? paymentMethod;
   final SaleCurrencyDto? currency;
   final String? originalCurrencyId;
@@ -55,6 +57,7 @@ class SaleItemDto {
     this.unitId,
     this.individual,
     this.quantity,
+    this.discount,
     this.subTotal,
     this.unitCost,
     this.medicine,
@@ -65,6 +68,7 @@ class SaleItemDto {
   final String? unitId;
   final num? individual;
   final num? quantity;
+  final num? discount;
   final num? subTotal;
   final num? unitCost;
   final SaleMedicineDto? medicine;

@@ -14,6 +14,7 @@ SaleDto _$SaleDtoFromJson(Map<String, dynamic> json) => SaleDto(
       ? null
       : DateTime.parse(json['saleDate'] as String),
   totalAmount: json['totalAmount'] as num?,
+  discountAmount: json['discountAmount'] as num?,
   paymentMethod: (json['paymentMethod'] as num?)?.toInt(),
   currency: json['currency'] == null
       ? null
@@ -38,6 +39,7 @@ SaleItemDto _$SaleItemDtoFromJson(Map<String, dynamic> json) => SaleItemDto(
   unitId: json['unitId'] as String?,
   individual: json['individual'] as num?,
   quantity: json['quantity'] as num?,
+  discount: json['discount'] as num?,
   subTotal: json['subTotal'] as num?,
   unitCost: json['unitCost'] as num?,
   medicine: json['medicine'] == null

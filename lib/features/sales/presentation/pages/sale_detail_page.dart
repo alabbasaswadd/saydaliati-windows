@@ -26,6 +26,7 @@ class SaleDetailPage extends ConsumerWidget {
   static const _fUnit = 'unit';
   static const _fUnitPrice = 'unitPrice';
   static const _fQty = 'qty';
+  static const _fDiscount = 'discount';
   static const _fTotal = 'total';
 
   @override
@@ -49,6 +50,7 @@ class SaleDetailPage extends ConsumerWidget {
         sale.items.fold<double>(0, (s, l) => s + l.unitCost * l.quantity);
     final revenue = sale.items.fold<double>(0, (s, l) => s + l.subTotal);
     final profit = revenue - totalCost;
+    final hasLineDiscount = sale.items.any((l) => l.discount > 0);
     final profitColor =
         profit >= 0 ? Colors.green.shade700 : Colors.red.shade700;
 
@@ -100,6 +102,13 @@ class SaleDetailPage extends ConsumerWidget {
                 value: AppDate.ymdHm(sale.saleDate),
                 icon: Icons.event_outlined,
               ),
+              if (sale.discountAmount > 0)
+                StatChip(
+                  label: AppStrings.discountShort,
+                  value: money(sale.discountAmount),
+                  icon: Icons.local_offer_outlined,
+                  color: Colors.orange.shade700,
+                ),
             ]),
             const SizedBox(height: AppSpacing.md),
             Expanded(
@@ -112,6 +121,9 @@ class SaleDetailPage extends ConsumerWidget {
                       width: 110),
                   appGridNumberColumn(AppStrings.piecesCountColumn, _fQty,
                       width: 100),
+                  if (hasLineDiscount)
+                    appGridNumberColumn(AppStrings.discountShort, _fDiscount,
+                        width: 100),
                   appGridNumberColumn(AppStrings.total, _fTotal, width: 120,
                       renderer: (ctx) {
                     final v = ctx.cell.value;
@@ -136,6 +148,8 @@ class SaleDetailPage extends ConsumerWidget {
                       _fUnit: TrinaCell(value: line.unitName),
                       _fUnitPrice: TrinaCell(value: line.individual * rate),
                       _fQty: TrinaCell(value: line.quantity),
+                      if (hasLineDiscount)
+                        _fDiscount: TrinaCell(value: line.discount * rate),
                       _fTotal: TrinaCell(value: line.subTotal * rate),
                     }),
                 ],

@@ -18,6 +18,7 @@ abstract class Sale with _$Sale {
     @Default(1) double exchangeRate,
     @Default(false) bool isPrescription,
     @Default('') String paymentAccountId,
+    @Default(0) double discountAmount,
     @Default(<SaleLine>[]) List<SaleLine> items,
   }) = _Sale;
 }
@@ -32,6 +33,7 @@ abstract class SaleLine with _$SaleLine {
     required double quantity,
     required double subTotal,
     @Default(0) double unitCost,
+    @Default(0) double discount,
     @Default('') String medicineId,
     @Default('') String unitId,
   }) = _SaleLine;

@@ -8,6 +8,7 @@ extension PurchaseDtoMapper on PurchaseDto {
         purchaseDate: purchaseDate ?? DateTime.now(),
         supplierName: supplierName ?? '',
         totalAmount: (totalAmount ?? 0).toDouble(),
+        discountAmount: (discountAmount ?? 0).toDouble(),
         paymentAccountId: paymentAccountId ?? '',
         items: (items ?? const []).map((i) => i.toEntity()).toList(),
         isOpeningBalance: isOpeningBalance ?? false,
@@ -18,6 +19,7 @@ extension PurchaseItemDtoMapper on PurchaseItemDto {
   PurchaseLine toEntity() {
     final qty = (quantity ?? 0).toDouble();
     final price = (unitPrice ?? 0).toDouble();
+    final disc = (discount ?? 0).toDouble();
     return PurchaseLine(
       medicineId: medicineId ?? '',
       unitId: unitId ?? '',
@@ -26,7 +28,8 @@ extension PurchaseItemDtoMapper on PurchaseItemDto {
       unitPrice: price,
       quantity: qty,
       bonusQuantity: (bonusQuantity ?? 0).toDouble(),
-      subTotal: (subTotal ?? (qty * price)).toDouble(),
+      discount: disc,
+      subTotal: (subTotal ?? (qty * price - disc)).toDouble(),
       expiryDate: expiryDate,
     );
   }

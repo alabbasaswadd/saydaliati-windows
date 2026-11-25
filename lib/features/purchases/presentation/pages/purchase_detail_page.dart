@@ -22,13 +22,13 @@ class PurchaseDetailPage extends StatelessWidget {
   static const _fUnitPrice = 'unitPrice';
   static const _fQty = 'qty';
   static const _fBonus = 'bonus';
+  static const _fDiscount = 'discount';
   static const _fExpiry = 'expiry';
   static const _fTotal = 'total';
   static const _fIsBonusLine = 'isBonusLine';
 
-  /// هل في الفاتورة بونص؟ — يحدّد ظهور عمود البونص وشارته في الشريط
-  /// العلوي، فتُعرَف الفاتورة التي فيها بونص من تفاصيلها لا من حفظها فقط.
   bool get _hasBonus => purchase.items.any((i) => i.bonusQuantity > 0);
+  bool get _hasLineDiscount => purchase.items.any((i) => i.discount > 0);
 
   @override
   Widget build(BuildContext context) {
@@ -90,6 +90,13 @@ class PurchaseDetailPage extends StatelessWidget {
                       purchase.items.fold(0.0, (s, i) => s + i.bonusQuantity)),
                   icon: Icons.card_giftcard_outlined,
                 ),
+              if (purchase.discountAmount > 0)
+                StatChip(
+                  label: AppStrings.discountShort,
+                  value: Formatters.money(purchase.discountAmount),
+                  icon: Icons.local_offer_outlined,
+                  color: Colors.orange.shade700,
+                ),
             ]),
             const SizedBox(height: AppSpacing.md),
             Expanded(
@@ -145,6 +152,9 @@ class PurchaseDetailPage extends StatelessWidget {
                         ),
                       );
                     }),
+                  if (_hasLineDiscount)
+                    appGridNumberColumn(AppStrings.discountShort, _fDiscount,
+                        width: 100),
                   appGridTextColumn(AppStrings.expiryColumn, _fExpiry,
                       width: 110, textAlign: TrinaColumnTextAlign.center),
                   appGridNumberColumn(AppStrings.total, _fTotal, width: 120,
@@ -178,6 +188,8 @@ class PurchaseDetailPage extends StatelessWidget {
                       _fQty: TrinaCell(value: line.quantity),
                       if (_hasBonus)
                         _fBonus: TrinaCell(value: line.bonusQuantity),
+                      if (_hasLineDiscount)
+                        _fDiscount: TrinaCell(value: line.discount),
                       _fExpiry: TrinaCell(
                           value: line.expiryDate != null
                               ? AppDate.ymd(line.expiryDate!)

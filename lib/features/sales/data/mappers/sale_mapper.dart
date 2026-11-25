@@ -9,6 +9,7 @@ extension SaleDtoMapper on SaleDto {
         customerId: customerId ?? '',
         saleDate: saleDate ?? DateTime.now(),
         totalAmount: (totalAmount ?? 0).toDouble(),
+        discountAmount: (discountAmount ?? 0).toDouble(),
         paymentMethod: PaymentMethod.fromWire(paymentMethod),
         currencyCode: currency?.code ?? '',
         originalCurrencyId: originalCurrencyId ?? '',
@@ -23,6 +24,7 @@ extension SaleItemDtoMapper on SaleItemDto {
   SaleLine toEntity() {
     final qty = (quantity ?? 0).toDouble();
     final price = (individual ?? 0).toDouble();
+    final disc = (discount ?? 0).toDouble();
     return SaleLine(
       medicineId: medicineId ?? '',
       unitId: unitId ?? '',
@@ -30,7 +32,8 @@ extension SaleItemDtoMapper on SaleItemDto {
       unitName: unit?.name ?? '',
       individual: price,
       quantity: qty,
-      subTotal: (subTotal ?? (qty * price)).toDouble(),
+      discount: disc,
+      subTotal: (subTotal ?? (qty * price - disc)).toDouble(),
       unitCost: (unitCost ?? 0).toDouble(),
     );
   }

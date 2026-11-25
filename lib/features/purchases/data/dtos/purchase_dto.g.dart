@@ -14,6 +14,7 @@ PurchaseDto _$PurchaseDtoFromJson(Map<String, dynamic> json) => PurchaseDto(
       : DateTime.parse(json['purchaseDate'] as String),
   supplierName: json['supplierName'] as String?,
   totalAmount: json['totalAmount'] as num?,
+  discountAmount: json['discountAmount'] as num?,
   paymentAccountId: json['paymentAccountId'] as String?,
   items: (json['items'] as List<dynamic>?)
       ?.map((e) => PurchaseItemDto.fromJson(e as Map<String, dynamic>))
@@ -28,6 +29,7 @@ PurchaseItemDto _$PurchaseItemDtoFromJson(Map<String, dynamic> json) =>
       unitPrice: json['unitPrice'] as num?,
       quantity: json['quantity'] as num?,
       bonusQuantity: json['bonusQuantity'] as num?,
+      discount: json['discount'] as num?,
       subTotal: json['subTotal'] as num?,
       expiryDate: json['expiryDate'] == null
           ? null

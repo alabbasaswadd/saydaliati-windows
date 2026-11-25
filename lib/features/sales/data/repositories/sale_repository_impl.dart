@@ -116,8 +116,10 @@ class SaleRepositoryImpl implements SaleRepository {
         'userId': null,
         'saleDate': input.saleDate.toIso8601String(),
         'totalAmount': input.totalAmount,
+        'discountAmount': input.discountAmount,
         'paymentMethod': input.paymentMethod.wire,
         'paymentAccountId': input.paymentAccountId,
+        'amountsInOriginalCurrency': input.amountsInOriginalCurrency,
         'saleItems': input.lines
             .map((l) => l.toJson(input.currencyId, input.warehouseId))
             .toList(),

@@ -43,6 +43,7 @@ import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
 import 'package:saydaliati/shared/widgets/grids/app_grid.dart';
 import 'package:saydaliati/shared/widgets/grids/grid_line_focus.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_dropdown.dart';
+import 'package:saydaliati/shared/widgets/inputs/app_number_field.dart';
 import 'package:saydaliati/shared/widgets/inputs/app_toolbar_field.dart';
 import 'package:trina_grid/trina_grid.dart';
 
@@ -83,12 +84,16 @@ class _PurLine {
   /// كمية البونص — منفصلة عن الكمية المدفوعة: دمجهما يُفقد أثر البونص في
   /// الفاتورة وفي التقارير، وهو بيتُ القصيد.
   final bonus = TextEditingController();
+  final discount = TextEditingController();
 
   final barcodeCtrl = TextEditingController();
 
+  double get discountAmt => double.tryParse(discount.text.trim()) ?? 0;
+
   double get lineTotal =>
       (double.tryParse(price.text.trim()) ?? 0) *
-      (double.tryParse(qty.text.trim()) ?? 0);
+          (double.tryParse(qty.text.trim()) ?? 0) -
+      discountAmt;
 
   double get bonusQty => double.tryParse(bonus.text.trim()) ?? 0;
 
@@ -104,6 +109,7 @@ class _PurLine {
     price.dispose();
     qty.dispose();
     bonus.dispose();
+    discount.dispose();
     barcodeCtrl.dispose();
   }
 }
@@ -249,6 +255,8 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
   bool _saving = false;
   bool _prefilled = false;
   bool _prefillStarted = false;
+  double _discountAmount = 0;
+  late final _discountAmountCtrl = TextEditingController();
 
   @override
   void initState() {
@@ -300,6 +308,9 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
     _paymentAccountId =
         p.paymentAccountId.isNotEmpty ? p.paymentAccountId : null;
     _lastSuggestedPaymentAccountId = null;
+    _discountAmount = p.discountAmount;
+    _discountAmountCtrl.text =
+        p.discountAmount > 0 ? p.discountAmount.toString() : '';
     for (final it in p.items) {
       final med = catalog.where((m) => m.id == it.medicineId).firstOrNull;
       if (med == null || med.units.isEmpty) continue;
@@ -310,6 +321,7 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
       line.price.text = _plainNum(it.unitPrice);
       line.qty.text = _plainNum(it.quantity);
       if (it.bonusQuantity > 0) line.bonus.text = _plainNum(it.bonusQuantity);
+      if (it.discount > 0) line.discount.text = _plainNum(it.discount);
       line.expiry = it.expiryDate;
       _lines.add(line);
     }
@@ -319,6 +331,7 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
   void dispose() {
     _focus.dispose();
     _shortcuts.dispose();
+    _discountAmountCtrl.dispose();
     for (final l in _lines) {
       l.dispose();
     }
@@ -327,7 +340,11 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
 
   String _effectiveCurrencyId(Currency? base) => _currencyId ?? base?.id ?? '';
 
-  double get _total => _lines.fold(0, (s, l) => s + l.lineTotal);
+  /// إجمالي أسطر الفاتورة قبل خصم الفاتورة.
+  double get _subTotal => _lines.fold(0, (s, l) => s + l.lineTotal);
+
+  /// الإجمالي الصافي بعد خصم الفاتورة.
+  double get _total => _subTotal - _discountAmount;
 
 
   /// يقترح صندوق العملة المختارة (الحساب المرتبط بها)، أو صندوق العملة
@@ -465,6 +482,7 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
       supplierId: widget.isOpeningBalance ? null : _supplierId,
       purchaseDate: _purchaseDate,
       totalAmount: serverConverts ? _total : toBase(_total),
+      discountAmount: serverConverts ? _discountAmount : toBase(_discountAmount),
       paymentMethod: _payMethod,
       paymentAccountId: widget.isOpeningBalance || _payMethod == PaymentMethod.credit
           ? null
@@ -481,6 +499,7 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
             quantity: double.tryParse(l.qty.text.trim()) ?? 0,
             // البونص بلا سعر — لا يُحوَّل ولا يدخل الإجمالي.
             bonusQuantity: l.bonusQty,
+            discount: serverConverts ? l.discountAmt : toBase(l.discountAmt),
             expiryDate: l.expiry,
             scannedBarcode: l.scannedBarcode,
           ),
@@ -837,6 +856,7 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
   static const _fCost = 'cost';
   static const _fQty = 'qty';
   static const _fBonus = 'bonus';
+  static const _fDiscount = 'discount';
   static const _fReceived = 'received';
   static const _fExpiry = 'expiry';
   static const _fBarcode = 'barcode';
@@ -902,10 +922,8 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
           l.unitId,
           l.price.text,
           l.qty.text,
-          // البونص جزء من البصمة: بدونه لا يتغيّر المفتاح عند محوه، فلا
-          // تُعاد الشبكة بناءً — فيبقى عمود «إجمالي الكميات» ظاهراً بقيمته
-          // القديمة بعد حذف البونص.
           l.bonus.text,
+          l.discount.text,
           l.expiry,
           l.scannedBarcode,
         ],
@@ -1059,6 +1077,16 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
             );
           },
         ),
+        TrinaColumn(
+          title: 'خصم السطر',
+          field: _fDiscount,
+          type: TrinaColumnType.number(
+              format: '#,##0.##', locale: 'en', applyFormatOnInit: false),
+          width: 100,
+          textAlign: TrinaColumnTextAlign.center,
+          enableEditingMode: true,
+          checkReadOnly: (row, cell) => isNewRow(row),
+        ),
         if (hasBonus)
           appGridNumberColumn('إجمالي الكميات', _fReceived, width: 110,
               renderer: (ctx) {
@@ -1190,6 +1218,8 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
             _fQty: TrinaCell(value: double.tryParse(l.qty.text.trim()) ?? ''),
             _fBonus:
                 TrinaCell(value: double.tryParse(l.bonus.text.trim()) ?? ''),
+            _fDiscount:
+                TrinaCell(value: double.tryParse(l.discount.text.trim()) ?? 0),
             // الداخل للمخزون فعلاً: المدفوعة + البونص. البونص كمية إضافية
             // لا جزءٌ من الكمية، فـ«١٠ + ٥» تُدخل ١٥.
             if (hasBonus)
@@ -1213,6 +1243,7 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
           _fCost: TrinaCell(value: ''),
           _fQty: TrinaCell(value: ''),
           _fBonus: TrinaCell(value: ''),
+          _fDiscount: TrinaCell(value: 0),
           if (hasBonus) _fReceived: TrinaCell(value: ''),
           _fExpiry: TrinaCell(value: ''),
           if (needsBarcode) _fBarcode: TrinaCell(value: ''),
@@ -1260,6 +1291,11 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
                   ? (e.value as num).toDouble()
                   : double.tryParse(e.value?.toString() ?? '');
               l.bonus.text = b == null || b <= 0 ? '' : _plainNum(b);
+            case _fDiscount:
+              final v = e.value is num
+                  ? (e.value as num).toDouble()
+                  : double.tryParse(e.value?.toString() ?? '');
+              if (v != null && v >= 0) l.discount.text = _plainNum(v);
             case _fBarcode:
               final s = e.value?.toString().trim() ?? '';
               l.barcodeCtrl.text = s;
@@ -1286,6 +1322,17 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
       child: Row(
         children: [
           InvoiceTotalBadge(total: _total, selected: selected, base: base),
+          const SizedBox(width: AppSpacing.md),
+          SizedBox(
+            width: 130,
+            child: AppNumberField(
+              controller: _discountAmountCtrl,
+              label: 'خصم الفاتورة',
+              enabled: !_saving,
+              onChanged: (String v) =>
+                  setState(() => _discountAmount = double.tryParse(v) ?? 0),
+            ),
+          ),
           const Spacer(),
           SizedBox(
             width: 180,

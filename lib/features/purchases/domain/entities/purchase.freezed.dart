@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Purchase {
 
- String get id; DateTime get purchaseDate; String get supplierName; double get totalAmount; int get invoiceNumber; String get paymentAccountId; List<PurchaseLine> get items;/// فاتورة أول المدة — مخزون افتتاحي بلا مورّد، مقيَّدة مقابل رأس المال.
+ String get id; DateTime get purchaseDate; String get supplierName; double get totalAmount; double get discountAmount; int get invoiceNumber; String get paymentAccountId; List<PurchaseLine> get items;/// فاتورة أول المدة — مخزون افتتاحي بلا مورّد، مقيَّدة مقابل رأس المال.
  bool get isOpeningBalance;
 /// Create a copy of Purchase
 /// with the given fields replaced by the non-null parameter values.
@@ -28,20 +28,20 @@ $PurchaseCopyWith<Purchase> get copyWith => _$PurchaseCopyWithImpl<Purchase>(thi
 @override
 bool operator ==(Object other) {
   final _this = this as Purchase;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Purchase&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.purchaseDate, _this.purchaseDate) || other.purchaseDate == _this.purchaseDate)&&(identical(other.supplierName, _this.supplierName) || other.supplierName == _this.supplierName)&&(identical(other.totalAmount, _this.totalAmount) || other.totalAmount == _this.totalAmount)&&(identical(other.invoiceNumber, _this.invoiceNumber) || other.invoiceNumber == _this.invoiceNumber)&&(identical(other.paymentAccountId, _this.paymentAccountId) || other.paymentAccountId == _this.paymentAccountId)&&const DeepCollectionEquality().equals(other.items, _this.items)&&(identical(other.isOpeningBalance, _this.isOpeningBalance) || other.isOpeningBalance == _this.isOpeningBalance));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Purchase&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.purchaseDate, _this.purchaseDate) || other.purchaseDate == _this.purchaseDate)&&(identical(other.supplierName, _this.supplierName) || other.supplierName == _this.supplierName)&&(identical(other.totalAmount, _this.totalAmount) || other.totalAmount == _this.totalAmount)&&(identical(other.discountAmount, _this.discountAmount) || other.discountAmount == _this.discountAmount)&&(identical(other.invoiceNumber, _this.invoiceNumber) || other.invoiceNumber == _this.invoiceNumber)&&(identical(other.paymentAccountId, _this.paymentAccountId) || other.paymentAccountId == _this.paymentAccountId)&&const DeepCollectionEquality().equals(other.items, _this.items)&&(identical(other.isOpeningBalance, _this.isOpeningBalance) || other.isOpeningBalance == _this.isOpeningBalance));
 }
 
 
 @override
 int get hashCode {
   final _this = this as Purchase;
-  return Object.hash(runtimeType,_this.id,_this.purchaseDate,_this.supplierName,_this.totalAmount,_this.invoiceNumber,_this.paymentAccountId,const DeepCollectionEquality().hash(_this.items),_this.isOpeningBalance);
+  return Object.hash(runtimeType,_this.id,_this.purchaseDate,_this.supplierName,_this.totalAmount,_this.discountAmount,_this.invoiceNumber,_this.paymentAccountId,const DeepCollectionEquality().hash(_this.items),_this.isOpeningBalance);
 }
 
 @override
 String toString() {
   final _this = this as Purchase;
-  return 'Purchase(id: ${_this.id}, purchaseDate: ${_this.purchaseDate}, supplierName: ${_this.supplierName}, totalAmount: ${_this.totalAmount}, invoiceNumber: ${_this.invoiceNumber}, paymentAccountId: ${_this.paymentAccountId}, items: ${_this.items}, isOpeningBalance: ${_this.isOpeningBalance})';
+  return 'Purchase(id: ${_this.id}, purchaseDate: ${_this.purchaseDate}, supplierName: ${_this.supplierName}, totalAmount: ${_this.totalAmount}, discountAmount: ${_this.discountAmount}, invoiceNumber: ${_this.invoiceNumber}, paymentAccountId: ${_this.paymentAccountId}, items: ${_this.items}, isOpeningBalance: ${_this.isOpeningBalance})';
 }
 
 
@@ -52,7 +52,7 @@ abstract mixin class $PurchaseCopyWith<$Res>  {
   factory $PurchaseCopyWith(Purchase value, $Res Function(Purchase) _then) = _$PurchaseCopyWithImpl;
 @useResult
 $Res call({
- String id, DateTime purchaseDate, String supplierName, double totalAmount, int invoiceNumber, String paymentAccountId, List<PurchaseLine> items, bool isOpeningBalance
+ String id, DateTime purchaseDate, String supplierName, double totalAmount, double discountAmount, int invoiceNumber, String paymentAccountId, List<PurchaseLine> items, bool isOpeningBalance
 });
 
 
@@ -69,12 +69,13 @@ class _$PurchaseCopyWithImpl<$Res>
 
 /// Create a copy of Purchase
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? purchaseDate = null,Object? supplierName = null,Object? totalAmount = null,Object? invoiceNumber = null,Object? paymentAccountId = null,Object? items = null,Object? isOpeningBalance = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? purchaseDate = null,Object? supplierName = null,Object? totalAmount = null,Object? discountAmount = null,Object? invoiceNumber = null,Object? paymentAccountId = null,Object? items = null,Object? isOpeningBalance = null,}) {
   return _then(Purchase(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,purchaseDate: null == purchaseDate ? _self.purchaseDate : purchaseDate // ignore: cast_nullable_to_non_nullable
 as DateTime,supplierName: null == supplierName ? _self.supplierName : supplierName // ignore: cast_nullable_to_non_nullable
 as String,totalAmount: null == totalAmount ? _self.totalAmount : totalAmount // ignore: cast_nullable_to_non_nullable
+as double,discountAmount: null == discountAmount ? _self.discountAmount : discountAmount // ignore: cast_nullable_to_non_nullable
 as double,invoiceNumber: null == invoiceNumber ? _self.invoiceNumber : invoiceNumber // ignore: cast_nullable_to_non_nullable
 as int,paymentAccountId: null == paymentAccountId ? _self.paymentAccountId : paymentAccountId // ignore: cast_nullable_to_non_nullable
 as String,items: null == items ? _self.items : items // ignore: cast_nullable_to_non_nullable
@@ -164,10 +165,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  DateTime purchaseDate,  String supplierName,  double totalAmount,  int invoiceNumber,  String paymentAccountId,  List<PurchaseLine> items,  bool isOpeningBalance)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  DateTime purchaseDate,  String supplierName,  double totalAmount,  double discountAmount,  int invoiceNumber,  String paymentAccountId,  List<PurchaseLine> items,  bool isOpeningBalance)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Purchase() when $default != null:
-return $default(_that.id,_that.purchaseDate,_that.supplierName,_that.totalAmount,_that.invoiceNumber,_that.paymentAccountId,_that.items,_that.isOpeningBalance);case _:
+return $default(_that.id,_that.purchaseDate,_that.supplierName,_that.totalAmount,_that.discountAmount,_that.invoiceNumber,_that.paymentAccountId,_that.items,_that.isOpeningBalance);case _:
   return orElse();
 
 }
@@ -185,10 +186,10 @@ return $default(_that.id,_that.purchaseDate,_that.supplierName,_that.totalAmount
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  DateTime purchaseDate,  String supplierName,  double totalAmount,  int invoiceNumber,  String paymentAccountId,  List<PurchaseLine> items,  bool isOpeningBalance)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  DateTime purchaseDate,  String supplierName,  double totalAmount,  double discountAmount,  int invoiceNumber,  String paymentAccountId,  List<PurchaseLine> items,  bool isOpeningBalance)  $default,) {final _that = this;
 switch (_that) {
 case _Purchase():
-return $default(_that.id,_that.purchaseDate,_that.supplierName,_that.totalAmount,_that.invoiceNumber,_that.paymentAccountId,_that.items,_that.isOpeningBalance);case _:
+return $default(_that.id,_that.purchaseDate,_that.supplierName,_that.totalAmount,_that.discountAmount,_that.invoiceNumber,_that.paymentAccountId,_that.items,_that.isOpeningBalance);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -205,10 +206,10 @@ return $default(_that.id,_that.purchaseDate,_that.supplierName,_that.totalAmount
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  DateTime purchaseDate,  String supplierName,  double totalAmount,  int invoiceNumber,  String paymentAccountId,  List<PurchaseLine> items,  bool isOpeningBalance)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  DateTime purchaseDate,  String supplierName,  double totalAmount,  double discountAmount,  int invoiceNumber,  String paymentAccountId,  List<PurchaseLine> items,  bool isOpeningBalance)?  $default,) {final _that = this;
 switch (_that) {
 case _Purchase() when $default != null:
-return $default(_that.id,_that.purchaseDate,_that.supplierName,_that.totalAmount,_that.invoiceNumber,_that.paymentAccountId,_that.items,_that.isOpeningBalance);case _:
+return $default(_that.id,_that.purchaseDate,_that.supplierName,_that.totalAmount,_that.discountAmount,_that.invoiceNumber,_that.paymentAccountId,_that.items,_that.isOpeningBalance);case _:
   return null;
 
 }
@@ -220,13 +221,14 @@ return $default(_that.id,_that.purchaseDate,_that.supplierName,_that.totalAmount
 
 
 class _Purchase implements Purchase {
-  const _Purchase({required this.id, required this.purchaseDate, this.supplierName = '', required this.totalAmount, this.invoiceNumber = 0, this.paymentAccountId = '',  List<PurchaseLine> items = const <PurchaseLine>[], this.isOpeningBalance = false}): _items = items;
+  const _Purchase({required this.id, required this.purchaseDate, this.supplierName = '', required this.totalAmount, this.discountAmount = 0, this.invoiceNumber = 0, this.paymentAccountId = '',  List<PurchaseLine> items = const <PurchaseLine>[], this.isOpeningBalance = false}): _items = items;
   
 
 @override final  String id;
 @override final  DateTime purchaseDate;
 @override@JsonKey() final  String supplierName;
 @override final  double totalAmount;
+@override@JsonKey() final  double discountAmount;
 @override@JsonKey() final  int invoiceNumber;
 @override@JsonKey() final  String paymentAccountId;
  final  List<PurchaseLine> _items;
@@ -249,18 +251,18 @@ _$PurchaseCopyWith<_Purchase> get copyWith => __$PurchaseCopyWithImpl<_Purchase>
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Purchase&&(identical(other.id, id) || other.id == id)&&(identical(other.purchaseDate, purchaseDate) || other.purchaseDate == purchaseDate)&&(identical(other.supplierName, supplierName) || other.supplierName == supplierName)&&(identical(other.totalAmount, totalAmount) || other.totalAmount == totalAmount)&&(identical(other.invoiceNumber, invoiceNumber) || other.invoiceNumber == invoiceNumber)&&(identical(other.paymentAccountId, paymentAccountId) || other.paymentAccountId == paymentAccountId)&&const DeepCollectionEquality().equals(other.items, _items)&&(identical(other.isOpeningBalance, isOpeningBalance) || other.isOpeningBalance == isOpeningBalance));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Purchase&&(identical(other.id, id) || other.id == id)&&(identical(other.purchaseDate, purchaseDate) || other.purchaseDate == purchaseDate)&&(identical(other.supplierName, supplierName) || other.supplierName == supplierName)&&(identical(other.totalAmount, totalAmount) || other.totalAmount == totalAmount)&&(identical(other.discountAmount, discountAmount) || other.discountAmount == discountAmount)&&(identical(other.invoiceNumber, invoiceNumber) || other.invoiceNumber == invoiceNumber)&&(identical(other.paymentAccountId, paymentAccountId) || other.paymentAccountId == paymentAccountId)&&const DeepCollectionEquality().equals(other.items, _items)&&(identical(other.isOpeningBalance, isOpeningBalance) || other.isOpeningBalance == isOpeningBalance));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,purchaseDate,supplierName,totalAmount,invoiceNumber,paymentAccountId,const DeepCollectionEquality().hash(_items),isOpeningBalance);
+    return Object.hash(runtimeType,id,purchaseDate,supplierName,totalAmount,discountAmount,invoiceNumber,paymentAccountId,const DeepCollectionEquality().hash(_items),isOpeningBalance);
 }
 
 @override
 String toString() {
-    return 'Purchase(id: $id, purchaseDate: $purchaseDate, supplierName: $supplierName, totalAmount: $totalAmount, invoiceNumber: $invoiceNumber, paymentAccountId: $paymentAccountId, items: $items, isOpeningBalance: $isOpeningBalance)';
+    return 'Purchase(id: $id, purchaseDate: $purchaseDate, supplierName: $supplierName, totalAmount: $totalAmount, discountAmount: $discountAmount, invoiceNumber: $invoiceNumber, paymentAccountId: $paymentAccountId, items: $items, isOpeningBalance: $isOpeningBalance)';
 }
 
 
@@ -271,7 +273,7 @@ abstract mixin class _$PurchaseCopyWith<$Res> implements $PurchaseCopyWith<$Res>
   factory _$PurchaseCopyWith(_Purchase value, $Res Function(_Purchase) _then) = __$PurchaseCopyWithImpl;
 @override @useResult
 $Res call({
- String id, DateTime purchaseDate, String supplierName, double totalAmount, int invoiceNumber, String paymentAccountId, List<PurchaseLine> items, bool isOpeningBalance
+ String id, DateTime purchaseDate, String supplierName, double totalAmount, double discountAmount, int invoiceNumber, String paymentAccountId, List<PurchaseLine> items, bool isOpeningBalance
 });
 
 
@@ -288,12 +290,13 @@ class __$PurchaseCopyWithImpl<$Res>
 
 /// Create a copy of Purchase
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? purchaseDate = null,Object? supplierName = null,Object? totalAmount = null,Object? invoiceNumber = null,Object? paymentAccountId = null,Object? items = null,Object? isOpeningBalance = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? purchaseDate = null,Object? supplierName = null,Object? totalAmount = null,Object? discountAmount = null,Object? invoiceNumber = null,Object? paymentAccountId = null,Object? items = null,Object? isOpeningBalance = null,}) {
   return _then(_Purchase(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,purchaseDate: null == purchaseDate ? _self.purchaseDate : purchaseDate // ignore: cast_nullable_to_non_nullable
 as DateTime,supplierName: null == supplierName ? _self.supplierName : supplierName // ignore: cast_nullable_to_non_nullable
 as String,totalAmount: null == totalAmount ? _self.totalAmount : totalAmount // ignore: cast_nullable_to_non_nullable
+as double,discountAmount: null == discountAmount ? _self.discountAmount : discountAmount // ignore: cast_nullable_to_non_nullable
 as double,invoiceNumber: null == invoiceNumber ? _self.invoiceNumber : invoiceNumber // ignore: cast_nullable_to_non_nullable
 as int,paymentAccountId: null == paymentAccountId ? _self.paymentAccountId : paymentAccountId // ignore: cast_nullable_to_non_nullable
 as String,items: null == items ? _self._items : items // ignore: cast_nullable_to_non_nullable
@@ -309,7 +312,7 @@ as bool,
 mixin _$PurchaseLine {
 
  String get medicineName; String get unitName; double get unitPrice; double get quantity;/// كمية البونص المُستلَمة مجّاناً — بلا ثمن وبكلفة صفر، فبيعها ربح صافٍ.
- double get bonusQuantity; double get subTotal; String get medicineId; String get unitId; DateTime? get expiryDate;
+ double get bonusQuantity; double get discount; double get subTotal; String get medicineId; String get unitId; DateTime? get expiryDate;
 /// Create a copy of PurchaseLine
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -321,20 +324,20 @@ $PurchaseLineCopyWith<PurchaseLine> get copyWith => _$PurchaseLineCopyWithImpl<P
 @override
 bool operator ==(Object other) {
   final _this = this as PurchaseLine;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PurchaseLine&&(identical(other.medicineName, _this.medicineName) || other.medicineName == _this.medicineName)&&(identical(other.unitName, _this.unitName) || other.unitName == _this.unitName)&&(identical(other.unitPrice, _this.unitPrice) || other.unitPrice == _this.unitPrice)&&(identical(other.quantity, _this.quantity) || other.quantity == _this.quantity)&&(identical(other.bonusQuantity, _this.bonusQuantity) || other.bonusQuantity == _this.bonusQuantity)&&(identical(other.subTotal, _this.subTotal) || other.subTotal == _this.subTotal)&&(identical(other.medicineId, _this.medicineId) || other.medicineId == _this.medicineId)&&(identical(other.unitId, _this.unitId) || other.unitId == _this.unitId)&&(identical(other.expiryDate, _this.expiryDate) || other.expiryDate == _this.expiryDate));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PurchaseLine&&(identical(other.medicineName, _this.medicineName) || other.medicineName == _this.medicineName)&&(identical(other.unitName, _this.unitName) || other.unitName == _this.unitName)&&(identical(other.unitPrice, _this.unitPrice) || other.unitPrice == _this.unitPrice)&&(identical(other.quantity, _this.quantity) || other.quantity == _this.quantity)&&(identical(other.bonusQuantity, _this.bonusQuantity) || other.bonusQuantity == _this.bonusQuantity)&&(identical(other.discount, _this.discount) || other.discount == _this.discount)&&(identical(other.subTotal, _this.subTotal) || other.subTotal == _this.subTotal)&&(identical(other.medicineId, _this.medicineId) || other.medicineId == _this.medicineId)&&(identical(other.unitId, _this.unitId) || other.unitId == _this.unitId)&&(identical(other.expiryDate, _this.expiryDate) || other.expiryDate == _this.expiryDate));
 }
 
 
 @override
 int get hashCode {
   final _this = this as PurchaseLine;
-  return Object.hash(runtimeType,_this.medicineName,_this.unitName,_this.unitPrice,_this.quantity,_this.bonusQuantity,_this.subTotal,_this.medicineId,_this.unitId,_this.expiryDate);
+  return Object.hash(runtimeType,_this.medicineName,_this.unitName,_this.unitPrice,_this.quantity,_this.bonusQuantity,_this.discount,_this.subTotal,_this.medicineId,_this.unitId,_this.expiryDate);
 }
 
 @override
 String toString() {
   final _this = this as PurchaseLine;
-  return 'PurchaseLine(medicineName: ${_this.medicineName}, unitName: ${_this.unitName}, unitPrice: ${_this.unitPrice}, quantity: ${_this.quantity}, bonusQuantity: ${_this.bonusQuantity}, subTotal: ${_this.subTotal}, medicineId: ${_this.medicineId}, unitId: ${_this.unitId}, expiryDate: ${_this.expiryDate})';
+  return 'PurchaseLine(medicineName: ${_this.medicineName}, unitName: ${_this.unitName}, unitPrice: ${_this.unitPrice}, quantity: ${_this.quantity}, bonusQuantity: ${_this.bonusQuantity}, discount: ${_this.discount}, subTotal: ${_this.subTotal}, medicineId: ${_this.medicineId}, unitId: ${_this.unitId}, expiryDate: ${_this.expiryDate})';
 }
 
 
@@ -345,7 +348,7 @@ abstract mixin class $PurchaseLineCopyWith<$Res>  {
   factory $PurchaseLineCopyWith(PurchaseLine value, $Res Function(PurchaseLine) _then) = _$PurchaseLineCopyWithImpl;
 @useResult
 $Res call({
- String medicineName, String unitName, double unitPrice, double quantity, double bonusQuantity, double subTotal, String medicineId, String unitId, DateTime? expiryDate
+ String medicineName, String unitName, double unitPrice, double quantity, double bonusQuantity, double discount, double subTotal, String medicineId, String unitId, DateTime? expiryDate
 });
 
 
@@ -362,13 +365,14 @@ class _$PurchaseLineCopyWithImpl<$Res>
 
 /// Create a copy of PurchaseLine
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? medicineName = null,Object? unitName = null,Object? unitPrice = null,Object? quantity = null,Object? bonusQuantity = null,Object? subTotal = null,Object? medicineId = null,Object? unitId = null,Object? expiryDate = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? medicineName = null,Object? unitName = null,Object? unitPrice = null,Object? quantity = null,Object? bonusQuantity = null,Object? discount = null,Object? subTotal = null,Object? medicineId = null,Object? unitId = null,Object? expiryDate = freezed,}) {
   return _then(PurchaseLine(
 medicineName: null == medicineName ? _self.medicineName : medicineName // ignore: cast_nullable_to_non_nullable
 as String,unitName: null == unitName ? _self.unitName : unitName // ignore: cast_nullable_to_non_nullable
 as String,unitPrice: null == unitPrice ? _self.unitPrice : unitPrice // ignore: cast_nullable_to_non_nullable
 as double,quantity: null == quantity ? _self.quantity : quantity // ignore: cast_nullable_to_non_nullable
 as double,bonusQuantity: null == bonusQuantity ? _self.bonusQuantity : bonusQuantity // ignore: cast_nullable_to_non_nullable
+as double,discount: null == discount ? _self.discount : discount // ignore: cast_nullable_to_non_nullable
 as double,subTotal: null == subTotal ? _self.subTotal : subTotal // ignore: cast_nullable_to_non_nullable
 as double,medicineId: null == medicineId ? _self.medicineId : medicineId // ignore: cast_nullable_to_non_nullable
 as String,unitId: null == unitId ? _self.unitId : unitId // ignore: cast_nullable_to_non_nullable
@@ -458,10 +462,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String medicineName,  String unitName,  double unitPrice,  double quantity,  double bonusQuantity,  double subTotal,  String medicineId,  String unitId,  DateTime? expiryDate)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String medicineName,  String unitName,  double unitPrice,  double quantity,  double bonusQuantity,  double discount,  double subTotal,  String medicineId,  String unitId,  DateTime? expiryDate)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _PurchaseLine() when $default != null:
-return $default(_that.medicineName,_that.unitName,_that.unitPrice,_that.quantity,_that.bonusQuantity,_that.subTotal,_that.medicineId,_that.unitId,_that.expiryDate);case _:
+return $default(_that.medicineName,_that.unitName,_that.unitPrice,_that.quantity,_that.bonusQuantity,_that.discount,_that.subTotal,_that.medicineId,_that.unitId,_that.expiryDate);case _:
   return orElse();
 
 }
@@ -479,10 +483,10 @@ return $default(_that.medicineName,_that.unitName,_that.unitPrice,_that.quantity
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String medicineName,  String unitName,  double unitPrice,  double quantity,  double bonusQuantity,  double subTotal,  String medicineId,  String unitId,  DateTime? expiryDate)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String medicineName,  String unitName,  double unitPrice,  double quantity,  double bonusQuantity,  double discount,  double subTotal,  String medicineId,  String unitId,  DateTime? expiryDate)  $default,) {final _that = this;
 switch (_that) {
 case _PurchaseLine():
-return $default(_that.medicineName,_that.unitName,_that.unitPrice,_that.quantity,_that.bonusQuantity,_that.subTotal,_that.medicineId,_that.unitId,_that.expiryDate);case _:
+return $default(_that.medicineName,_that.unitName,_that.unitPrice,_that.quantity,_that.bonusQuantity,_that.discount,_that.subTotal,_that.medicineId,_that.unitId,_that.expiryDate);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -499,10 +503,10 @@ return $default(_that.medicineName,_that.unitName,_that.unitPrice,_that.quantity
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String medicineName,  String unitName,  double unitPrice,  double quantity,  double bonusQuantity,  double subTotal,  String medicineId,  String unitId,  DateTime? expiryDate)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String medicineName,  String unitName,  double unitPrice,  double quantity,  double bonusQuantity,  double discount,  double subTotal,  String medicineId,  String unitId,  DateTime? expiryDate)?  $default,) {final _that = this;
 switch (_that) {
 case _PurchaseLine() when $default != null:
-return $default(_that.medicineName,_that.unitName,_that.unitPrice,_that.quantity,_that.bonusQuantity,_that.subTotal,_that.medicineId,_that.unitId,_that.expiryDate);case _:
+return $default(_that.medicineName,_that.unitName,_that.unitPrice,_that.quantity,_that.bonusQuantity,_that.discount,_that.subTotal,_that.medicineId,_that.unitId,_that.expiryDate);case _:
   return null;
 
 }
@@ -514,7 +518,7 @@ return $default(_that.medicineName,_that.unitName,_that.unitPrice,_that.quantity
 
 
 class _PurchaseLine implements PurchaseLine {
-  const _PurchaseLine({required this.medicineName, required this.unitName, required this.unitPrice, required this.quantity, this.bonusQuantity = 0, required this.subTotal, this.medicineId = '', this.unitId = '', this.expiryDate});
+  const _PurchaseLine({required this.medicineName, required this.unitName, required this.unitPrice, required this.quantity, this.bonusQuantity = 0, this.discount = 0, required this.subTotal, this.medicineId = '', this.unitId = '', this.expiryDate});
   
 
 @override final  String medicineName;
@@ -523,6 +527,7 @@ class _PurchaseLine implements PurchaseLine {
 @override final  double quantity;
 /// كمية البونص المُستلَمة مجّاناً — بلا ثمن وبكلفة صفر، فبيعها ربح صافٍ.
 @override@JsonKey() final  double bonusQuantity;
+@override@JsonKey() final  double discount;
 @override final  double subTotal;
 @override@JsonKey() final  String medicineId;
 @override@JsonKey() final  String unitId;
@@ -538,18 +543,18 @@ _$PurchaseLineCopyWith<_PurchaseLine> get copyWith => __$PurchaseLineCopyWithImp
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PurchaseLine&&(identical(other.medicineName, medicineName) || other.medicineName == medicineName)&&(identical(other.unitName, unitName) || other.unitName == unitName)&&(identical(other.unitPrice, unitPrice) || other.unitPrice == unitPrice)&&(identical(other.quantity, quantity) || other.quantity == quantity)&&(identical(other.bonusQuantity, bonusQuantity) || other.bonusQuantity == bonusQuantity)&&(identical(other.subTotal, subTotal) || other.subTotal == subTotal)&&(identical(other.medicineId, medicineId) || other.medicineId == medicineId)&&(identical(other.unitId, unitId) || other.unitId == unitId)&&(identical(other.expiryDate, expiryDate) || other.expiryDate == expiryDate));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PurchaseLine&&(identical(other.medicineName, medicineName) || other.medicineName == medicineName)&&(identical(other.unitName, unitName) || other.unitName == unitName)&&(identical(other.unitPrice, unitPrice) || other.unitPrice == unitPrice)&&(identical(other.quantity, quantity) || other.quantity == quantity)&&(identical(other.bonusQuantity, bonusQuantity) || other.bonusQuantity == bonusQuantity)&&(identical(other.discount, discount) || other.discount == discount)&&(identical(other.subTotal, subTotal) || other.subTotal == subTotal)&&(identical(other.medicineId, medicineId) || other.medicineId == medicineId)&&(identical(other.unitId, unitId) || other.unitId == unitId)&&(identical(other.expiryDate, expiryDate) || other.expiryDate == expiryDate));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,medicineName,unitName,unitPrice,quantity,bonusQuantity,subTotal,medicineId,unitId,expiryDate);
+    return Object.hash(runtimeType,medicineName,unitName,unitPrice,quantity,bonusQuantity,discount,subTotal,medicineId,unitId,expiryDate);
 }
 
 @override
 String toString() {
-    return 'PurchaseLine(medicineName: $medicineName, unitName: $unitName, unitPrice: $unitPrice, quantity: $quantity, bonusQuantity: $bonusQuantity, subTotal: $subTotal, medicineId: $medicineId, unitId: $unitId, expiryDate: $expiryDate)';
+    return 'PurchaseLine(medicineName: $medicineName, unitName: $unitName, unitPrice: $unitPrice, quantity: $quantity, bonusQuantity: $bonusQuantity, discount: $discount, subTotal: $subTotal, medicineId: $medicineId, unitId: $unitId, expiryDate: $expiryDate)';
 }
 
 
@@ -560,7 +565,7 @@ abstract mixin class _$PurchaseLineCopyWith<$Res> implements $PurchaseLineCopyWi
   factory _$PurchaseLineCopyWith(_PurchaseLine value, $Res Function(_PurchaseLine) _then) = __$PurchaseLineCopyWithImpl;
 @override @useResult
 $Res call({
- String medicineName, String unitName, double unitPrice, double quantity, double bonusQuantity, double subTotal, String medicineId, String unitId, DateTime? expiryDate
+ String medicineName, String unitName, double unitPrice, double quantity, double bonusQuantity, double discount, double subTotal, String medicineId, String unitId, DateTime? expiryDate
 });
 
 
@@ -577,13 +582,14 @@ class __$PurchaseLineCopyWithImpl<$Res>
 
 /// Create a copy of PurchaseLine
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? medicineName = null,Object? unitName = null,Object? unitPrice = null,Object? quantity = null,Object? bonusQuantity = null,Object? subTotal = null,Object? medicineId = null,Object? unitId = null,Object? expiryDate = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? medicineName = null,Object? unitName = null,Object? unitPrice = null,Object? quantity = null,Object? bonusQuantity = null,Object? discount = null,Object? subTotal = null,Object? medicineId = null,Object? unitId = null,Object? expiryDate = freezed,}) {
   return _then(_PurchaseLine(
 medicineName: null == medicineName ? _self.medicineName : medicineName // ignore: cast_nullable_to_non_nullable
 as String,unitName: null == unitName ? _self.unitName : unitName // ignore: cast_nullable_to_non_nullable
 as String,unitPrice: null == unitPrice ? _self.unitPrice : unitPrice // ignore: cast_nullable_to_non_nullable
 as double,quantity: null == quantity ? _self.quantity : quantity // ignore: cast_nullable_to_non_nullable
 as double,bonusQuantity: null == bonusQuantity ? _self.bonusQuantity : bonusQuantity // ignore: cast_nullable_to_non_nullable
+as double,discount: null == discount ? _self.discount : discount // ignore: cast_nullable_to_non_nullable
 as double,subTotal: null == subTotal ? _self.subTotal : subTotal // ignore: cast_nullable_to_non_nullable
 as double,medicineId: null == medicineId ? _self.medicineId : medicineId // ignore: cast_nullable_to_non_nullable
 as String,unitId: null == unitId ? _self.unitId : unitId // ignore: cast_nullable_to_non_nullable

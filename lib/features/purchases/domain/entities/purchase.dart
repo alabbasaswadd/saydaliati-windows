@@ -10,6 +10,7 @@ abstract class Purchase with _$Purchase {
     required DateTime purchaseDate,
     @Default('') String supplierName,
     required double totalAmount,
+    @Default(0) double discountAmount,
     @Default(0) int invoiceNumber,
     @Default('') String paymentAccountId,
     @Default(<PurchaseLine>[]) List<PurchaseLine> items,
@@ -30,6 +31,7 @@ abstract class PurchaseLine with _$PurchaseLine {
     /// كمية البونص المُستلَمة مجّاناً — بلا ثمن وبكلفة صفر، فبيعها ربح صافٍ.
     @Default(0) double bonusQuantity,
 
+    @Default(0) double discount,
     required double subTotal,
     @Default('') String medicineId,
     @Default('') String unitId,

@@ -10,6 +10,7 @@ class PurchaseDto {
     this.purchaseDate,
     this.supplierName,
     this.totalAmount,
+    this.discountAmount,
     this.paymentAccountId,
     this.items,
     this.isOpeningBalance,
@@ -20,6 +21,7 @@ class PurchaseDto {
   final DateTime? purchaseDate;
   final String? supplierName;
   final num? totalAmount;
+  final num? discountAmount;
   final String? paymentAccountId;
   final List<PurchaseItemDto>? items;
   final bool? isOpeningBalance;
@@ -36,6 +38,7 @@ class PurchaseItemDto {
     this.unitPrice,
     this.quantity,
     this.bonusQuantity,
+    this.discount,
     this.subTotal,
     this.expiryDate,
     this.medicine,
@@ -47,6 +50,7 @@ class PurchaseItemDto {
   final num? unitPrice;
   final num? quantity;
   final num? bonusQuantity;
+  final num? discount;
   final num? subTotal;
   final DateTime? expiryDate;
   final PurchaseMedicineDto? medicine;

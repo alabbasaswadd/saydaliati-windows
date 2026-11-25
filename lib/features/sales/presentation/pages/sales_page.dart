@@ -60,12 +60,13 @@ class _PosLine {
   MedicineUnit unit; // selected unit (holds the base-currency salePrice)
   double unitPrice; // in the selected currency
   double quantity = 1;
+  double discount = 0; // per-line discount in the selected currency
 
   // Available expiry batches + the chosen one (default: nearest expiry).
   List<MedicineBatch> batches = const [];
   MedicineBatch? selectedBatch;
 
-  double get total => unitPrice * quantity;
+  double get total => unitPrice * quantity - discount;
 }
 
 /// Tab 3 — المبيعات (نقطة البيع). عند الاستخدام الرئيسي (بلا معاملات) يفتح
@@ -168,6 +169,8 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
   bool _isPrescription = false;
   bool _submitting = false;
   bool _prefilled = false;
+  double _discountAmount = 0;
+  late final _discountAmountCtrl = TextEditingController();
 
   @override
   void initState() {
@@ -189,6 +192,7 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
   void dispose() {
     _grid?.removeListener(_onGridSelectionChanged);
     _shortcuts.dispose();
+    _discountAmountCtrl.dispose();
     super.dispose();
   }
 
@@ -383,7 +387,11 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
   bool get _isEdit => widget.saleToEdit != null;
   bool get _isQueuedEdit => widget.queuedId != null;
 
-  double get _total => _lines.fold(0, (s, l) => s + l.total);
+  /// إجمالي أسطر الفاتورة قبل خصم الفاتورة.
+  double get _subTotal => _lines.fold(0, (s, l) => s + l.total);
+
+  /// الإجمالي الصافي بعد خصم الفاتورة — هو ما يُعرض ويُرسَل.
+  double get _total => _subTotal - _discountAmount;
 
   String _effectiveCurrencyId(Currency? base) => _currencyId ?? base?.id ?? '';
 
@@ -698,6 +706,7 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
       warehouseId: warehouseId,
       saleDate: _saleDate,
       totalAmount: serverConverts ? _total : toBase(_total),
+      discountAmount: serverConverts ? _discountAmount : toBase(_discountAmount),
       paymentMethod: _payMethod,
       paymentAccountId: _payMethod == PaymentMethod.credit ? null : _paymentAccountId,
       isPrescription: _isPrescription,
@@ -708,6 +717,7 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
             unitId: l.unit.unitId,
             individual: serverConverts ? l.unitPrice : toBase(l.unitPrice),
             quantity: l.quantity,
+            discount: serverConverts ? l.discount : toBase(l.discount),
             stockId: l.selectedBatch?.stockId,
           ),
       ],
@@ -914,6 +924,9 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
         sale.paymentAccountId.isNotEmpty ? sale.paymentAccountId : null;
     _lastSuggestedPaymentAccountId = null;
     _isPrescription = sale.isPrescription;
+    _discountAmount = sale.discountAmount;
+    _discountAmountCtrl.text =
+        sale.discountAmount > 0 ? sale.discountAmount.toString() : '';
     _lines.clear();
     for (final line in sale.items) {
       final med = catalog.where((m) => m.id == line.medicineId).firstOrNull;
@@ -922,7 +935,8 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
           med.units.where((u) => u.unitId == line.unitId).firstOrNull ??
               med.units.first;
       _lines.add(_PosLine(medicine: med, unit: unit, unitPrice: line.individual)
-        ..quantity = line.quantity);
+        ..quantity = line.quantity
+        ..discount = line.discount);
     }
   }
 
@@ -939,6 +953,9 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
     _paymentAccountId = (payAccId != null && payAccId.isNotEmpty) ? payAccId : null;
     _lastSuggestedPaymentAccountId = null;
     _isPrescription = payload['isPrescription'] == true;
+    _discountAmount = ((payload['discountAmount'] ?? 0) as num).toDouble();
+    _discountAmountCtrl.text =
+        _discountAmount > 0 ? _discountAmount.toString() : '';
     _lines.clear();
     for (final raw in (payload['items'] as List?) ?? const []) {
       if (raw is! Map) continue;
@@ -952,7 +969,9 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
         medicine: med,
         unit: unit,
         unitPrice: ((raw['individual'] ?? 0) as num).toDouble(),
-      )..quantity = ((raw['quantity'] ?? 1) as num).toDouble();
+      )
+        ..quantity = ((raw['quantity'] ?? 1) as num).toDouble()
+        ..discount = ((raw['discount'] ?? 0) as num).toDouble();
       final stockId = (raw['stockId'] ?? '').toString();
       if (stockId.isNotEmpty) {
         // Preserve the pinned batch so the edit re-emits the same stockId.
@@ -1166,6 +1185,17 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
                     ),
                   ),
                   const SizedBox(width: AppSpacing.sm),
+                  SizedBox(
+                    width: 130,
+                    child: AppNumberField(
+                      controller: _discountAmountCtrl,
+                      label: 'خصم الفاتورة',
+                      enabled: !_submitting,
+                      onChanged: (v) => setState(
+                          () => _discountAmount = double.tryParse(v) ?? 0),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
                   InvoiceTotalBadge(
                     total: _total,
                     selected: _selectedCurrency(base, currencies),
@@ -1232,6 +1262,7 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
   static const _fPrice = 'price';
   static const _fQty = 'qty';
   static const _fBatch = 'batch';
+  static const _fDiscount = 'discount';
   static const _fTotal = 'total';
   static const _fDel = 'del';
   static const _newRowId = '__new__';
@@ -1249,6 +1280,7 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
           l.unit.unitId,
           l.unitPrice,
           l.quantity,
+          l.discount,
           l.selectedBatch?.stockId,
           l.batches.length,
         ],
@@ -1353,6 +1385,16 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
           enableEditingMode: true,
           checkReadOnly: (row, cell) => isNewRow(row),
         ),
+        TrinaColumn(
+          title: 'خصم السطر',
+          field: _fDiscount,
+          type: TrinaColumnType.number(
+              format: '#,##0.##', locale: 'en', applyFormatOnInit: false),
+          width: 100,
+          textAlign: TrinaColumnTextAlign.center,
+          enableEditingMode: true,
+          checkReadOnly: (row, cell) => isNewRow(row),
+        ),
         // دفعة الصلاحية: قائمة داخل الخلية.
         TrinaColumn(
           title: AppStrings.expiryDateLabel,
@@ -1440,6 +1482,7 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
             _fUnit: TrinaCell(value: l.unit.unitName),
             _fPrice: TrinaCell(value: l.unitPrice),
             _fQty: TrinaCell(value: l.quantity),
+            _fDiscount: TrinaCell(value: l.discount),
             _fBatch: TrinaCell(
                 value: l.selectedBatch != null
                     ? l.selectedBatch!.expiryLabel
@@ -1454,6 +1497,7 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
           _fUnit: TrinaCell(value: ''),
           _fPrice: TrinaCell(value: ''),
           _fQty: TrinaCell(value: ''),
+          _fDiscount: TrinaCell(value: ''),
           _fBatch: TrinaCell(value: ''),
           _fTotal: TrinaCell(value: ''),
           _fDel: TrinaCell(value: ''),
@@ -1474,6 +1518,8 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
             l.unitPrice = v;
           } else if (e.column.field == _fQty && v != null && v > 0) {
             l.quantity = v;
+          } else if (e.column.field == _fDiscount && v != null && v >= 0) {
+            l.discount = v;
           }
           // قيمة غير صالحة → البصمة تعيد البناء بالقيمة القديمة.
         });

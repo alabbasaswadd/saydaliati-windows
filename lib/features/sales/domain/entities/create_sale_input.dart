@@ -17,6 +17,7 @@ class CreateSaleInput {
     this.amountsInOriginalCurrency = false,
     this.isPrescription = false,
     this.paymentAccountId,
+    this.discountAmount = 0,
   });
 
   final String currencyId;
@@ -48,6 +49,9 @@ class CreateSaleInput {
   /// Credit — defaults in the UI to the cash box matching the sale's currency.
   final String? paymentAccountId;
 
+  /// حسم على مستوى الفاتورة (قيمة بالعملة الأساسية).
+  final double discountAmount;
+
   Map<String, dynamic> toJson() => {
         'customerId': customerId,
         'userId': null,
@@ -56,6 +60,7 @@ class CreateSaleInput {
         'saleDate': saleDate.toIso8601String(),
         'note': note,
         'totalAmount': totalAmount,
+        'discountAmount': discountAmount,
         'paymentMethod': paymentMethod.wire,
         'originalCurrencyId': originalCurrencyId,
         'exchangeRate': exchangeRate,
@@ -74,6 +79,7 @@ class CreateSaleLineInput {
     required this.individual,
     required this.quantity,
     this.stockId,
+    this.discount = 0,
   });
 
   final String medicineId;
@@ -81,6 +87,7 @@ class CreateSaleLineInput {
   final double individual; // unit price
   final double quantity;
   final String? stockId; // chosen expiry batch (optional)
+  final double discount;
 
   Map<String, dynamic> toJson(String currencyId, String warehouseId) => {
         'medicineId': medicineId,
@@ -89,6 +96,7 @@ class CreateSaleLineInput {
         'currencyId': currencyId,
         'individual': individual,
         'quantity': quantity,
+        'discount': discount,
         'stockId': stockId,
       };
 }
