@@ -139,6 +139,17 @@ class _BalanceSheetBody extends StatelessWidget {
     final totalLiab = sectionTotal(liabRoots);
     final totalEquity = sectionTotal(equityRoots);
 
+    // ── Net income (Revenue − Expense) ────────────────────────────────────
+    // أرباح الفترة غير المقفَلة تظل في حسابات الإيرادات والمصروفات؛
+    // تُضاف إلى حقوق الملكية لإتمام معادلة الميزانية.
+    final totalRevenue = accounts
+        .where((a) => a.accountType == AccountType.revenue)
+        .fold<double>(0, (s, a) => s + a.currentBalance);
+    final totalExpense = accounts
+        .where((a) => a.accountType == AccountType.expense)
+        .fold<double>(0, (s, a) => s + a.currentBalance);
+    final netIncome = totalRevenue - totalExpense;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
@@ -183,6 +194,7 @@ class _BalanceSheetBody extends StatelessWidget {
             total: totalEquity,
             totalLabel: 'إجمالي حقوق الملكية (III)',
             baseCode: baseCode,
+            netIncome: netIncome,
           ),
           const SizedBox(height: AppSpacing.lg),
 
@@ -190,7 +202,7 @@ class _BalanceSheetBody extends StatelessWidget {
           _BsEquation(
             netAssets: totalAssets,
             totalLiab: totalLiab,
-            totalEquity: totalEquity,
+            totalEquity: totalEquity + netIncome,
             baseCode: baseCode,
           ),
           const SizedBox(height: AppSpacing.xl),
@@ -231,6 +243,7 @@ class _BsSection extends StatelessWidget {
     required this.total,
     required this.totalLabel,
     required this.baseCode,
+    this.netIncome,
   });
 
   final String number;
@@ -241,12 +254,17 @@ class _BsSection extends StatelessWidget {
   final double total;
   final String totalLabel;
   final String baseCode;
+  /// صافي الربح/الخسارة للفترة — يُعرض فقط في قسم حقوق الملكية.
+  final double? netIncome;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final int maxDepth = level - 1;
     final flat = _flatten(nodes, maxDepth);
+    final ni = netIncome;
+    final hasNetIncome = ni != null && ni.abs() > 0.001;
+    final isEmpty = flat.isEmpty && !hasNetIncome;
 
     return Card(
       elevation: 0,
@@ -259,7 +277,7 @@ class _BsSection extends StatelessWidget {
         children: [
           _BsSectionHeader(
               number: number, label: label, subtitle: subtitle),
-          if (flat.isEmpty)
+          if (isEmpty)
             Padding(
               padding: const EdgeInsets.all(AppSpacing.md),
               child: Text(
@@ -269,16 +287,21 @@ class _BsSection extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
             )
-          else
+          else ...[
             for (int i = 0; i < flat.length; i++)
               _BsRow(
                 node: flat[i].$2,
                 depth: flat[i].$1,
-                isLast: i == flat.length - 1,
+                isLast: i == flat.length - 1 && !hasNetIncome,
                 baseCode: baseCode,
               ),
+            if (hasNetIncome)
+              _BsNetIncomeRow(value: ni!, baseCode: baseCode),
+          ],
           _BsSectionTotal(
-              label: totalLabel, value: total, baseCode: baseCode),
+              label: totalLabel,
+              value: total + (netIncome ?? 0),
+              baseCode: baseCode),
         ],
       ),
     );
@@ -463,6 +486,62 @@ class _BsRow extends StatelessWidget {
   }
 }
 
+class _BsNetIncomeRow extends StatelessWidget {
+  const _BsNetIncomeRow({required this.value, required this.baseCode});
+
+  final double value;
+  final String baseCode;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isLoss = value < 0;
+    final color = isLoss ? theme.colorScheme.error : context.semantic.success;
+    final label = isLoss ? 'خسارة الفترة الحالية' : 'صافي ربح الفترة الحالية';
+
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: theme.extension<AppSemanticColors>()!.border
+                .withValues(alpha: 0.4),
+          ),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md, vertical: 10),
+        child: Row(
+          children: [
+            Icon(isLoss ? Icons.trending_down : Icons.trending_up,
+                size: 14, color: color),
+            const SizedBox(width: AppSpacing.xs),
+            Expanded(
+              child: Text(label,
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(fontWeight: FontWeight.w500, color: color)),
+            ),
+            Directionality(
+              textDirection: TextDirection.ltr,
+              child: Text(
+                Formatters.number(value.abs()),
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(fontWeight: FontWeight.w500, color: color),
+              ),
+            ),
+            if (baseCode.isNotEmpty) ...[
+              const SizedBox(width: 4),
+              Text(baseCode,
+                  style: theme.textTheme.labelSmall
+                      ?.copyWith(color: theme.hintColor)),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _BsSectionTotal extends StatelessWidget {
   const _BsSectionTotal({
     required this.label,
@@ -619,7 +698,7 @@ class _BsEquation extends StatelessWidget {
             ),
             const SizedBox(height: 2),
             Text(
-              'الأصول  =  الالتزامات + حقوق الملكية',
+              'الأصول  =  الالتزامات + حقوق الملكية (شاملاً صافي الربح)',
               textAlign: TextAlign.center,
               style: theme.textTheme.labelSmall
                   ?.copyWith(color: theme.hintColor),
