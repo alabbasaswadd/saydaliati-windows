@@ -1175,8 +1175,16 @@ class _SingleSaleScaffoldState extends ConsumerState<_SingleSaleScaffold> {
                               label: AppStrings.accountLabel,
                               accounts: accounts,
                               selectedId: _paymentAccountId,
-                              onSelected: (a) =>
-                                  setState(() => _paymentAccountId = a.id),
+                              onSelected: (a) {
+                                final c = a.currencyId;
+                                setState(() {
+                                  _paymentAccountId = a.id;
+                                  if (c != null && c.isNotEmpty) {
+                                    _currencyId = c;
+                                    _repriceLines(base, currencies);
+                                  }
+                                });
+                              },
                             ),
                           ),
                         // وصفة طبية؟ عند التفعيل يصبح اختيار العميل إجبارياً.

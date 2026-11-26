@@ -725,8 +725,13 @@ class _PurchaseCreatePageState extends ConsumerState<PurchaseCreatePage> {
                             hint: 'الصندوق أو البنك',
                             accounts: accounts,
                             selectedId: _paymentAccountId,
-                            onSelected: (a) =>
-                                setState(() => _paymentAccountId = a.id),
+                            onSelected: (a) {
+                              final c = a.currencyId;
+                              if (c != null && c.isNotEmpty) {
+                                _changeCurrency(c, base);
+                              }
+                              setState(() => _paymentAccountId = a.id);
+                            },
                           ),
                         ),
                       ],
