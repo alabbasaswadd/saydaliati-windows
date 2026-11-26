@@ -84,6 +84,7 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
         builder: (_) =>
             AnnouncementDialog(announcement: a, index: i, total: items.length),
       );
+      if (!mounted) break;
       await ref.read(pendingAnnouncementsProvider.notifier).acknowledge(a.id);
     }
   }

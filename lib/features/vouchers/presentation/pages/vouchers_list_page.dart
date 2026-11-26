@@ -6,6 +6,7 @@ import 'package:saydaliati/core/theme/app_spacing.dart';
 import 'package:saydaliati/core/utils/app_date.dart';
 import 'package:saydaliati/features/accounts/account_providers.dart';
 import 'package:saydaliati/features/accounts/domain/entities/account.dart';
+import 'package:saydaliati/features/currencies/presentation/providers/currencies_provider.dart';
 import 'package:saydaliati/features/expenses/presentation/pages/expenses_list_page.dart';
 import 'package:saydaliati/features/purchases/presentation/pages/purchase_detail_page.dart';
 import 'package:saydaliati/features/purchases/presentation/pages/purchase_returns_list_page.dart';
@@ -178,7 +179,7 @@ class VouchersListPage extends ConsumerWidget {
   }
 }
 
-class _VouchersGrid extends StatelessWidget {
+class _VouchersGrid extends ConsumerWidget {
   const _VouchersGrid({
     required this.vouchers,
     required this.onDelete,
@@ -191,12 +192,26 @@ class _VouchersGrid extends StatelessWidget {
   final ValueChanged<Voucher> onEdit;
   final ValueChanged<Voucher> onOpenOrigin;
 
+  /// سعر صرف عملة السند — للتحويل من الأساسية حين لا يرسل السيرفر المبلغ الأصلي.
+  double _displayAmount(Voucher v, Map<String, double> rateByCode) {
+    final known = v.knownOriginalTotal;
+    if (known != null) return known;
+    final code = v.currencyCode;
+    if (code != null) {
+      final rate = rateByCode[code] ?? 0.0;
+      if (rate > 0) return v.totalDebit * rate;
+    }
+    return v.totalDebit;
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currencies = ref.watch(currenciesProvider).value ?? const [];
+    final rateByCode = {for (final c in currencies) c.code: c.exchangeRate};
     final byId = {for (final v in vouchers) v.id: v};
 
     return AppGrid(
-      key: ValueKey(vouchers.length ^ vouchers.hashCode),
+      key: ValueKey('${vouchers.length ^ vouchers.hashCode}-${rateByCode.length}'),
       columns: [
         appGridTextColumn('التاريخ', VouchersListPage._fDate,
             width: 110, textAlign: TrinaColumnTextAlign.center),
@@ -273,9 +288,7 @@ class _VouchersGrid extends StatelessWidget {
             VouchersListPage._fDesc: TrinaCell(value: v.description),
             VouchersListPage._fDebit: TrinaCell(value: v.debitAccountName),
             VouchersListPage._fCredit: TrinaCell(value: v.creditAccountName),
-            // يُعرض المبلغ الأصلي بعملة المعاملة إن أرسله الخادم، وإلا المبلغ الأساسي.
-            VouchersListPage._fAmount: TrinaCell(
-                value: v.originalTotal > 0 ? v.originalTotal : v.totalDebit),
+            VouchersListPage._fAmount: TrinaCell(value: _displayAmount(v, rateByCode)),
             VouchersListPage._fCurrency: TrinaCell(value: v.currencyCode ?? ''),
             VouchersListPage._fId: TrinaCell(value: v.id),
           }),

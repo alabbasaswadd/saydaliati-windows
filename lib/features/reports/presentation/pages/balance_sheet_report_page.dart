@@ -128,11 +128,15 @@ class _BalanceSheetBody extends StatelessWidget {
     final equityRoots = _sectionRoots(map, {AccountType.equity});
 
     // ── Totals ────────────────────────────────────────────────────────────
+    // الأصول: رصيد مدين → موجب كما هو.
+    // الالتزامات + حقوق الملكية: رصيد دائن → مُخزَّن سالباً (مدين‑موجب) → يُنفى.
+    // الأصول المقابلة (contraAsset): تُنفى أيضاً لتُطرح من الأصول.
     double sectionTotal(List<_BsNode> roots) => roots.fold(0.0, (s, n) {
-          return s +
-              (n.account.accountType == AccountType.contraAsset
-                  ? -n.balance
-                  : n.balance);
+          final type = n.account.accountType;
+          final negate = type == AccountType.contraAsset ||
+              type == AccountType.liability ||
+              type == AccountType.equity;
+          return negate ? s - n.balance : s + n.balance;
         });
 
     final totalAssets = sectionTotal(assetRoots);
@@ -401,8 +405,11 @@ class _BsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final a = node.account;
-    final balance = node.balance;
     final isContra = a.accountType == AccountType.contraAsset;
+    final isCreditNature = a.accountType == AccountType.liability ||
+        a.accountType == AccountType.equity;
+    // حسابات الدائن (التزامات + حقوق ملكية) مُخزَّنة بإشارة معكوسة → نعكسها للعرض.
+    final balance = isCreditNature ? -node.balance : node.balance;
 
     final balanceColor = isContra
         ? theme.colorScheme.error

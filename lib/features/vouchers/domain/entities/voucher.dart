@@ -66,25 +66,25 @@ class Voucher {
   String get creditAccountName =>
       lines.where((l) => l.credit > 0).map((l) => l.accountName).firstOrNull ?? '';
 
-  /// عملة السند — عملة الحساب المدين، أو الدائن إن لم تكن للمدين عملة خاصة
-  /// (null إن لم يكن لأي من الطرفين عملة خاصة، أي العملة الأساسية).
-  String? get currencyCode =>
-      lines.where((l) => l.debit > 0).map((l) => l.accountCurrencyCode).firstOrNull ??
-      lines.where((l) => l.credit > 0).map((l) => l.accountCurrencyCode).firstOrNull;
+  /// أول سطر له عملة أجنبية (غير أساسية) — المدين أولاً ثم الدائن.
+  /// يُستخدَم لتوحيد مصدر [currencyCode] و[originalTotal] حتى لا يختلفا.
+  VoucherLine? get _foreignLine =>
+      lines.where((l) => l.debit > 0 && l.accountCurrencyCode != null).firstOrNull ??
+      lines.where((l) => l.credit > 0 && l.accountCurrencyCode != null).firstOrNull;
 
-  /// المبلغ الأصلي بعملة السند قبل تحويله للأساس.
-  /// يُرجعه الخادم الحديث فقط؛ صفر يعني غير متوفر (نستخدم totalDebit بدلاً منه).
-  /// يتحقق أولاً من أسطر المدين؛ فإن كانت صفراً (حساب بالعملة الأساسية) جرّب
-  /// أسطر الدائن — نمط شائع: أجار بالسوري → صندوق دولار (OriginalCredit=50).
-  double get originalTotal {
-    final fromDebit = lines
-        .where((l) => l.debit > 0)
-        .fold<double>(0, (s, l) => s + l.originalDebit);
-    if (fromDebit > 0) return fromDebit;
-    return lines
-        .where((l) => l.credit > 0)
-        .fold<double>(0, (s, l) => s + l.originalCredit);
+  /// عملة السند — مأخوذة من [_foreignLine]؛ null = العملة الأساسية.
+  String? get currencyCode => _foreignLine?.accountCurrencyCode;
+
+  /// المبلغ الأصلي بعملة [_foreignLine] إن أرسله الخادم؛ وإلا null.
+  /// الواجهة تستخدم هذا لتقرير إن كانت بحاجة لتحويل من العملة الأساسية بسعر الصرف.
+  double? get knownOriginalTotal {
+    final foreign = _foreignLine;
+    if (foreign == null) return null;
+    final orig = foreign.debit > 0 ? foreign.originalDebit : foreign.originalCredit;
+    return orig > 0 ? orig : null;
   }
+
+  double get originalTotal => knownOriginalTotal ?? totalDebit;
 }
 
 /// حمولة تعديل سند مباشر مبسَّط: طرف مدين واحد + طرف دائن واحد بنفس المبلغ.

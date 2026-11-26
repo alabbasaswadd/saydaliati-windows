@@ -29,6 +29,7 @@ class PendingAnnouncements extends _$PendingAnnouncements {
     } catch (_) {
       // Best-effort: even if the ack call fails, don't re-show it this session.
     }
+    if (!ref.mounted) return;
     final current = state.asData?.value;
     if (current != null) {
       state = AsyncData(current.where((a) => a.id != id).toList());

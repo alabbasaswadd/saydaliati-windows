@@ -12,8 +12,6 @@ import 'package:saydaliati/features/auth/presentation/widgets/auth_scaffold.dart
 import 'package:saydaliati/features/auth/presentation/widgets/phone_field.dart';
 import 'package:saydaliati/shared/widgets/feedback/failure_snackbar.dart';
 
-/// العملة الأساسية ثابتة دائماً: الليرة السورية (تُبذر في الخادم) — لا تُختار عند التسجيل.
-
 /// المحافظات السورية — المحافظة إجبارية عند التسجيل.
 const List<String> _kGovernorates = [
   'دمشق',

@@ -23,8 +23,6 @@ class AuthRemoteDataSource {
     String address = '',
     double usdExchangeRate = 0,
   }) async {
-    // العملة الأساسية ثابتة (ليرة سورية) وتُبذر في الخادم؛ نرسل سعر صرف الدولار
-    // مقابل الليرة (كم ل.س يساوي 1$) لضبط عملة الدولار الثانوية.
     final data = await _api.post(ApiEndpoints.authRegister, data: {
       'pharmacyName': pharmacyName,
       'email': email,

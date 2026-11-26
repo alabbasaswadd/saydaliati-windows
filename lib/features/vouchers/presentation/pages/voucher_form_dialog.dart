@@ -103,20 +103,18 @@ class _VoucherFormDialogState extends ConsumerState<_VoucherFormDialog> {
     super.dispose();
   }
 
-  /// يقترح عملة السند حسب عملة الحساب المدين المختار (أو الدائن إن لم
-  /// يُحدَّد مدين) — أو العملة الأساسية إن لم يكن لأيٍّ منهما عملة خاصة. لا
-  /// يلمس اختياراً صريحاً للمستخدم.
-  void _suggestCurrencyForAccount(String? accountId) {
-    final untouched =
-        _currencyId == null || _currencyId == _lastSuggestedCurrencyId;
+  /// يقترح عملة السند: المدين أولاً، الدائن احتياطياً إن لم يكن للمدين عملة خاصة.
+  /// لا يلمس اختياراً غيّره المستخدم يدوياً.
+  void _suggestCurrency() {
+    final untouched = _currencyId == null || _currencyId == _lastSuggestedCurrencyId;
     if (!untouched) return;
 
-    final account =
-        widget.accounts.where((a) => a.id == accountId).firstOrNull;
-    if (account == null) return;
+    final debit = widget.accounts.where((a) => a.id == _debitAccountId).firstOrNull;
+    final credit = widget.accounts.where((a) => a.id == _creditAccountId).firstOrNull;
+    final suggested = debit?.currencyId ?? credit?.currencyId;
 
-    _lastSuggestedCurrencyId = account.currencyId;
-    _currencyId = account.currencyId;
+    _lastSuggestedCurrencyId = suggested;
+    _currencyId = suggested;
   }
 
   Future<void> _submit() async {
@@ -255,7 +253,7 @@ class _VoucherFormDialogState extends ConsumerState<_VoucherFormDialog> {
                     selectedId: _debitAccountId,
                     onSelected: (a) => setState(() {
                       _debitAccountId = a.id;
-                      _suggestCurrencyForAccount(a.id);
+                      _suggestCurrency();
                     }),
                   ),
                   const SizedBox(height: AppSpacing.md),
@@ -265,7 +263,7 @@ class _VoucherFormDialogState extends ConsumerState<_VoucherFormDialog> {
                     selectedId: _creditAccountId,
                     onSelected: (a) => setState(() {
                       _creditAccountId = a.id;
-                      _suggestCurrencyForAccount(_debitAccountId ?? a.id);
+                      _suggestCurrency();
                     }),
                   ),
                   const SizedBox(height: AppSpacing.md),
